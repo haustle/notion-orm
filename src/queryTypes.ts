@@ -119,7 +119,9 @@ export type SingleFilter<
 	T extends ColumnNameToNotionColumnType<Y>
 > = {
 	// Passing the type from collection
-	[Property in keyof Y]?: Partial<FilterOptions<Y[Property]>[T[Property]]>;
+	[Property in keyof Y]?: T[Property] extends keyof FilterOptions<Y[Property]> 
+		? Partial<FilterOptions<Y[Property]>[T[Property]]>
+		: never;
 };
 
 export type CompoundFilters<

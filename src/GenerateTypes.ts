@@ -5,8 +5,9 @@ import {
 import * as ts from "typescript";
 import fs from "fs";
 import path from "path";
-import { DATABASES_DIR } from "./index";
+import { DATABASES_DIR } from "./constants";
 import { NotionColumnTypes } from "./queryTypes";
+import { camelize } from "./utils";
 
 type propNameToColumnNameType = Record<
 	string,
@@ -36,6 +37,17 @@ export async function createTypescriptFileForDatabase(
 
 		// Taking the column name and camelizing it for typescript use
 		const camelizedColumnName = camelize(columnName);
+
+		// Only include supported column types to avoid runtime errors
+		const supportedTypes = [
+			"title", "rich_text", "email", "phone_number", "number", "url", 
+			"date", "select", "status", "multi_select", "checkbox"
+		];
+		
+		if (!supportedTypes.includes(columnType)) {
+			console.warn(`Column type '${columnType}' for column '${columnName}' is not supported and will be skipped.`);
+			return;
+		}
 
 		// Creating map of column name to the column's name in the database's typescript type
 		propNameToColumnName[camelizedColumnName] = {
@@ -81,6 +93,9 @@ export async function createTypescriptFileForDatabase(
 					isArray: columnType === "multi_select", // Union or Union Array
 				})
 			);
+		} else if (columnType === "checkbox") {
+			// add checkbox column to collection type
+			databaseColumnTypeProps.push(createCheckboxProperty(camelizedColumnName));
 		}
 	});
 
@@ -108,6 +123,8 @@ export async function createTypescriptFileForDatabase(
 		createColumnNameToColumnType(),
 		createQueryTypeExport(),
 		createDatabaseClassExport({ databaseName: databaseClassName }),
+		// Export class-specific type aliases for the custom NotionORM class
+		...createClassSpecificTypeExports({ databaseName: databaseClassName }),
 	]);
 
 	const sourceFile = ts.createSourceFile(
@@ -239,6 +256,20 @@ function createDateProperty(name: string) {
 			),
 		])
 	);
+}
+
+/**
+ * Generate checkbox property to go inside a type
+ * name?: boolean
+ */
+function createCheckboxProperty(name: string) {
+	const checkbox = ts.factory.createPropertySignature(
+		undefined,
+		ts.factory.createIdentifier(name),
+		ts.factory.createToken(ts.SyntaxKind.QuestionToken),
+		ts.factory.createKeywordTypeNode(ts.SyntaxKind.BooleanKeyword)
+	);
+	return checkbox;
 }
 
 // Generate database Id variable
@@ -402,8 +433,8 @@ function createQueryTypeExport() {
 }
 
 /**
- * Create export statement for the database class
- * export const <databaseName> = new DatabaseActions<DatabaseSchemaType>(datbaseId, columnNameToColumnProperties)
+ * Create export statement for the database constructor function
+ * export const <databaseName> = (auth: string) => new DatabaseActions<DatabaseSchemaType>(datbaseId, columnNameToColumnProperties, auth)
  */
 function createDatabaseClassExport(args: { databaseName: string }) {
 	const { databaseName } = args;
@@ -415,22 +446,39 @@ function createDatabaseClassExport(args: { databaseName: string }) {
 					ts.factory.createIdentifier(databaseName),
 					undefined,
 					undefined,
-					ts.factory.createNewExpression(
-						ts.factory.createIdentifier("DatabaseActions"),
+					ts.factory.createArrowFunction(
+						undefined,
+						undefined,
 						[
-							ts.factory.createTypeReferenceNode(
-								ts.factory.createIdentifier("DatabaseSchemaType"),
+							ts.factory.createParameterDeclaration(
+								undefined,
+								undefined,
+								ts.factory.createIdentifier("auth"),
+								undefined,
+								ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
 								undefined
-							),
-							ts.factory.createTypeReferenceNode(
-								ts.factory.createIdentifier("ColumnNameToColumnType"),
-								undefined
-							),
+							)
 						],
-						[
-							ts.factory.createIdentifier("databaseId"),
-							ts.factory.createIdentifier("columnNameToColumnProperties"),
-						]
+						undefined,
+						ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+						ts.factory.createNewExpression(
+							ts.factory.createIdentifier("DatabaseActions"),
+							[
+								ts.factory.createTypeReferenceNode(
+									ts.factory.createIdentifier("DatabaseSchemaType"),
+									undefined
+								),
+								ts.factory.createTypeReferenceNode(
+									ts.factory.createIdentifier("ColumnNameToColumnType"),
+									undefined
+								),
+							],
+							[
+								ts.factory.createIdentifier("databaseId"),
+								ts.factory.createIdentifier("columnNameToColumnProperties"),
+								ts.factory.createIdentifier("auth"),
+							]
+						)
 					)
 				),
 			],
@@ -439,10 +487,34 @@ function createDatabaseClassExport(args: { databaseName: string }) {
 	);
 }
 
-// for a type's property name
-export function camelize(str: string) {
-	return str.replace(/(?:^\w|[A-Z]|\b\w|\s+)/g, function (match, index) {
-		if (+match === 0) return ""; // or if (/\s+/.test(match)) for white spaces
-		return index === 0 ? match.toLowerCase() : match.toUpperCase();
-	});
+/**
+ * Create class-specific type exports for the custom NotionORM class
+ * These allow the generated NotionORM class to import properly typed schemas
+ */
+function createClassSpecificTypeExports(args: { databaseName: string }) {
+	const { databaseName } = args;
+	return [
+		// Export DatabaseSchemaType as [ClassName]Schema
+		ts.factory.createTypeAliasDeclaration(
+			[ts.factory.createToken(ts.SyntaxKind.ExportKeyword)],
+			ts.factory.createIdentifier(`${databaseName}Schema`),
+			undefined,
+			ts.factory.createTypeReferenceNode(
+				ts.factory.createIdentifier("DatabaseSchemaType"),
+				undefined
+			)
+		),
+		// Export ColumnNameToColumnType as [ClassName]ColumnTypes
+		ts.factory.createTypeAliasDeclaration(
+			[ts.factory.createToken(ts.SyntaxKind.ExportKeyword)],
+			ts.factory.createIdentifier(`${databaseName}ColumnTypes`),
+			undefined,
+			ts.factory.createTypeReferenceNode(
+				ts.factory.createIdentifier("ColumnNameToColumnType"),
+				undefined
+			)
+		),
+	];
 }
+
+
