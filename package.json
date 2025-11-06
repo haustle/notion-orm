@@ -19,6 +19,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@biomejs/biome": "2.3.4",
     "@types/node": "^22.0.0",
     "typescript": "^5.6.3"
   },
@@ -26,7 +27,7 @@
     "@babel/generator": "^7.28.0",
     "@babel/parser": "^7.28.0",
     "@babel/types": "^7.28.2",
-    "@notionhq/client": "^4.0.1"
+    "@notionhq/client": "^4.0.2"
   },
   "optionalDependencies": {
     "ts-node": "^10.9.2"
