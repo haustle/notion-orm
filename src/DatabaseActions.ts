@@ -4,9 +4,9 @@ import {
 	PageObjectResponse,
 	QueryDatabaseParameters,
 	QueryDatabaseResponse,
-} from "@notionhq/client/build/src/api-endpoints";
+} from "@notionhq/client/build/src/api-endpoints.js";
 import { Client } from "@notionhq/client";
-import { getCall } from "./BuildCall";
+import { getCall } from "./BuildCall.js";
 import path from "path";
 import {
 	apiFilterType,

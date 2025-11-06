@@ -1,4 +1,4 @@
-import { SupportedNotionColumnTypes } from "./queryTypes";
+import { SupportedNotionColumnTypes } from "./queryTypes.js";
 
 export function getCall(args: {
 	type: SupportedNotionColumnTypes;

@@ -1,13 +1,13 @@
 import {
 	DatabaseObjectResponse,
 	GetDatabaseResponse,
-} from "@notionhq/client/build/src/api-endpoints";
+} from "@notionhq/client/build/src/api-endpoints.js";
 import * as ts from "typescript";
 import fs from "fs";
 import path from "path";
-import { DATABASES_DIR } from "./constants";
-import { NotionColumnTypes } from "./queryTypes";
-import { camelize } from "./utils";
+import { DATABASES_DIR } from "./constants.js";
+import { NotionColumnTypes } from "./queryTypes.js";
+import { camelize } from "./utils.js";
 
 type propNameToColumnNameType = Record<
 	string,

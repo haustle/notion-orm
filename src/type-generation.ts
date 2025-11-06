@@ -3,14 +3,19 @@
  */
 
 import { Client } from "@notionhq/client";
-import { GetDatabaseResponse } from "@notionhq/client/build/src/api-endpoints";
-import { createTypescriptFileForDatabase } from "./GenerateTypes";
+import { GetDatabaseResponse } from "@notionhq/client/build/src/api-endpoints.js";
+import { createTypescriptFileForDatabase } from "./GenerateTypes.js";
 import * as ts from "typescript";
 import fs from "fs";
 import path from "path";
-import { getNotionConfig } from "./config-utils";
-import { DATABASES_DIR } from "./constants";
-import { NotionConfigType } from "./types";
+import { fileURLToPath } from "url";
+import { getNotionConfig } from "./config-utils.js";
+import { DATABASES_DIR } from "./constants.js";
+import { NotionConfigType } from "./types.js";
+
+// ES module equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 interface DatabaseMetadata {
 	className: string;           // "BookTracker"

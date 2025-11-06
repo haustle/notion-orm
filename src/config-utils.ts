@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { NotionConfigType } from "./types";
+import { NotionConfigType } from "./types.js";
+import { loadUserConfig } from "./load-config.js";
 
 let cachedConfig: NotionConfigType | null = null;
 
@@ -20,38 +21,8 @@ export async function findConfigFile(): Promise<{ path: string; isTS: boolean } 
 
 export async function loadConfig(configPath: string, isTS: boolean): Promise<NotionConfigType> {
 	try {
-		if (isTS) {
-					// Only register ts-node in Node.js environments and avoid webpack static analysis
-		if (typeof (globalThis as any).window === 'undefined' && typeof process !== 'undefined') {
-				try {
-					// Use dynamic require to prevent webpack from analyzing this dependency
-					const tsNodePath = 'ts-node/register';
-					const dynamicRequire = new Function('moduleName', 'return require(moduleName)');
-					dynamicRequire(tsNodePath);
-				} catch (error: any) {
-					throw new Error(
-						`TypeScript config found but ts-node failed to load. ` +
-						`Consider using a .js config file instead, or ensure ts-node is properly installed. ` +
-						`Error: ${error?.message || error}`
-					);
-				}
-			} else {
-				throw new Error('TypeScript config files are not supported in browser environments');
-			}
-		}
-		
-		// Clear require cache to ensure fresh config load
-		if (require.cache[configPath]) {
-			delete require.cache[configPath];
-		}
-		
-		let config = require(configPath);
-		
-		// Extract default export if it exists (for TypeScript configs)
-		if (config && config.default) {
-			config = config.default;
-		}
-		
+		// Use the improved loadUserConfig that works with both Bun and Node.js
+		const config = await loadUserConfig(configPath);
 		return config;
 	} catch (error: any) {
 		throw new Error(`Failed to load config from ${configPath}: ${error.message}`);

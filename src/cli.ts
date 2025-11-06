@@ -1,13 +1,15 @@
-#! /usr/bin/env node
+#!/usr/bin/env bun
 
 import fs from "fs";
-import { createDatabaseTypes } from "./type-generation";
+import { createDatabaseTypes } from "./type-generation.js";
 import path from "path";
-import { findConfigFile, loadConfig, getNotionConfig } from "./config-utils";
+import { findConfigFile, loadConfig, getNotionConfig } from "./config-utils.js";
+import * as parser from "@babel/parser";
+import * as babelGenerator from "@babel/generator";
+import * as t from "@babel/types";
 
-const parser = require("@babel/parser");
-const generate = require("@babel/generator").default;
-const t = require("@babel/types");
+// @ts-ignore - Babel generator has inconsistent exports
+const generate = babelGenerator.default || babelGenerator;
 
 // Config validation function
 function validateConfig(config: any): void {
