@@ -23,6 +23,7 @@ export async function createTypescriptFileForDatabase(
 	const { id: databaseId, properties } = dbResponse;
 
 	const propNameToColumnName: propNameToColumnNameType = {};
+	const propertyValueArrayStatements: ts.Statement[] = [];
 
 	// Due to the type not being a descriminated union, we need to check if the title is in the response.
 	// I don't like this pattern, but we'll have to settle for now
@@ -93,10 +94,19 @@ export async function createTypescriptFileForDatabase(
 		) {
 			// @ts-expect-error
 			const options = value[columnType].options.map((x) => x.name);
+			const propertyValuesIdentifier = `${toPascalCase(
+				camelizedColumnName,
+			)}PropertyValues`;
+			propertyValueArrayStatements.push(
+				createPropertyValuesArray({
+					identifier: propertyValuesIdentifier,
+					options,
+				}),
+			);
 			databaseColumnTypeProps.push(
 				createMultiOptionProp({
 					name: camelizedColumnName,
-					options,
+					arrayIdentifier: propertyValuesIdentifier,
 					isArray: columnType === "multi_select", // Union or Union Array
 				}),
 			);
@@ -117,14 +127,15 @@ export async function createTypescriptFileForDatabase(
 	// Top level non-nested variable, functions, types for database files
 	const TsNodesForDatabaseFile = ts.factory.createNodeArray([
 		createNameImport({
-			namedImport: "DatabaseActions",
-			path: "../src/DatabaseActions",
+			namedImport: "DatabaseClient",
+			path: "../src/DatabaseClient",
 		}),
 		createNameImport({
 			namedImport: "Query",
 			path: "../src/queryTypes",
 		}),
 		createDatabaseIdVariable(databaseId),
+		...propertyValueArrayStatements,
 		DatabaseSchemaType,
 		createColumnNameToColumnProperties(propNameToColumnName),
 		createColumnNameToColumnType(),
@@ -203,35 +214,23 @@ function createNumberProperty(name: string) {
  */
 function createMultiOptionProp(args: {
 	name: string;
-	options: string[];
+	arrayIdentifier: string;
 	isArray: boolean;
 }) {
-	const { isArray, name, options } = args;
+	const { arrayIdentifier, isArray, name } = args;
+	const propertyValueUnion = ts.factory.createUnionTypeNode([
+		createPropertyValuesElementType(arrayIdentifier),
+		createOtherStringProp(),
+	]);
 	return ts.factory.createPropertySignature(
 		undefined,
 		ts.factory.createIdentifier(name),
 		ts.factory.createToken(ts.SyntaxKind.QuestionToken),
 		isArray
 			? ts.factory.createArrayTypeNode(
-					ts.factory.createParenthesizedType(
-						ts.factory.createUnionTypeNode([
-							...options.map((option) =>
-								ts.factory.createLiteralTypeNode(
-									ts.factory.createStringLiteral(option),
-								),
-							),
-							createOtherStringProp(),
-						]),
-					),
+					ts.factory.createParenthesizedType(propertyValueUnion),
 				)
-			: ts.factory.createUnionTypeNode([
-					...options.map((option) =>
-						ts.factory.createLiteralTypeNode(
-							ts.factory.createStringLiteral(option),
-						),
-					),
-					createOtherStringProp(),
-				]),
+			: propertyValueUnion,
 	);
 }
 
@@ -241,6 +240,53 @@ function createOtherStringProp() {
 		ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
 		ts.factory.createTypeLiteralNode([]),
 	]);
+}
+
+function createPropertyValuesArray(args: {
+	identifier: string;
+	options: string[];
+}) {
+	const { identifier, options } = args;
+	return ts.factory.createVariableStatement(
+		[ts.factory.createToken(ts.SyntaxKind.ExportKeyword)],
+		ts.factory.createVariableDeclarationList(
+			[
+				ts.factory.createVariableDeclaration(
+					ts.factory.createIdentifier(identifier),
+					undefined,
+					undefined,
+					ts.factory.createAsExpression(
+						ts.factory.createArrayLiteralExpression(
+							options.map((option) => ts.factory.createStringLiteral(option)),
+							true,
+						),
+						ts.factory.createTypeReferenceNode(
+							ts.factory.createIdentifier("const"),
+							undefined,
+						),
+					),
+				),
+			],
+			ts.NodeFlags.Const,
+		),
+	);
+}
+
+function createPropertyValuesElementType(arrayIdentifier: string) {
+	return ts.factory.createIndexedAccessTypeNode(
+		ts.factory.createTypeQueryNode(
+			ts.factory.createIdentifier(arrayIdentifier),
+			undefined,
+		),
+		ts.factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword),
+	);
+}
+
+function toPascalCase(value: string) {
+	if (!value) {
+		return value;
+	}
+	return value[0].toUpperCase() + value.slice(1);
 }
 
 function createDateProperty(name: string) {
@@ -443,7 +489,7 @@ function createQueryTypeExport() {
 
 /**
  * Create export statement for the database constructor function
- * export const <databaseName> = (auth: string) => new DatabaseActions<DatabaseSchemaType>({databaseId, columnNameToColumnProperties, auth})
+ * export const <databaseName> = (auth: string) => new DatabaseClient<DatabaseSchemaType>({databaseId, columnNameToColumnProperties, auth})
  */
 function createDatabaseClassExport(args: { databaseName: string }) {
 	const { databaseName } = args;
@@ -471,7 +517,7 @@ function createDatabaseClassExport(args: { databaseName: string }) {
 						undefined,
 						ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
 						ts.factory.createNewExpression(
-							ts.factory.createIdentifier("DatabaseActions"),
+							ts.factory.createIdentifier("DatabaseClient"),
 							[
 								ts.factory.createTypeReferenceNode(
 									ts.factory.createIdentifier("DatabaseSchemaType"),
