@@ -14,16 +14,16 @@ import type {
 	SimpleQueryResponse,
 	SingleFilter,
 	SupportedNotionColumnTypes,
-} from "./queryTypes";
+} from "./queryTypes.js";
 
-import { camelize } from "./utils";
+import { camelize } from "./utils.js";
 
 export type propNameToColumnNameType = Record<
 	string,
 	{ columnName: string; type: SupportedNotionColumnTypes }
 >;
 
-export class DatabaseActions<
+export class DatabaseClient<
 	DatabaseSchemaType extends Record<string, any>,
 	ColumnNameToColumnType extends Record<
 		keyof DatabaseSchemaType,
