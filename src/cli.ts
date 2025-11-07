@@ -1,15 +1,58 @@
 #!/usr/bin/env bun
 
-import fs from "fs";
-import { createDatabaseTypes } from "./type-generation.js";
-import path from "path";
-import { findConfigFile, loadConfig, getNotionConfig } from "./config-utils.js";
-import * as parser from "@babel/parser";
 import * as babelGenerator from "@babel/generator";
+import * as parser from "@babel/parser";
 import * as t from "@babel/types";
+import fs from "fs";
+import path from "path";
+import { findConfigFile, getNotionConfig, loadConfig } from "./config-utils.js";
+import { createDatabaseTypes } from "./type-generation.js";
 
-// @ts-ignore - Babel generator has inconsistent exports
 const generate = babelGenerator.default || babelGenerator;
+
+function shouldUseTypeScript(): boolean {
+	const cwd = process.cwd();
+	const tsConfigCandidates = [
+		"tsconfig.json",
+		"tsconfig.app.json",
+		"tsconfig.base.json",
+		"tsconfig.build.json",
+	];
+
+	for (const candidate of tsConfigCandidates) {
+		if (fs.existsSync(path.join(cwd, candidate))) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+function createConfigTemplate(isTS: boolean): string {
+	const lines = [
+		"// Be sure to create a .env.local file and add your NOTION_KEY",
+		"",
+		"// If you don't have an API key, sign up for free ",
+		"// [here](https://developers.notion.com)",
+		"",
+		'const auth = process.env.NOTION_KEY || "your-notion-api-key-here";',
+		"const NotionConfig = {",
+		"\tauth,",
+		"\tdatabaseIds: [",
+		'\t\t// Add undashed database source IDs here (ex. "2a3c495da03c80bc99fe000bbf2be4bb")',
+		"\t\t// or use the following command to automatically update",
+		"\t\t// `notion add <database-source-id or URL>`",
+		"\t\t// If you decide to manually add database IDs, be sure to run",
+		"\t\t// `notion generate` to properly update the local database types",
+		"\t],",
+		"};",
+		"",
+		isTS ? "export default NotionConfig;" : "module.exports = NotionConfig;",
+		"",
+	];
+
+	return `${lines.join("\n")}\n`;
+}
 
 // Config validation function
 function validateConfig(config: any): void {
@@ -49,37 +92,67 @@ function validateConfig(config: any): void {
 // Show helpful setup instructions
 function showSetupInstructions(): void {
 	console.log("\n📚 Setup Instructions:");
-	console.log("1. Create a notion.config.js file in your project root");
+	console.log(
+		"1. Run: notion init [--ts|--js] (defaults to TypeScript when tsconfig.json is present)",
+	);
 	console.log("2. Add your Notion integration token and database IDs");
 	console.log("3. Run: notion generate");
-	
+
 	console.log("\n📝 Example JavaScript config (notion.config.js):");
 	console.log(`
-module.exports = {
-    auth: "secret_your-notion-integration-token",
-    databaseIds: ["database-id-1", "database-id-2"]
+// Be sure to create a .env.local file and add your NOTION_KEY
+
+// If you don't have an API key, sign up for free 
+// [here](https://developers.notion.com)
+
+const auth = process.env.NOTION_KEY || "your-notion-api-key-here";
+const NotionConfig = {
+	auth,
+	databaseIds: [
+		"database-id-1",
+		"database-id-2",
+	],
 };
+
+module.exports = NotionConfig;
 	`);
 
 	console.log("📝 Example TypeScript config (notion.config.ts):");
 	console.log(`
-export default {
-    auth: "secret_your-notion-integration-token",
-    databaseIds: ["database-id-1", "database-id-2"]
+// Be sure to create a .env.local file and add your NOTION_KEY
+
+// If you don't have an API key, sign up for free 
+// [here](https://developers.notion.com)
+
+const auth = process.env.NOTION_KEY || "your-notion-api-key-here";
+const NotionConfig = {
+	auth,
+	databaseIds: [
+		"database-id-1",
+		"database-id-2",
+	],
 };
+
+export default NotionConfig;
 	`);
 
 	console.log("\n🔗 Need help getting your integration token?");
-	console.log("   Visit: https://developers.notion.com/docs/create-a-notion-integration");
+	console.log(
+		"   Visit: https://developers.notion.com/docs/create-a-notion-integration",
+	);
 }
 
 // Note: Configuration utilities are now imported from config-utils.ts
 
 function validateDatabaseId(databaseId: string): boolean {
 	// Notion database IDs are UUIDs (with or without dashes)
-	const uuidPattern = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
-	const cleanId = databaseId.replace(/-/g, '');
-	return uuidPattern.test(databaseId) || (cleanId.length === 32 && /^[0-9a-f]+$/i.test(cleanId));
+	const uuidPattern =
+		/^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
+	const cleanId = databaseId.replace(/-/g, "");
+	return (
+		uuidPattern.test(databaseId) ||
+		(cleanId.length === 32 && /^[0-9a-f]+$/i.test(cleanId))
+	);
 }
 
 function extractDatabaseIdFromUrl(input: string): string | null {
@@ -87,59 +160,71 @@ function extractDatabaseIdFromUrl(input: string): string | null {
 	// https://www.notion.so/workspace/DATABASE_ID?v=...
 	// https://notion.so/workspace/DATABASE_ID?v=...
 	// https://www.notion.so/DATABASE_ID?v=...
-	
+
 	try {
 		const url = new URL(input);
-		
+
 		// Check if it's a valid Notion domain
-		if (!url.hostname.includes('notion.so')) {
+		if (!url.hostname.includes("notion.so")) {
 			return null;
 		}
-		
+
 		// Extract pathname and find the first UUID-like string
-		const pathSegments = url.pathname.split('/').filter(segment => segment.length > 0);
-		
+		const pathSegments = url.pathname
+			.split("/")
+			.filter((segment) => segment.length > 0);
+
 		for (const segment of pathSegments) {
 			// Look for 32-character hex strings (undashed UUIDs)
 			if (/^[0-9a-f]{32}$/i.test(segment)) {
 				return segment;
 			}
 			// Also check for dashed UUIDs
-			if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segment)) {
-				return segment.replace(/-/g, ''); // Return undashed version
+			if (
+				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+					segment,
+				)
+			) {
+				return segment.replace(/-/g, ""); // Return undashed version
 			}
 		}
-		
+
 		return null;
-	} catch (error) {
+	} catch {
 		return null; // Not a valid URL
 	}
 }
 
-function processInputForDatabaseId(input: string): { databaseId: string; wasUrl: boolean } | null {
+function processInputForDatabaseId(
+	input: string,
+): { databaseId: string; wasUrl: boolean } | null {
 	// First check if it's a URL
-	if (input.startsWith('http://') || input.startsWith('https://')) {
+	if (input.startsWith("http://") || input.startsWith("https://")) {
 		const extractedId = extractDatabaseIdFromUrl(input);
 		if (extractedId) {
 			return { databaseId: extractedId, wasUrl: true };
 		}
 		return null; // Invalid URL or couldn't extract ID
 	}
-	
+
 	// If not a URL, treat as direct database ID and validate
 	if (validateDatabaseId(input)) {
 		// Ensure we return undashed format for consistency
-		const cleanId = input.replace(/-/g, '');
+		const cleanId = input.replace(/-/g, "");
 		return { databaseId: cleanId, wasUrl: false };
 	}
-	
+
 	return null; // Invalid database ID format
 }
 
-async function writeConfigFile(configPath: string, config: any, isTS: boolean): Promise<void> {
+async function writeConfigFile(
+	configPath: string,
+	config: any,
+	isTS: boolean,
+): Promise<void> {
 	try {
 		let configContent: string;
-		
+
 		if (isTS) {
 			// TypeScript format
 			configContent = `export default ${JSON.stringify(config, null, 4)};`;
@@ -147,7 +232,7 @@ async function writeConfigFile(configPath: string, config: any, isTS: boolean): 
 			// JavaScript format
 			configContent = `module.exports = ${JSON.stringify(config, null, 4)};`;
 		}
-		
+
 		fs.writeFileSync(configPath, configContent);
 	} catch (error: any) {
 		console.error("❌ Error writing config file:");
@@ -156,33 +241,38 @@ async function writeConfigFile(configPath: string, config: any, isTS: boolean): 
 	}
 }
 
-async function writeConfigFileWithAST(configPath: string, newDatabaseId: string, isTS: boolean): Promise<boolean> {
+async function writeConfigFileWithAST(
+	configPath: string,
+	newDatabaseId: string,
+	isTS: boolean,
+): Promise<boolean> {
 	try {
 		// Read the original file content
-		const originalContent = fs.readFileSync(configPath, 'utf-8');
-		
+		const originalContent = fs.readFileSync(configPath, "utf-8");
+
 		// Parse the file as AST
 		const ast = parser.parse(originalContent, {
-			sourceType: 'module',
+			sourceType: "module",
 			allowImportExportEverywhere: true,
-			plugins: isTS ? ['typescript'] : [],
+			plugins: isTS ? ["typescript"] : [],
 		});
 
 		// Find and modify the databaseIds array
 		let modified = false;
-		
+
 		function modifyDatabaseIdsInObject(objExpression: any): void {
 			for (const prop of objExpression.properties) {
-				if (t.isObjectProperty(prop) && 
-					t.isIdentifier(prop.key) && 
-					prop.key.name === 'databaseIds' &&
-					t.isArrayExpression(prop.value)) {
-					
+				if (
+					t.isObjectProperty(prop) &&
+					t.isIdentifier(prop.key) &&
+					prop.key.name === "databaseIds" &&
+					t.isArrayExpression(prop.value)
+				) {
 					// Check if the database ID already exists
 					const existingIds = prop.value.elements
 						.filter((el: any) => t.isStringLiteral(el))
 						.map((el: any) => el.value);
-					
+
 					if (!existingIds.includes(newDatabaseId)) {
 						// Add the new database ID to the array
 						prop.value.elements.push(t.stringLiteral(newDatabaseId));
@@ -199,10 +289,12 @@ async function writeConfigFileWithAST(configPath: string, newDatabaseId: string,
 				if (t.isObjectExpression(node.init)) {
 					modifyDatabaseIdsInObject(node.init);
 				}
-			} else if (t.isAssignmentExpression(node) && 
-					   t.isMemberExpression(node.left) &&
-					   t.isIdentifier(node.left.property) && 
-					   node.left.property.name === 'exports') {
+			} else if (
+				t.isAssignmentExpression(node) &&
+				t.isMemberExpression(node.left) &&
+				t.isIdentifier(node.left.property) &&
+				node.left.property.name === "exports"
+			) {
 				// Handle: module.exports = { ... }
 				if (t.isObjectExpression(node.right)) {
 					modifyDatabaseIdsInObject(node.right);
@@ -217,13 +309,13 @@ async function writeConfigFileWithAST(configPath: string, newDatabaseId: string,
 
 		// Traverse the AST
 		function traverse(node: any): void {
-			if (!node || typeof node !== 'object') return;
-			
+			if (!node || typeof node !== "object") return;
+
 			visitNode(node);
-			
+
 			// Recursively traverse child nodes
 			for (const key in node) {
-				if (node[key] && typeof node[key] === 'object') {
+				if (node[key] && typeof node[key] === "object") {
 					if (Array.isArray(node[key])) {
 						node[key].forEach(traverse);
 					} else {
@@ -241,19 +333,18 @@ async function writeConfigFileWithAST(configPath: string, newDatabaseId: string,
 				retainLines: true,
 				concise: false,
 			});
-			
+
 			// Write the modified content back to the file
 			fs.writeFileSync(configPath, output.code);
 			return true;
 		}
-		
+
 		return false; // No modification needed (ID already exists)
-		
 	} catch (error: any) {
 		console.error("❌ Error updating config file with AST:");
 		console.error(error.message);
 		console.log("⚠️  Falling back to simple JSON replacement...");
-		
+
 		// Fallback to loading and re-saving config
 		const config = await loadConfig(configPath, isTS);
 		if (!config.databaseIds) {
@@ -268,27 +359,73 @@ async function writeConfigFileWithAST(configPath: string, newDatabaseId: string,
 	}
 }
 
+async function runInit(options: { force?: "ts" | "js" } = {}): Promise<void> {
+	const existingConfig = await findConfigFile();
+
+	if (existingConfig) {
+		console.log("⚠️  A notion.config file already exists:");
+		console.log(`   Found ${path.basename(existingConfig.path)}`);
+		console.log(
+			"   Skipping init. Use that file or remove it before re-running init.",
+		);
+		return;
+	}
+
+	const isTS =
+		options.force === "ts" || (options.force !== "js" && shouldUseTypeScript());
+	const filename = isTS ? "notion.config.ts" : "notion.config.js";
+	const configPath = path.join(process.cwd(), filename);
+
+	if (fs.existsSync(configPath)) {
+		console.log("⚠️  Config file already exists at:");
+		console.log(`   ${configPath}`);
+		console.log(
+			"   Skipping init. Remove the file if you want to regenerate it.",
+		);
+		return;
+	}
+
+	try {
+		fs.writeFileSync(configPath, createConfigTemplate(isTS));
+		console.log(
+			`✅ Created ${filename} (${isTS ? "TypeScript" : "JavaScript"})`,
+		);
+		console.log("   Next steps:");
+		console.log(
+			"   • Add your NOTION_KEY to a .env.local file (or export it in your shell)",
+		);
+		console.log("   • Use `notion add <database-id>` to append databases");
+		console.log("   • Run `notion generate` to build local types");
+	} catch (error: any) {
+		console.error("❌ Error creating config file:");
+		console.error(error.message);
+		process.exit(1);
+	}
+}
+
 async function runGenerate(): Promise<void> {
 	console.log(`🔍 Looking for config in: ${process.cwd()}`);
-	
+
 	try {
 		// Use the centralized configuration loading
 		const config = await getNotionConfig();
-		
+
 		// Validate the config (this validation is now redundant since getNotionConfig does validation)
 		validateConfig(config);
 
 		const configFile = await findConfigFile();
 		if (configFile) {
-			console.log(`✅ Found ${configFile.isTS ? 'notion.config.ts' : 'notion.config.js'}`);
+			console.log(
+				`✅ Found ${configFile.isTS ? "notion.config.ts" : "notion.config.js"}`,
+			);
 		} else {
 			console.log("✅ Using environment variable configuration");
 		}
 
 		console.log("🚀 Generating types...");
-		
+
 		const { databaseNames } = await createDatabaseTypes();
-		
+
 		if (databaseNames.length === 0) {
 			console.log("⚠️  Generated no types");
 		} else {
@@ -300,7 +437,9 @@ async function runGenerate(): Promise<void> {
 	} catch (error: any) {
 		if (error.message.includes("No notion.config.js/ts file found")) {
 			console.error("❌ No config file found");
-			console.error("   Could not find notion.config.js or notion.config.ts in project root");
+			console.error(
+				"   Could not find notion.config.js or notion.config.ts in project root",
+			);
 			showSetupInstructions();
 		} else {
 			console.error("❌ Error generating types:");
@@ -312,34 +451,44 @@ async function runGenerate(): Promise<void> {
 
 async function runAdd(input: string): Promise<void> {
 	const processed = processInputForDatabaseId(input);
-	
+
 	if (!processed) {
 		console.error("❌ Invalid input format");
 		console.error("   Expected formats:");
-		console.error("   • Database ID: 12345678-1234-1234-1234-123456789abc (with or without dashes)");
-		console.error("   • Notion URL: https://www.notion.so/workspace/c88c5ccf109f4e71937d5d3b3ddfeade?v=...");
+		console.error(
+			"   • Database ID: 12345678-1234-1234-1234-123456789abc (with or without dashes)",
+		);
+		console.error(
+			"   • Notion URL: https://www.notion.so/workspace/c88c5ccf109f4e71937d5d3b3ddfeade?v=...",
+		);
 		process.exit(1);
 	}
-	
+
 	const { databaseId, wasUrl } = processed;
-	
+
 	if (wasUrl) {
 		console.log(`🔗 Extracted database ID from URL: ${databaseId}`);
 	}
 
 	const configFile = await findConfigFile();
-	
+
 	if (!configFile) {
 		console.error("❌ No config file found");
-		console.error("   Could not find notion.config.js or notion.config.ts in project root");
-		console.error("   Please create a config file first or run 'notion generate' to see setup instructions");
+		console.error(
+			"   Could not find notion.config.js or notion.config.ts in project root",
+		);
+		console.error(
+			"   Please create a config file first or run 'notion generate' to see setup instructions",
+		);
 		process.exit(1);
 	}
 
-	console.log(`🔍 Found config: ${configFile.isTS ? 'notion.config.ts' : 'notion.config.js'}`);
-	
+	console.log(
+		`🔍 Found config: ${configFile.isTS ? "notion.config.ts" : "notion.config.js"}`,
+	);
+
 	const config = await loadConfig(configFile.path, configFile.isTS);
-	
+
 	// Ensure databaseIds array exists
 	if (!config.databaseIds) {
 		config.databaseIds = [];
@@ -351,20 +500,26 @@ async function runAdd(input: string): Promise<void> {
 		console.log("   Skipping addition, running generate...");
 	} else {
 		// Use AST-based modification to preserve structure
-		const wasModified = await writeConfigFileWithAST(configFile.path, databaseId, configFile.isTS);
-		
+		const wasModified = await writeConfigFileWithAST(
+			configFile.path,
+			databaseId,
+			configFile.isTS,
+		);
+
 		if (wasModified) {
 			console.log(`✅ Added database ID ${databaseId} to configuration`);
 			console.log("   Original structure and formatting preserved");
 		} else {
-			console.log(`⚠️  Database ID ${databaseId} was already in the configuration`);
+			console.log(
+				`⚠️  Database ID ${databaseId} was already in the configuration`,
+			);
 		}
 	}
 
 	// Reload config to get the updated databaseIds count
 	const updatedConfig = await loadConfig(configFile.path, configFile.isTS);
 	console.log(`📝 Current database IDs: ${updatedConfig.databaseIds.length}`);
-	
+
 	// Auto-run generate command
 	console.log("🔄 Running generate to fetch schema...");
 	await runGenerate();
@@ -373,12 +528,21 @@ async function runAdd(input: string): Promise<void> {
 function showUsage(): void {
 	console.log("📖 Notion ORM CLI");
 	console.log("Usage:");
-	console.log("  notion generate                    - Generate types from configured databases");
-	console.log("  notion add <database-id-or-url>   - Add database to config and generate types");
+	console.log(
+		"  notion init [--ts|--js]            - Create a starter notion.config file",
+	);
+	console.log(
+		"  notion generate                    - Generate types from configured databases",
+	);
+	console.log(
+		"  notion add <database-id-or-url>   - Add database to config and generate types",
+	);
 	console.log("\nExamples:");
 	console.log("  notion add 12345678-1234-1234-1234-123456789abc");
 	console.log("  notion add c88c5ccf109f4e71937d5d3b3ddfeade");
-	console.log("  notion add https://www.notion.so/workspace/c88c5ccf109f4e71937d5d3b3ddfeade?v=123");
+	console.log(
+		"  notion add https://www.notion.so/workspace/c88c5ccf109f4e71937d5d3b3ddfeade?v=123",
+	);
 	console.log("  notion generate");
 	showSetupInstructions();
 }
@@ -386,7 +550,17 @@ function showUsage(): void {
 async function main() {
 	const args = process.argv.slice(2);
 
-	if (args.length === 1 && args[0] === "generate") {
+	if (args.length >= 1 && args[0] === "init") {
+		const forceTS = args.includes("--ts");
+		const forceJS = args.includes("--js");
+
+		if (forceTS && forceJS) {
+			console.error("❌ Cannot use both --ts and --js flags together");
+			process.exit(1);
+		}
+
+		await runInit({ force: forceTS ? "ts" : forceJS ? "js" : undefined });
+	} else if (args.length === 1 && args[0] === "generate") {
 		await runGenerate();
 	} else if (args.length === 2 && args[0] === "add") {
 		await runAdd(args[1]);
