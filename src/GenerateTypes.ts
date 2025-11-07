@@ -1,53 +1,60 @@
-import {
-	DatabaseObjectResponse,
-	GetDatabaseResponse,
-} from "@notionhq/client/build/src/api-endpoints.js";
-import * as ts from "typescript";
+import type { GetDataSourceResponse } from "@notionhq/client/build/src/api-endpoints.js";
 import fs from "fs";
 import path from "path";
+import * as ts from "typescript";
 import { DATABASES_DIR } from "./constants.js";
-import { NotionColumnTypes } from "./queryTypes.js";
+import {
+	type DatabasePropertyType,
+	isSupportedPropertyType,
+} from "./queryTypes.js";
 import { camelize } from "./utils.js";
 
 type propNameToColumnNameType = Record<
 	string,
-	{ columnName: string; type: NotionColumnTypes }
+	{ columnName: string; type: DatabasePropertyType }
 >;
 
 /* 
 Responsible for generating `.ts` files
 */
 export async function createTypescriptFileForDatabase(
-	dbResponse: GetDatabaseResponse
+	dbResponse: GetDataSourceResponse,
 ) {
-	const {
-		id: databaseId,
-		properties,
-		title,
-	} = dbResponse as DatabaseObjectResponse;
+	const { id: databaseId, properties } = dbResponse;
+
 	const propNameToColumnName: propNameToColumnNameType = {};
-	const databaseName = title[0].plain_text;
+
+	// Due to the type not being a descriminated union, we need to check if the title is in the response.
+	// I don't like this pattern, but we'll have to settle for now
+	const databaseName: string =
+		"title" in dbResponse
+			? dbResponse.title[0].plain_text
+			: "DEFAULT_DATABASE_NAME";
+
 	const databaseClassName = camelize(databaseName).replace(/[^a-zA-Z0-9]/g, "");
 
 	const databaseColumnTypeProps: ts.TypeElement[] = [];
 
 	// Looping through each column of database
-	Object.values(properties).forEach((value) => {
-		const { type: columnType, name: columnName } = value;
+	Object.entries(properties).forEach(([columnName, value]) => {
+		const { type: columnType } = value;
+		const isValidPropertyType = isSupportedPropertyType(columnType);
+		if (!isValidPropertyType) {
+			console.warn(
+				`Property '${columnName}' with type '${columnType}' is not supported and will be skipped.`,
+			);
+			return;
+		}
+
+		if (columnType === "title") {
+			console.log("found title", value.title);
+
+			console.log({ title: value.title });
+			// databaseName = value.title[0].plain_text;
+		}
 
 		// Taking the column name and camelizing it for typescript use
 		const camelizedColumnName = camelize(columnName);
-
-		// Only include supported column types to avoid runtime errors
-		const supportedTypes = [
-			"title", "rich_text", "email", "phone_number", "number", "url", 
-			"date", "select", "status", "multi_select", "checkbox"
-		];
-		
-		if (!supportedTypes.includes(columnType)) {
-			console.warn(`Column type '${columnType}' for column '${columnName}' is not supported and will be skipped.`);
-			return;
-		}
 
 		// Creating map of column name to the column's name in the database's typescript type
 		propNameToColumnName[camelizedColumnName] = {
@@ -66,7 +73,7 @@ export async function createTypescriptFileForDatabase(
 				createTextProperty({
 					name: camelizedColumnName,
 					isTitle: columnType === "title",
-				})
+				}),
 			);
 		} else if (columnType === "number") {
 			// add number column to collection type
@@ -74,7 +81,7 @@ export async function createTypescriptFileForDatabase(
 		} else if (columnType === "url") {
 			// add url column to collection type
 			databaseColumnTypeProps.push(
-				createTextProperty({ name: camelizedColumnName, isTitle: false })
+				createTextProperty({ name: camelizedColumnName, isTitle: false }),
 			);
 		} else if (columnType === "date") {
 			// add Date column to collection type
@@ -84,14 +91,14 @@ export async function createTypescriptFileForDatabase(
 			columnType === "status" ||
 			columnType === "multi_select"
 		) {
-			// @ts-ignore
+			// @ts-expect-error
 			const options = value[columnType].options.map((x) => x.name);
 			databaseColumnTypeProps.push(
 				createMultiOptionProp({
 					name: camelizedColumnName,
 					options,
 					isArray: columnType === "multi_select", // Union or Union Array
-				})
+				}),
 			);
 		} else if (columnType === "checkbox") {
 			// add checkbox column to collection type
@@ -104,7 +111,7 @@ export async function createTypescriptFileForDatabase(
 		[ts.factory.createToken(ts.SyntaxKind.ExportKeyword)],
 		ts.factory.createIdentifier("DatabaseSchemaType"),
 		undefined,
-		ts.factory.createTypeLiteralNode(databaseColumnTypeProps)
+		ts.factory.createTypeLiteralNode(databaseColumnTypeProps),
 	);
 
 	// Top level non-nested variable, functions, types for database files
@@ -132,14 +139,14 @@ export async function createTypescriptFileForDatabase(
 		"",
 		ts.ScriptTarget.ESNext,
 		true,
-		ts.ScriptKind.TS
+		ts.ScriptKind.TS,
 	);
 	const printer = ts.createPrinter();
 
 	const typescriptCodeToString = printer.printList(
 		ts.ListFormat.MultiLine,
 		TsNodesForDatabaseFile,
-		sourceFile
+		sourceFile,
 	);
 	const transpileToJavaScript = ts.transpile(typescriptCodeToString, {
 		module: ts.ModuleKind.None,
@@ -154,11 +161,11 @@ export async function createTypescriptFileForDatabase(
 	// Create TypeScript and JavaScript files
 	fs.writeFileSync(
 		path.resolve(DATABASES_DIR, `${databaseClassName}.ts`),
-		typescriptCodeToString
+		typescriptCodeToString,
 	);
 	fs.writeFileSync(
 		path.resolve(DATABASES_DIR, `${databaseClassName}.js`),
-		transpileToJavaScript
+		transpileToJavaScript,
 	);
 
 	return { databaseName, databaseClassName, databaseId };
@@ -171,7 +178,7 @@ function createTextProperty(args: { name: string; isTitle: boolean }) {
 		undefined,
 		ts.factory.createIdentifier(name),
 		!isTitle ? ts.factory.createToken(ts.SyntaxKind.QuestionToken) : undefined,
-		ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)
+		ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
 	);
 	return text;
 }
@@ -185,7 +192,7 @@ function createNumberProperty(name: string) {
 		undefined,
 		ts.factory.createIdentifier(name),
 		ts.factory.createToken(ts.SyntaxKind.QuestionToken),
-		ts.factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword)
+		ts.factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword),
 	);
 	return number;
 }
@@ -210,21 +217,21 @@ function createMultiOptionProp(args: {
 						ts.factory.createUnionTypeNode([
 							...options.map((option) =>
 								ts.factory.createLiteralTypeNode(
-									ts.factory.createStringLiteral(option)
-								)
+									ts.factory.createStringLiteral(option),
+								),
 							),
 							createOtherStringProp(),
-						])
-					)
-			  )
+						]),
+					),
+				)
 			: ts.factory.createUnionTypeNode([
 					...options.map((option) =>
 						ts.factory.createLiteralTypeNode(
-							ts.factory.createStringLiteral(option)
-						)
+							ts.factory.createStringLiteral(option),
+						),
 					),
 					createOtherStringProp(),
-			  ])
+				]),
 	);
 }
 
@@ -246,15 +253,15 @@ function createDateProperty(name: string) {
 				undefined,
 				ts.factory.createIdentifier("start"),
 				undefined,
-				ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)
+				ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
 			),
 			ts.factory.createPropertySignature(
 				undefined,
 				ts.factory.createIdentifier("end"),
 				ts.factory.createToken(ts.SyntaxKind.QuestionToken),
-				ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)
+				ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
 			),
-		])
+		]),
 	);
 }
 
@@ -267,7 +274,7 @@ function createCheckboxProperty(name: string) {
 		undefined,
 		ts.factory.createIdentifier(name),
 		ts.factory.createToken(ts.SyntaxKind.QuestionToken),
-		ts.factory.createKeywordTypeNode(ts.SyntaxKind.BooleanKeyword)
+		ts.factory.createKeywordTypeNode(ts.SyntaxKind.BooleanKeyword),
 	);
 	return checkbox;
 }
@@ -283,11 +290,11 @@ function createDatabaseIdVariable(databaseId: string) {
 					ts.factory.createIdentifier("databaseId"),
 					undefined,
 					undefined,
-					ts.factory.createStringLiteral(databaseId)
+					ts.factory.createStringLiteral(databaseId),
 				),
 			],
-			ts.NodeFlags.Const
-		)
+			ts.NodeFlags.Const,
+		),
 	);
 }
 
@@ -328,28 +335,28 @@ function createColumnNameToColumnProperties(colMap: propNameToColumnNameType) {
 										[
 											ts.factory.createPropertyAssignment(
 												ts.factory.createIdentifier("columnName"),
-												ts.factory.createStringLiteral(value.columnName)
+												ts.factory.createStringLiteral(value.columnName),
 											),
 											ts.factory.createPropertyAssignment(
 												ts.factory.createIdentifier("type"),
-												ts.factory.createStringLiteral(value.type)
+												ts.factory.createStringLiteral(value.type),
 											),
 										],
-										true
-									)
-								)
+										true,
+									),
+								),
 							),
 						],
-						true
+						true,
 					),
 					ts.factory.createTypeReferenceNode(
 						ts.factory.createIdentifier("const"),
-						undefined
-					)
-				)
+						undefined,
+					),
+				),
 			),
 		],
-		ts.NodeFlags.Const
+		ts.NodeFlags.Const,
 	);
 }
 
@@ -367,10 +374,10 @@ function createColumnNameToColumnType() {
 					ts.SyntaxKind.KeyOfKeyword,
 					ts.factory.createTypeQueryNode(
 						ts.factory.createIdentifier("columnNameToColumnProperties"),
-						undefined
-					)
+						undefined,
+					),
 				),
-				undefined
+				undefined,
 			),
 			undefined,
 			undefined,
@@ -378,18 +385,20 @@ function createColumnNameToColumnType() {
 				ts.factory.createIndexedAccessTypeNode(
 					ts.factory.createTypeQueryNode(
 						ts.factory.createIdentifier("columnNameToColumnProperties"),
-						undefined
+						undefined,
 					),
 					ts.factory.createTypeReferenceNode(
 						ts.factory.createIdentifier("Property"),
-						undefined
-					)
+						undefined,
+					),
 				),
-				ts.factory.createLiteralTypeNode(ts.factory.createStringLiteral("type"))
+				ts.factory.createLiteralTypeNode(
+					ts.factory.createStringLiteral("type"),
+				),
 			),
-			undefined
+			undefined,
 			/* unknown */
-		)
+		),
 	);
 }
 
@@ -405,12 +414,12 @@ function createNameImport(args: { namedImport: string; path: string }) {
 				ts.factory.createImportSpecifier(
 					false,
 					undefined,
-					ts.factory.createIdentifier(namedImport)
+					ts.factory.createIdentifier(namedImport),
 				),
-			])
+			]),
 		),
 		ts.factory.createStringLiteral(path),
-		undefined
+		undefined,
 	);
 }
 
@@ -422,19 +431,19 @@ function createQueryTypeExport() {
 		ts.factory.createTypeReferenceNode(ts.factory.createIdentifier("Query"), [
 			ts.factory.createTypeReferenceNode(
 				ts.factory.createIdentifier("DatabaseSchemaType"),
-				undefined
+				undefined,
 			),
 			ts.factory.createTypeReferenceNode(
 				ts.factory.createIdentifier("ColumnNameToColumnType"),
-				undefined
+				undefined,
 			),
-		])
+		]),
 	);
 }
 
 /**
  * Create export statement for the database constructor function
- * export const <databaseName> = (auth: string) => new DatabaseActions<DatabaseSchemaType>(datbaseId, columnNameToColumnProperties, auth)
+ * export const <databaseName> = (auth: string) => new DatabaseActions<DatabaseSchemaType>({databaseId, columnNameToColumnProperties, auth})
  */
 function createDatabaseClassExport(args: { databaseName: string }) {
 	const { databaseName } = args;
@@ -456,8 +465,8 @@ function createDatabaseClassExport(args: { databaseName: string }) {
 								ts.factory.createIdentifier("auth"),
 								undefined,
 								ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
-								undefined
-							)
+								undefined,
+							),
 						],
 						undefined,
 						ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
@@ -466,24 +475,40 @@ function createDatabaseClassExport(args: { databaseName: string }) {
 							[
 								ts.factory.createTypeReferenceNode(
 									ts.factory.createIdentifier("DatabaseSchemaType"),
-									undefined
+									undefined,
 								),
 								ts.factory.createTypeReferenceNode(
 									ts.factory.createIdentifier("ColumnNameToColumnType"),
-									undefined
+									undefined,
 								),
 							],
 							[
-								ts.factory.createIdentifier("databaseId"),
-								ts.factory.createIdentifier("columnNameToColumnProperties"),
-								ts.factory.createIdentifier("auth"),
-							]
-						)
-					)
+								ts.factory.createObjectLiteralExpression(
+									[
+										ts.factory.createShorthandPropertyAssignment(
+											ts.factory.createIdentifier("databaseId"),
+											undefined,
+										),
+										ts.factory.createPropertyAssignment(
+											ts.factory.createIdentifier("propNameToColumnName"),
+											ts.factory.createIdentifier(
+												"columnNameToColumnProperties",
+											),
+										),
+										ts.factory.createShorthandPropertyAssignment(
+											ts.factory.createIdentifier("auth"),
+											undefined,
+										),
+									],
+									false,
+								),
+							],
+						),
+					),
 				),
 			],
-			ts.NodeFlags.Const
-		)
+			ts.NodeFlags.Const,
+		),
 	);
 }
 
@@ -501,8 +526,8 @@ function createClassSpecificTypeExports(args: { databaseName: string }) {
 			undefined,
 			ts.factory.createTypeReferenceNode(
 				ts.factory.createIdentifier("DatabaseSchemaType"),
-				undefined
-			)
+				undefined,
+			),
 		),
 		// Export ColumnNameToColumnType as [ClassName]ColumnTypes
 		ts.factory.createTypeAliasDeclaration(
@@ -511,10 +536,8 @@ function createClassSpecificTypeExports(args: { databaseName: string }) {
 			undefined,
 			ts.factory.createTypeReferenceNode(
 				ts.factory.createIdentifier("ColumnNameToColumnType"),
-				undefined
-			)
+				undefined,
+			),
 		),
 	];
 }
-
-

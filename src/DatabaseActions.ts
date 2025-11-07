@@ -1,17 +1,14 @@
-import {
+import { Client } from "@notionhq/client";
+import type {
 	CreatePageParameters,
 	CreatePageResponse,
-	PageObjectResponse,
-	QueryDatabaseParameters,
-	QueryDatabaseResponse,
+	QueryDataSourceParameters,
+	QueryDataSourceResponse,
 } from "@notionhq/client/build/src/api-endpoints.js";
-import { Client } from "@notionhq/client";
 import { getCall } from "./BuildCall.js";
-import path from "path";
-import {
+import type {
 	apiFilterType,
 	apiSingleFilter,
-	CompoundFilters,
 	Query,
 	QueryFilter,
 	SimpleQueryResponse,
@@ -31,36 +28,31 @@ export class DatabaseActions<
 	ColumnNameToColumnType extends Record<
 		keyof DatabaseSchemaType,
 		SupportedNotionColumnTypes
-	>
+	>,
 > {
-	private NotionClient: Client;
+	private client: Client;
 	private databaseId: string;
 	private propNameToColumnName: propNameToColumnNameType;
-	private columnNames: string[];
 
-	constructor(
-		datbaseId: string,
-		propNameToColumnName: propNameToColumnNameType,
-		auth: string
-	) {
-		this.databaseId = datbaseId;
-		this.propNameToColumnName = propNameToColumnName;
-		this.columnNames = Object.keys(propNameToColumnName);
-		this.NotionClient = new Client({ auth });
-	}
-
-	private getClient(): Client {
-		return this.NotionClient;
+	constructor(args: {
+		databaseId: string;
+		propNameToColumnName: propNameToColumnNameType;
+		auth: string;
+	}) {
+		this.client = new Client({ auth: args.auth, notionVersion: "2025-09-03" });
+		this.databaseId = args.databaseId;
+		this.propNameToColumnName = args.propNameToColumnName;
 	}
 
 	// Add page to a database
 	async add(
 		pageObject: DatabaseSchemaType,
-		getCallBody?: boolean
+		getCallBody?: boolean,
 	): Promise<CreatePageParameters | CreatePageResponse> {
 		const callBody: CreatePageParameters = {
 			parent: {
-				database_id: this.databaseId,
+				data_source_id: this.databaseId,
+				type: "data_source_id",
 			},
 			properties: {},
 		};
@@ -74,8 +66,8 @@ export class DatabaseActions<
 			});
 
 			if (callBody.properties) {
-			callBody.properties[columnName] = columnObject!;
-		}
+				callBody.properties[columnName] = columnObject!;
+			}
 		});
 
 		// CORS: If user wants the body of the call. Can then send to API
@@ -83,66 +75,67 @@ export class DatabaseActions<
 			return callBody;
 		}
 
-		const client = this.getClient();
-		return await client.pages.create(callBody);
+		return await this.client.pages.create(callBody);
 	}
 
 	// Look for page inside the database
 	async query(
-		query: Query<DatabaseSchemaType, ColumnNameToColumnType>
+		query: Query<DatabaseSchemaType, ColumnNameToColumnType>,
 	): Promise<SimpleQueryResponse<DatabaseSchemaType>> {
-		const queryCall: QueryDatabaseParameters = {
-			database_id: this.databaseId,
+		const queryCall: QueryDataSourceParameters = {
+			data_source_id: this.databaseId,
 		};
 
 		const filters = query.filter
 			? this.recursivelyBuildFilter(query.filter)
 			: undefined;
 		if (filters) {
-			// @ts-ignore errors vs notion api types
-			queryCall["filter"] = filters;
-			// @ts-ignore errors vs notion api types
 			queryCall["sorts"] = query.sort ?? [];
+			// @ts-expect-error errors vs notion api types
+			queryCall["filter"] = filters;
 		}
 
-		const sort = query.sort;
-
-		const client = this.getClient();
-		const response = await client.databases.query(queryCall);
+		const response = await this.client.dataSources.query(queryCall);
 
 		return this.simplifyQueryResponse(response);
 	}
 
 	private simplifyQueryResponse(
-		res: QueryDatabaseResponse
+		res: QueryDataSourceResponse,
 	): SimpleQueryResponse<DatabaseSchemaType> {
 		// Is this smart too do...idk
-		const rawResults = res.results as PageObjectResponse[];
+		const rawResults = res.results;
 		const rawResponse = res;
 
-		const results: Array<Partial<DatabaseSchemaType>> = rawResults.map((result) => {
-			const simpleResult: Partial<DatabaseSchemaType> = {};
-			const properties = Object.entries(result.properties);
-
-			for (const [columnName, result] of properties) {
-				const camelizeColumnName = camelize(columnName);
-
-				const columnType = this.propNameToColumnName[camelizeColumnName]?.type;
-
-				if (columnType) {
-					// @ts-ignore
-					simpleResult[camelizeColumnName] = this.getResponseValue(
-						columnType,
-						result
-					);
-				}
-				else {
-					console.log("No column type found for: ", camelizeColumnName);
+		const results: Array<Partial<DatabaseSchemaType>> = rawResults
+			.map((result) => {
+				if (result.object === "page" && !("properties" in result)) {
+					console.log("Skipping this page: ", { result });
+					return undefined;
 				}
 
-			}
-			return simpleResult;
-		});
+				const simpleResult: Partial<DatabaseSchemaType> = {};
+				const properties = Object.entries(result.properties);
+
+				for (const [columnName, result] of properties) {
+					const camelizeColumnName = camelize(columnName);
+
+					const columnType =
+						this.propNameToColumnName[camelizeColumnName]?.type;
+
+					if (columnType) {
+						// @ts-expect-error
+						simpleResult[camelizeColumnName] = this.getResponseValue(
+							columnType,
+							result,
+						);
+					} else {
+						console.log("No column type found for: ", camelizeColumnName);
+					}
+				}
+				return simpleResult;
+			})
+			.filter((result) => result !== undefined);
 
 		return {
 			results,
@@ -152,7 +145,7 @@ export class DatabaseActions<
 
 	private getResponseValue(
 		prop: SupportedNotionColumnTypes,
-		x: Record<string, any>
+		x: Record<string, any>,
 	) {
 		switch (prop) {
 			case "select": {
@@ -166,7 +159,7 @@ export class DatabaseActions<
 				const { title } = x;
 				if (title) {
 					const combinedText = title.map(
-						({ plain_text }: { plain_text: string }) => plain_text
+						({ plain_text }: { plain_text: string }) => plain_text,
 					);
 					return combinedText.join("");
 				}
@@ -180,7 +173,7 @@ export class DatabaseActions<
 				const { multi_select } = x;
 				if (multi_select) {
 					const multi_selectArr: string[] = multi_select.map(
-						({ name }: { name: string }) => name
+						({ name }: { name: string }) => name,
 					);
 					return multi_selectArr;
 				}
@@ -201,7 +194,7 @@ export class DatabaseActions<
 				const { rich_text } = x;
 				if (rich_text && Array.isArray(rich_text)) {
 					const combinedText = rich_text.map(
-						({ plain_text }: { plain_text: string }) => plain_text
+						({ plain_text }: { plain_text: string }) => plain_text,
 					);
 					return combinedText.join("");
 				}
@@ -218,7 +211,7 @@ export class DatabaseActions<
 	}
 
 	private recursivelyBuildFilter(
-		queryFilter: QueryFilter<DatabaseSchemaType, ColumnNameToColumnType>
+		queryFilter: QueryFilter<DatabaseSchemaType, ColumnNameToColumnType>,
 	): apiFilterType {
 		// Need to loop because we don't kno
 		for (const prop in queryFilter) {
@@ -228,17 +221,17 @@ export class DatabaseActions<
 					DatabaseSchemaType,
 					ColumnNameToColumnType
 				>[] =
-					// @ts-ignore
+					// @ts-expect-error
 					queryFilter[prop];
 
 				const compoundApiFilters = compoundFilters.map(
 					(i: QueryFilter<DatabaseSchemaType, ColumnNameToColumnType>) => {
 						return this.recursivelyBuildFilter(i);
-					}
+					},
 				);
 
 				// Either have an `and` or an `or` compound filter
-				let temp: apiFilterType = {
+				const temp: apiFilterType = {
 					...(prop === "and"
 						? { and: compoundApiFilters }
 						: { or: compoundApiFilters }),
@@ -250,7 +243,7 @@ export class DatabaseActions<
 					property: this.propNameToColumnName[prop].columnName,
 				};
 
-				//@ts-ignore
+				//@ts-expect-error
 				temp[propType] = (queryFilter as SingleFilter<ColumnNameToColumnType>)[
 					prop
 				];
