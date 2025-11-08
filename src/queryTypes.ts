@@ -16,7 +16,7 @@ export const SUPPORTED_PROPERTY_TYPES = {
 	// These are currently not supported by our package
 	formula: false,
 	files: false,
-	people: true,
+	people: false,
 	relation: false,
 	rollup: false,
 	created_by: false,

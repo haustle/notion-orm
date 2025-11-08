@@ -5,6 +5,7 @@ import type {
 	QueryDataSourceParameters,
 	QueryDataSourceResponse,
 } from "@notionhq/client/build/src/api-endpoints.js";
+import type { ZodTypeAny } from "zod";
 import { getCall } from "./BuildCall.js";
 import type {
 	apiFilterType,
@@ -33,15 +34,25 @@ export class DatabaseClient<
 	private client: Client;
 	private databaseId: string;
 	private propNameToColumnName: propNameToColumnNameType;
+	// nocommit
+	// Why are we passing ZodTypeAny here?
+	private schema: ZodTypeAny;
+	private dataSourceName: string;
+	private loggedSchemaValidationIssues: Set<string>;
 
 	constructor(args: {
 		databaseId: string;
 		propNameToColumnName: propNameToColumnNameType;
 		auth: string;
+		dataSourceName: string;
+		schema: ZodTypeAny;
 	}) {
 		this.client = new Client({ auth: args.auth, notionVersion: "2025-09-03" });
 		this.databaseId = args.databaseId;
 		this.propNameToColumnName = args.propNameToColumnName;
+		this.schema = args.schema;
+		this.dataSourceName = args.dataSourceName;
+		this.loggedSchemaValidationIssues = new Set();
 	}
 
 	// Add page to a database
@@ -96,20 +107,21 @@ export class DatabaseClient<
 		}
 
 		const response = await this.client.dataSources.query(queryCall);
+		const simplifiedResponse = this.buildQueryResponse(response);
 
-		return this.simplifyQueryResponse(response);
+		return simplifiedResponse;
 	}
 
-	private simplifyQueryResponse(
+	private buildQueryResponse(
 		res: QueryDataSourceResponse,
 	): SimpleQueryResponse<DatabaseSchemaType> {
-		// Is this smart too do...idk
 		const rawResults = res.results;
 		const rawResponse = res;
 
 		const results: Array<Partial<DatabaseSchemaType>> = rawResults
-			.map((result) => {
+			.map((result, index) => {
 				if (result.object === "page" && !("properties" in result)) {
+					// biome-ignore lint/suspicious/noConsole: surfaced for debugging unexpected Notion payloads
 					console.log("Skipping this page: ", { result });
 					return undefined;
 				}
@@ -119,7 +131,6 @@ export class DatabaseClient<
 
 				for (const [columnName, result] of properties) {
 					const camelizeColumnName = camelize(columnName);
-
 					const columnType =
 						this.propNameToColumnName[camelizeColumnName]?.type;
 
@@ -129,10 +140,11 @@ export class DatabaseClient<
 							columnType,
 							result,
 						);
-					} else {
-						console.log("No column type found for: ", camelizeColumnName);
 					}
 				}
+
+				if (index === 0) {
+					this.validateDatabaseSchema(simpleResult); }
 				return simpleResult;
 			})
 			.filter((result) => result !== undefined);
@@ -250,5 +262,92 @@ export class DatabaseClient<
 				return temp;
 			}
 		}
+	}
+
+		private validateDatabaseSchema(result: Partial<DatabaseSchemaType>) {
+		if (!this.schema) {
+			return;
+		}
+
+		const schemaLabel = this.dataSourceName ?? this.databaseId;
+		const remoteColumnNames = new Set(Object.keys(result));
+
+		// Check for missing expected properties (schema drift detection)
+		const missingProperties: string[] = [];
+		for (const propName in this.propNameToColumnName) {
+			if (!remoteColumnNames.has(propName)) {
+				missingProperties.push(propName);
+			}
+		}
+
+		if (missingProperties.length > 0) {
+			const issueSignature = JSON.stringify({
+				type: "missing_properties",
+				properties: missingProperties,
+			});
+
+			if (!this.loggedSchemaValidationIssues.has(issueSignature)) {
+				this.loggedSchemaValidationIssues.add(issueSignature);
+				// biome-ignore lint/suspicious/noConsole: surface schema drift to the developer console
+				console.error(
+					`⚠️ [@haustle/notion-orm] Schema drift detected for the following Notion database ${schemaLabel}
+					\nMissing properties: ${missingProperties.map((prop) => `\`${prop}\``).join(", ")}
+					\n\n✅ To easily fix this, please run \`notion generate\` to refresh all database schemas.
+					`,
+				);
+			}
+		}
+
+		// Check for unexpected properties
+		for (const remoteColName of remoteColumnNames) {
+			if (!this.propNameToColumnName[remoteColName]) {
+				const issueSignature = JSON.stringify({
+					type: "unexpected_property",
+					property: remoteColName,
+				});
+
+				if (!this.loggedSchemaValidationIssues.has(issueSignature)) {
+					this.loggedSchemaValidationIssues.add(issueSignature);
+					// biome-ignore lint/suspicious/noConsole: surfaced for debugging unexpected Notion payloads
+					console.error(
+						`⚠️ [@haustle/notion-orm] Schema drift detected for the following Notion database ${schemaLabel}
+						\nUnexpected property found in remote data: \`${remoteColName}\`
+						\n\n✅ To easily fix this, please run \`notion generate\` to refresh all database schemas.
+						`,
+					);
+				}
+			}
+		}
+
+		// Validate against Zod schema
+		const parseResult = this.schema.safeParse(result);
+		if (parseResult.success) {
+			return;
+		}
+
+		const issueSignature = JSON.stringify(
+			parseResult.error.issues.map((issue) => ({
+				code: issue.code,
+				path: issue.path,
+				message: issue.message,
+			})),
+		);
+
+		if (this.loggedSchemaValidationIssues.has(issueSignature)) {
+			return;
+		}
+		this.loggedSchemaValidationIssues.add(issueSignature);
+		// biome-ignore lint/suspicious/noConsole: surface schema drift to the developer console
+		console.error(
+			`⚠️ [@haustle/notion-orm] Schema drift detected for the following Notion database ${schemaLabel}
+			\nValidation issues: ${parseResult.error.issues.map((issue) => `\`${issue.path.join(".")}: ${issue.message}\``).join(", ")}
+			\n\n✅ To easily fix this, please run \`notion generate\` to refresh all database schemas.
+			`,
+		);
+		// biome-ignore lint/suspicious/noConsole: surface schema drift to the developer console
+		console.log("Validation details:", {
+			issues: parseResult.error.issues,
+			result: result,
+		});
 	}
 }
