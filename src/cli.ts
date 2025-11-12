@@ -394,7 +394,7 @@ async function runInit(options: { force?: "ts" | "js" } = {}): Promise<void> {
 		console.log(
 			"   • Add your NOTION_KEY to a .env.local file (or export it in your shell)",
 		);
-		console.log("   • Use `notion add <database-id>` to append databases");
+		console.log("   • Use `notion add <data-source-id or URL>` to append databases");
 		console.log("   • Run `notion generate` to build local types");
 	} catch (error: any) {
 		console.error("❌ Error creating config file:");
@@ -422,7 +422,7 @@ async function runGenerate(): Promise<void> {
 			console.log("✅ Using environment variable configuration");
 		}
 
-		console.log("🚀 Generating types...");
+		console.log("🔄 Fetching database schemas...");
 
 		const { databaseNames } = await createDatabaseTypes();
 

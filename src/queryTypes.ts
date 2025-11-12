@@ -41,12 +41,12 @@ export const SUPPORTED_PROPERTY_TYPES = {
 
 export function isSupportedPropertyType(
 	propertyType: DatabasePropertyType,
-): boolean {
+): propertyType is SupportedNotionColumnType {
 	return SUPPORTED_PROPERTY_TYPES[propertyType];
 }
 
 // Extract the keys of the object that are true
-export type SupportedNotionColumnTypes = {
+export type SupportedNotionColumnType = {
 	[K in keyof typeof SUPPORTED_PROPERTY_TYPES]: (typeof SUPPORTED_PROPERTY_TYPES)[K] extends true
 		? K
 		: never;
@@ -135,7 +135,7 @@ export type FilterOptions<T = []> = {
 
 type ColumnNameToNotionColumnType<T> = Record<
 	keyof T,
-	SupportedNotionColumnTypes
+	SupportedNotionColumnType
 >;
 // T is a column name to column type
 // Y is the collection type
@@ -151,19 +151,19 @@ export type SingleFilter<
 
 export type CompoundFilters<
 	Y extends Record<string, any>,
-	T extends Record<keyof Y, SupportedNotionColumnTypes>,
+	T extends Record<keyof Y, SupportedNotionColumnType>,
 > =
 	| { and: Array<SingleFilter<Y, T> | CompoundFilters<Y, T>> }
 	| { or: Array<SingleFilter<Y, T> | CompoundFilters<Y, T>> };
 
 export type QueryFilter<
 	Y extends Record<string, any>,
-	T extends Record<keyof Y, SupportedNotionColumnTypes>,
+	T extends Record<keyof Y, SupportedNotionColumnType>,
 > = SingleFilter<Y, T> | CompoundFilters<Y, T>;
 
 export type Query<
 	Y extends Record<string, any>,
-	T extends Record<keyof Y, SupportedNotionColumnTypes>,
+	T extends Record<keyof Y, SupportedNotionColumnType>,
 > = {
 	filter?: QueryFilter<Y, T>;
 	sort?: QueryDataSourceParameters["sorts"];

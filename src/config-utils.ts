@@ -21,7 +21,6 @@ export async function findConfigFile(): Promise<{ path: string; isTS: boolean } 
 
 export async function loadConfig(configPath: string, isTS: boolean): Promise<NotionConfigType> {
 	try {
-		// Use the improved loadUserConfig that works with both Bun and Node.js
 		const config = await loadUserConfig(configPath);
 		return config;
 	} catch (error: any) {
@@ -30,7 +29,6 @@ export async function loadConfig(configPath: string, isTS: boolean): Promise<Not
 }
 
 export async function getNotionConfig(): Promise<NotionConfigType> {
-	// Return cached config if available
 	if (cachedConfig) {
 		return cachedConfig;
 	}

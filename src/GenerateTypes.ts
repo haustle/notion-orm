@@ -8,6 +8,11 @@ import {
 	isSupportedPropertyType,
 } from "./queryTypes.js";
 import { camelize } from "./utils.js";
+import {
+	type ZodMetadata,
+	type PropertyASTResult,
+	propertyASTGenerators,
+} from "./PropertyASTGenerators.js";
 
 type propNameToColumnNameType = Record<
 	string,
@@ -18,18 +23,19 @@ type propNameToColumnNameType = Record<
 Responsible for generating `.ts` files
 */
 export async function createTypescriptFileForDatabase(
-	dbResponse: GetDataSourceResponse,
+	dataSourceResponse: GetDataSourceResponse,
 ) {
-	const { id: databaseId, properties } = dbResponse;
+	const { id: dataSourceId, properties } = dataSourceResponse;
 
 	const propNameToColumnName: propNameToColumnNameType = {};
-	const propertyValueArrayStatements: ts.Statement[] = [];
+	const enumConstStatements: ts.Statement[] = [];
+	const zodColumns: ZodMetadata[] = [];
 
 	// Due to the type not being a descriminated union, we need to check if the title is in the response.
 	// I don't like this pattern, but we'll have to settle for now
 	const databaseName: string =
-		"title" in dbResponse
-			? dbResponse.title[0].plain_text
+		"title" in dataSourceResponse
+			? dataSourceResponse.title[0].plain_text
 			: "DEFAULT_DATABASE_NAME";
 
 	const databaseClassName = camelize(databaseName).replace(/[^a-zA-Z0-9]/g, "");
@@ -37,21 +43,15 @@ export async function createTypescriptFileForDatabase(
 	const databaseColumnTypeProps: ts.TypeElement[] = [];
 
 	// Looping through each column of database
-	Object.entries(properties).forEach(([columnName, value]) => {
+	Object.entries(properties).forEach(([columnName, value], index) => {
 		const { type: columnType } = value;
 		const isValidPropertyType = isSupportedPropertyType(columnType);
 		if (!isValidPropertyType) {
-			console.warn(
-				`Property '${columnName}' with type '${columnType}' is not supported and will be skipped.`,
+			// biome-ignore lint/suspicious/noConsole: provide feedback when skipping unsupported schema columns
+			console.error(`${index === 0 ? "\n" : ""}
+				[${databaseClassName}] Property '${columnName}' with type '${columnType}' is not supported and will be skipped.`,
 			);
 			return;
-		}
-
-		if (columnType === "title") {
-			console.log("found title", value.title);
-
-			console.log({ title: value.title });
-			// databaseName = value.title[0].plain_text;
 		}
 
 		// Taking the column name and camelizing it for typescript use
@@ -63,57 +63,46 @@ export async function createTypescriptFileForDatabase(
 			type: columnType,
 		};
 
-		if (
-			columnType === "title" ||
-			columnType === "rich_text" ||
-			columnType === "email" ||
-			columnType === "phone_number"
-		) {
-			// add text column to collection type
-			databaseColumnTypeProps.push(
-				createTextProperty({
-					name: camelizedColumnName,
-					isTitle: columnType === "title",
-				}),
-			);
-		} else if (columnType === "number") {
-			// add number column to collection type
-			databaseColumnTypeProps.push(createNumberProperty(camelizedColumnName));
-		} else if (columnType === "url") {
-			// add url column to collection type
-			databaseColumnTypeProps.push(
-				createTextProperty({ name: camelizedColumnName, isTitle: false }),
-			);
-		} else if (columnType === "date") {
-			// add Date column to collection type
-			databaseColumnTypeProps.push(createDateProperty(camelizedColumnName));
-		} else if (
-			columnType === "select" ||
-			columnType === "status" ||
-			columnType === "multi_select"
-		) {
-			// @ts-expect-error
-			const options = value[columnType].options.map((x) => x.name);
-			const propertyValuesIdentifier = `${toPascalCase(
-				camelizedColumnName,
-			)}PropertyValues`;
-			propertyValueArrayStatements.push(
-				createPropertyValuesArray({
-					identifier: propertyValuesIdentifier,
-					options,
-				}),
-			);
-			databaseColumnTypeProps.push(
-				createMultiOptionProp({
-					name: camelizedColumnName,
-					arrayIdentifier: propertyValuesIdentifier,
-					isArray: columnType === "multi_select", // Union or Union Array
-				}),
-			);
-		} else if (columnType === "checkbox") {
-			// add checkbox column to collection type
-			databaseColumnTypeProps.push(createCheckboxProperty(camelizedColumnName));
+		// Get handler for this column type
+		const handler = propertyASTGenerators[columnType];
+		if (!handler) {
+			console.warn(`No handler found for column type '${columnType}'`);
+			return;
 		}
+
+		// Execute handler to get all data at once
+		const result = handler({
+			columnName,
+			camelizedName: camelizedColumnName,
+			columnValue: value,
+		});
+		if (!result) {
+			return;
+		}
+
+		// Destructure the complete result
+		const { tsPropertySignature, zodMeta, enumConstStatement } =
+			result;
+
+		// Add to appropriate collections
+		databaseColumnTypeProps.push(tsPropertySignature);
+
+		if (enumConstStatement) {
+			enumConstStatements.push(enumConstStatement);
+		}
+
+		zodColumns.push({
+			propName: camelizedColumnName,
+			columnName,
+			type: columnType,
+			...zodMeta,
+		});
+	});
+
+	const schemaIdentifier = `${toPascalCase(databaseClassName)}Schema`;
+	const zodSchemaStatement = createZodSchema({
+		identifier: schemaIdentifier,
+		columns: zodColumns,
 	});
 
 	// Object type that represents the database schema
@@ -131,18 +120,31 @@ export async function createTypescriptFileForDatabase(
 			path: "../src/DatabaseClient",
 		}),
 		createNameImport({
+			namedImport: "z",
+			path: "zod",
+		}),
+		createNameImport({
 			namedImport: "Query",
 			path: "../src/queryTypes",
+			typeOnly: true,
 		}),
-		createDatabaseIdVariable(databaseId),
-		...propertyValueArrayStatements,
+		createDatabaseIdVariable(dataSourceId),
+		...enumConstStatements,
+		zodSchemaStatement,
 		DatabaseSchemaType,
 		createColumnNameToColumnProperties(propNameToColumnName),
 		createColumnNameToColumnType(),
 		createQueryTypeExport(),
-		createDatabaseClassExport({ databaseName: databaseClassName }),
+		createDatabaseClassExport({
+			databaseName: databaseClassName,
+			schemaIdentifier,
+			schemaTitle: databaseName,
+		}),
 		// Export class-specific type aliases for the custom NotionORM class
-		...createClassSpecificTypeExports({ databaseName: databaseClassName }),
+		...createClassSpecificTypeExports({
+			databaseName: databaseClassName,
+			schemaIdentifier,
+		}),
 	]);
 
 	const sourceFile = ts.createSourceFile(
@@ -179,11 +181,11 @@ export async function createTypescriptFileForDatabase(
 		transpileToJavaScript,
 	);
 
-	return { databaseName, databaseClassName, databaseId };
+	return { databaseName, databaseClassName, databaseId: dataSourceId };
 }
 
 // generate text property
-function createTextProperty(args: { name: string; isTitle: boolean }) {
+export function createTextProperty(args: { name: string; isTitle: boolean }) {
 	const { name, isTitle } = args;
 	const text = ts.factory.createPropertySignature(
 		undefined,
@@ -198,7 +200,7 @@ function createTextProperty(args: { name: string; isTitle: boolean }) {
  * Generate number property to go inside a type
  * name: number
  */
-function createNumberProperty(name: string) {
+export function createNumberProperty(name: string) {
 	const number = ts.factory.createPropertySignature(
 		undefined,
 		ts.factory.createIdentifier(name),
@@ -212,7 +214,7 @@ function createNumberProperty(name: string) {
  * For selects and multi-select collection properties
  * array = true for multi-select
  */
-function createMultiOptionProp(args: {
+export function createMultiOptionProp(args: {
 	name: string;
 	arrayIdentifier: string;
 	isArray: boolean;
@@ -242,7 +244,7 @@ function createOtherStringProp() {
 	]);
 }
 
-function createPropertyValuesArray(args: {
+export function createPropertyValuesArray(args: {
 	identifier: string;
 	options: string[];
 }) {
@@ -282,14 +284,14 @@ function createPropertyValuesElementType(arrayIdentifier: string) {
 	);
 }
 
-function toPascalCase(value: string) {
+export function toPascalCase(value: string) {
 	if (!value) {
 		return value;
 	}
 	return value[0].toUpperCase() + value.slice(1);
 }
 
-function createDateProperty(name: string) {
+export function createDateProperty(name: string) {
 	return ts.factory.createPropertySignature(
 		undefined,
 		ts.factory.createIdentifier(name),
@@ -315,7 +317,7 @@ function createDateProperty(name: string) {
  * Generate checkbox property to go inside a type
  * name?: boolean
  */
-function createCheckboxProperty(name: string) {
+export function createCheckboxProperty(name: string) {
 	const checkbox = ts.factory.createPropertySignature(
 		undefined,
 		ts.factory.createIdentifier(name),
@@ -449,12 +451,16 @@ function createColumnNameToColumnType() {
 }
 
 // Need to import the database class used to execute database actions (adding + querying)
-function createNameImport(args: { namedImport: string; path: string }) {
-	const { namedImport, path } = args;
+function createNameImport(args: {
+	namedImport: string;
+	path: string;
+	typeOnly?: boolean;
+}) {
+	const { namedImport, path, typeOnly } = args;
 	return ts.factory.createImportDeclaration(
 		undefined,
 		ts.factory.createImportClause(
-			false,
+			typeOnly ?? false,
 			undefined,
 			ts.factory.createNamedImports([
 				ts.factory.createImportSpecifier(
@@ -491,8 +497,12 @@ function createQueryTypeExport() {
  * Create export statement for the database constructor function
  * export const <databaseName> = (auth: string) => new DatabaseClient<DatabaseSchemaType>({databaseId, columnNameToColumnProperties, auth})
  */
-function createDatabaseClassExport(args: { databaseName: string }) {
-	const { databaseName } = args;
+function createDatabaseClassExport(args: {
+	databaseName: string;
+	schemaIdentifier: string;
+	schemaTitle: string;
+}) {
+	const { databaseName, schemaIdentifier, schemaTitle } = args;
 	return ts.factory.createVariableStatement(
 		[ts.factory.createModifier(ts.SyntaxKind.ExportKeyword)],
 		ts.factory.createVariableDeclarationList(
@@ -541,6 +551,14 @@ function createDatabaseClassExport(args: { databaseName: string }) {
 												"columnNameToColumnProperties",
 											),
 										),
+										ts.factory.createPropertyAssignment(
+											ts.factory.createIdentifier("schema"),
+											ts.factory.createIdentifier(schemaIdentifier),
+										),
+										ts.factory.createPropertyAssignment(
+											ts.factory.createIdentifier("dataSourceName"),
+											ts.factory.createStringLiteral(schemaTitle),
+										),
 										ts.factory.createShorthandPropertyAssignment(
 											ts.factory.createIdentifier("auth"),
 											undefined,
@@ -562,8 +580,12 @@ function createDatabaseClassExport(args: { databaseName: string }) {
  * Create class-specific type exports for the custom NotionORM class
  * These allow the generated NotionORM class to import properly typed schemas
  */
-function createClassSpecificTypeExports(args: { databaseName: string }) {
-	const { databaseName } = args;
+function createClassSpecificTypeExports(args: {
+	databaseName: string;
+	schemaIdentifier: string;
+}) {
+	const { databaseName, schemaIdentifier } = args;
+	const pascalDatabaseName = toPascalCase(databaseName);
 	return [
 		// Export DatabaseSchemaType as [ClassName]Schema
 		ts.factory.createTypeAliasDeclaration(
@@ -585,5 +607,212 @@ function createClassSpecificTypeExports(args: { databaseName: string }) {
 				undefined,
 			),
 		),
+		// Export inferred schema type
+		ts.factory.createTypeAliasDeclaration(
+			[ts.factory.createToken(ts.SyntaxKind.ExportKeyword)],
+			ts.factory.createIdentifier(`${pascalDatabaseName}SchemaType`),
+			undefined,
+			ts.factory.createTypeReferenceNode(
+				ts.factory.createQualifiedName(
+					ts.factory.createIdentifier("z"),
+					ts.factory.createIdentifier("infer"),
+				),
+				[
+					ts.factory.createTypeQueryNode(
+						ts.factory.createIdentifier(schemaIdentifier),
+						undefined,
+					),
+				],
+			),
+		),
 	];
+}
+
+function createZodSchema(args: {
+	identifier: string;
+	columns: ZodMetadata[];
+}) {
+	const { identifier, columns } = args;
+	const properties = columns.map((column) =>
+		ts.factory.createPropertyAssignment(
+			ts.factory.createIdentifier(column.propName),
+			createZodPropertyExpression(column),
+		),
+	);
+	return ts.factory.createVariableStatement(
+		[ts.factory.createToken(ts.SyntaxKind.ExportKeyword)],
+		ts.factory.createVariableDeclarationList(
+			[
+				ts.factory.createVariableDeclaration(
+					ts.factory.createIdentifier(identifier),
+					undefined,
+					undefined,
+					ts.factory.createCallExpression(
+						ts.factory.createPropertyAccessExpression(
+							ts.factory.createIdentifier("z"),
+							ts.factory.createIdentifier("object"),
+						),
+						undefined,
+						[ts.factory.createObjectLiteralExpression(properties, true)],
+					),
+				),
+			],
+			ts.NodeFlags.Const,
+		),
+	);
+}
+
+function createZodPropertyExpression(column: ZodMetadata) {
+	const optional = !column.isRequired;
+	switch (column.type) {
+		case "title": {
+			return createZodPrimitiveCall("string");
+		}
+		case "rich_text":
+		case "email":
+		case "phone_number":
+		case "url": {
+			return applyOptionalNullable(createZodPrimitiveCall("string"), {
+				optional,
+				nullable: true,
+			});
+		}
+		case "number": {
+			return applyOptionalNullable(createZodPrimitiveCall("number"), {
+				optional,
+				nullable: true,
+			});
+		}
+		case "checkbox": {
+			return applyOptionalNullable(createZodPrimitiveCall("boolean"), {
+				optional,
+				nullable: false,
+			});
+		}
+		case "date": {
+			return createZodDateExpression(optional);
+		}
+		case "select":
+		case "status": {
+			return applyOptionalNullable(createZodEnumExpression(column), {
+				optional,
+				nullable: true,
+			});
+		}
+		case "multi_select": {
+			return applyOptionalNullable(createZodArrayEnumExpression(column), {
+				optional,
+				nullable: true,
+			});
+		}
+		default: {
+			return applyOptionalNullable(createZodPrimitiveCall("unknown"), {
+				optional: true,
+				nullable: true,
+			});
+		}
+	}
+}
+
+function createZodPrimitiveCall(
+	method: "string" | "number" | "boolean" | "unknown",
+) {
+	return ts.factory.createCallExpression(
+		ts.factory.createPropertyAccessExpression(
+			ts.factory.createIdentifier("z"),
+			ts.factory.createIdentifier(method),
+		),
+		undefined,
+		[],
+	);
+}
+
+function applyOptionalNullable(
+	expression: ts.Expression,
+	args: { optional?: boolean; nullable?: boolean },
+) {
+	const { optional, nullable } = args;
+	let currentExpression = expression;
+	if (nullable) {
+		currentExpression = ts.factory.createCallExpression(
+			ts.factory.createPropertyAccessExpression(
+				currentExpression,
+				ts.factory.createIdentifier("nullable"),
+			),
+			undefined,
+			[],
+		);
+	}
+	if (optional) {
+		currentExpression = ts.factory.createCallExpression(
+			ts.factory.createPropertyAccessExpression(
+				currentExpression,
+				ts.factory.createIdentifier("optional"),
+			),
+			undefined,
+			[],
+		);
+	}
+	return currentExpression;
+}
+
+function createZodEnumExpression(column: ZodMetadata) {
+	if (
+		column.options &&
+		column.options.length > 0 &&
+		column.propertyValuesIdentifier
+	) {
+		return ts.factory.createCallExpression(
+			ts.factory.createPropertyAccessExpression(
+				ts.factory.createIdentifier("z"),
+				ts.factory.createIdentifier("enum"),
+			),
+			undefined,
+			[ts.factory.createIdentifier(column.propertyValuesIdentifier)],
+		);
+	}
+	return createZodPrimitiveCall("string");
+}
+
+function createZodArrayEnumExpression(column: ZodMetadata) {
+	const enumExpression = createZodEnumExpression(column);
+	return ts.factory.createCallExpression(
+		ts.factory.createPropertyAccessExpression(
+			ts.factory.createIdentifier("z"),
+			ts.factory.createIdentifier("array"),
+		),
+		undefined,
+		[enumExpression],
+	);
+}
+
+function createZodDateExpression(optional: boolean) {
+	const startAssignment = ts.factory.createPropertyAssignment(
+		ts.factory.createIdentifier("start"),
+		createZodPrimitiveCall("string"),
+	);
+	const endAssignment = ts.factory.createPropertyAssignment(
+		ts.factory.createIdentifier("end"),
+		applyOptionalNullable(createZodPrimitiveCall("string"), {
+			optional: true,
+			nullable: true,
+		}),
+	);
+	const dateObjectExpression = ts.factory.createCallExpression(
+		ts.factory.createPropertyAccessExpression(
+			ts.factory.createIdentifier("z"),
+			ts.factory.createIdentifier("object"),
+		),
+		undefined,
+		[
+			ts.factory.createObjectLiteralExpression(
+				[startAssignment, endAssignment],
+				true,
+			),
+		],
+	);
+	return applyOptionalNullable(dateObjectExpression, {
+		optional,
+		nullable: true,
+	});
 }

@@ -249,7 +249,6 @@ function compileAndWriteIndexJS(typescriptCode: string): void {
 		const buildIndexPath = path.resolve(buildSrcDir, "index.js");
 		fs.writeFileSync(buildIndexPath, compiledJS);
 
-		console.log("✅ Compiled src/index.ts → build/src/index.js");
 	} catch (error) {
 		console.error("❌ Failed to compile index.ts:");
 		console.error(error);

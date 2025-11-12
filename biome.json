@@ -16,7 +16,7 @@
 		"lineEnding": "lf",
 		"lineWidth": 80,
 		"attributePosition": "auto",
-    ""
+    "newlineKind": "lf"
 	},
 	"linter": {
 		"enabled": true,
@@ -45,7 +45,7 @@
 		"formatter": {
 			"quoteStyle": "double",
 			"trailingCommas": "all",
-      "bracketSameLine": true,
+      "bracketSameLine": true
 		}
 	},
 	"assist": {

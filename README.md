@@ -24,23 +24,37 @@ The only requirement is a Notion Developer API key ([here](https://developers.no
 npm install @haustle/notion-orm --save-dev
 ```
 
-At the root of your project create a `notion.config.js` file
+At the root of your project run the CLI to scaffold a config file (defaults to JavaScript unless a `tsconfig.json` is present):
 
-You’ll need to pass your developer key and database IDs. How to get database IDs [here](https://developers.notion.com/docs/working-with-databases#adding-pages-to-a-database)
+```bash
+npx notion init
+# or
+bun notion init
+```
 
-```jsx
-// notion.config.js
+You can force a specific format with `--js` or `--ts`. You’ll need to pass your developer key and database IDs. How to get database IDs [here](https://developers.notion.com/docs/working-with-databases#adding-pages-to-a-database)
 
-const auth = process.env.NOTION_KEY;
+```tsx
+// notion.config.ts (generated with `notion init --ts`)
+
+// Be sure to create a .env.local file and add your NOTION_KEY
+
+// If you don't have an API key, sign up for free
+// [here](https://developers.notion.com)
+
+const auth = process.env.NOTION_KEY || "your-notion-api-key-here";
 const NotionConfig = {
-	auth,
-	databaseIds: [
-		"a52239e4839d4a3a8f4875376cfbfb02",
-		"5f4bf76a1e3f48d684d2506ea2690d64",
-	],
+  auth,
+  databaseIds: [
+    // Add undashed database source IDs here (ex. "2a3c495da03c80bc99fe000bbf2be4bb")
+    // or use the following command to automatically update
+    // `notion add <database-source-id or URL>`
+    // If you decide to manually add database IDs, be sure to run
+    // `notion generate` to properly update the local database types
+  ],
 };
 
-module.exports = NotionConfig;
+export default NotionConfig;
 ```
 
 Execute the following command from the root project directory.
@@ -66,9 +80,9 @@ notion.databaseName2.query();
 ```jsx
 // Individual Database Import
 import {
-	databaseName,
-	DatabaseSchemaType,
-	QuerySchemaType,
+  databaseName,
+  DatabaseSchemaType,
+  QuerySchemaType,
 } from "@haustle/notion-orm/build/db/databaseName";
 
 databaseName.add();
@@ -85,18 +99,18 @@ Only required column required is the title.
 
 ```jsx
 notion.books.add({
-	bookName: "Raphael, Painter in Rome: a Novel", // title
-	author: "Stephanie Storey", // text
-	status: "In progress", // status
-	numberOfPages: 307, // number
-	genre: ["Historical Fiction"], // multi-select
-	rating: "⭐️⭐️⭐️⭐️", // select
-	startDate: {
-		// date
-		start: "2023-01-01",
-	},
-	phone: "0000000000", // phone
-	email: "tyrus@haustle.studio", // email
+  bookName: "Raphael, Painter in Rome: a Novel", // title
+  author: "Stephanie Storey", // text
+  status: "In progress", // status
+  numberOfPages: 307, // number
+  genre: ["Historical Fiction"], // multi-select
+  rating: "⭐️⭐️⭐️⭐️", // select
+  startDate: {
+    // date
+    start: "2023-01-01",
+  },
+  phone: "0000000000", // phone
+  email: "tyrus@haustle.studio", // email
 });
 ```
 
@@ -131,16 +145,16 @@ notion.books.query({
       contains: "Sci-Fi",
     },
   },
-	sort: [
-		{
-			property: "name",
-			direction: "ascending"
-		},
-		{
-			property: "Author name",
-			direction: "ascending"
-		}
-	]
+  sort: [
+    {
+      property: "name",
+      direction: "ascending",
+    },
+    {
+      property: "Author name",
+      direction: "ascending",
+    },
+  ],
 });
 ```
 
@@ -148,20 +162,20 @@ Example of compound filters, which is signified with `and` and `or`. You can nes
 
 ```tsx
 await notion.books.query({
-	filter: {
-		or: [
-			{
-				genre: {
-					contains: "Sci-Fi",
-				},
-			},
-			{
-				genre: {
-					contains: "Biography",
-				},
-			},
-		],
-	},
+  filter: {
+    or: [
+      {
+        genre: {
+          contains: "Sci-Fi",
+        },
+      },
+      {
+        genre: {
+          contains: "Biography",
+        },
+      },
+    ],
+  },
 });
 ```
 
@@ -211,16 +225,16 @@ To execute calls client-side (ex. on button click) an API endpoint is needed to 
 import { DatabaseSchemaType } from "@haustle/notion-orm/build/db/books";
 
 async function addPageToNotionDatabase() {
-	const example: DatabaseSchemaType = {
-		bookName: "How to Change Your Mind",
-		genre: ["Non-fiction"],
-	};
+  const example: DatabaseSchemaType = {
+    bookName: "How to Change Your Mind",
+    genre: ["Non-fiction"],
+  };
 
-	// make sure this route reflects your API path
-	await fetch("/api/notion/books", {
-		method: "POST",
-		body: JSON.stringify(example),
-	});
+  // make sure this route reflects your API path
+  await fetch("/api/notion/books", {
+    method: "POST",
+    body: JSON.stringify(example),
+  });
 }
 ```
 
@@ -235,20 +249,19 @@ Example API endpoint below, where we’re taking the body of type `DatabaseSchem
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import {
-	DatabaseSchemaType,
-	yourDatabaseName,
+  DatabaseSchemaType,
+  yourDatabaseName,
 } from "@haustle/notion-orm/build/db/yourDatabaseName";
 
 export default async function handler(
-	req: NextApiRequest,
-	res: NextApiResponse
+  req: NextApiRequest,
+  res: NextApiResponse
 ) {
-	const { method, body } = req;
+  const { method, body } = req;
 
-	if (method === "POST") {
-		const bodyJSON = JSON.parse(body) as DatabaseSchemaType;
-		await yourDatabaseName.add(bodyJSON);
-	}
+  if (method === "POST") {
+    const bodyJSON = JSON.parse(body) as DatabaseSchemaType;
+    await yourDatabaseName.add(bodyJSON);
+  }
 }
 ```
-

@@ -14,21 +14,21 @@ import type {
 	QueryFilter,
 	SimpleQueryResponse,
 	SingleFilter,
-	SupportedNotionColumnTypes,
+	SupportedNotionColumnType,
 } from "./queryTypes.js";
 
 import { camelize } from "./utils.js";
 
 export type propNameToColumnNameType = Record<
 	string,
-	{ columnName: string; type: SupportedNotionColumnTypes }
+	{ columnName: string; type: SupportedNotionColumnType }
 >;
 
 export class DatabaseClient<
 	DatabaseSchemaType extends Record<string, any>,
 	ColumnNameToColumnType extends Record<
 		keyof DatabaseSchemaType,
-		SupportedNotionColumnTypes
+		SupportedNotionColumnType
 	>,
 > {
 	private client: Client;
@@ -156,7 +156,7 @@ export class DatabaseClient<
 	}
 
 	private getResponseValue(
-		prop: SupportedNotionColumnTypes,
+		prop: SupportedNotionColumnType,
 		x: Record<string, any>,
 	) {
 		switch (prop) {
