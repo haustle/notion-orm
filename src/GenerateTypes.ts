@@ -38,7 +38,7 @@ export async function createTypescriptFileForDatabase(
 			? dataSourceResponse.title[0].plain_text
 			: "DEFAULT_DATABASE_NAME";
 
-	const databaseClassName = camelize(databaseName).replace(/[^a-zA-Z0-9]/g, "");
+	const databaseClassName = camelize(databaseName);
 
 	const databaseColumnTypeProps: ts.TypeElement[] = [];
 
