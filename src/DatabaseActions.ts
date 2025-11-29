@@ -8,7 +8,6 @@ import {
 import { Client } from "@notionhq/client";
 import { getCall } from "./BuildCall";
 import path from "path";
-import { NotionConfigType } from "./index";
 import {
 	apiFilterType,
 	apiSingleFilter,
@@ -20,17 +19,12 @@ import {
 	SupportedNotionColumnTypes,
 } from "./queryTypes";
 
-import { camelize } from "./GenerateTypes";
+import { camelize } from "./utils";
+
 export type propNameToColumnNameType = Record<
 	string,
 	{ columnName: string; type: SupportedNotionColumnTypes }
 >;
-
-// Import auth key from config file
-const { auth }: NotionConfigType = require(path.join(
-	process.cwd(),
-	"notion.config"
-));
 
 export class DatabaseActions<
 	DatabaseSchemaType extends Record<string, any>,
@@ -39,20 +33,24 @@ export class DatabaseActions<
 		SupportedNotionColumnTypes
 	>
 > {
-	private NotionClient: Client = new Client({
-		auth,
-	});
+	private NotionClient: Client;
 	private databaseId: string;
 	private propNameToColumnName: propNameToColumnNameType;
 	private columnNames: string[];
 
 	constructor(
 		datbaseId: string,
-		propNameToColumnName: propNameToColumnNameType
+		propNameToColumnName: propNameToColumnNameType,
+		auth: string
 	) {
 		this.databaseId = datbaseId;
 		this.propNameToColumnName = propNameToColumnName;
 		this.columnNames = Object.keys(propNameToColumnName);
+		this.NotionClient = new Client({ auth });
+	}
+
+	private getClient(): Client {
+		return this.NotionClient;
 	}
 
 	// Add page to a database
@@ -75,7 +73,9 @@ export class DatabaseActions<
 				value: pageObject[propName],
 			});
 
+			if (callBody.properties) {
 			callBody.properties[columnName] = columnObject!;
+		}
 		});
 
 		// CORS: If user wants the body of the call. Can then send to API
@@ -83,7 +83,8 @@ export class DatabaseActions<
 			return callBody;
 		}
 
-		return await this.NotionClient.pages.create(callBody);
+		const client = this.getClient();
+		return await client.pages.create(callBody);
 	}
 
 	// Look for page inside the database
@@ -100,11 +101,14 @@ export class DatabaseActions<
 		if (filters) {
 			// @ts-ignore errors vs notion api types
 			queryCall["filter"] = filters;
+			// @ts-ignore errors vs notion api types
+			queryCall["sorts"] = query.sort ?? [];
 		}
 
 		const sort = query.sort;
 
-		const response = await this.NotionClient.databases.query(queryCall);
+		const client = this.getClient();
+		const response = await client.databases.query(queryCall);
 
 		return this.simplifyQueryResponse(response);
 	}
@@ -116,20 +120,26 @@ export class DatabaseActions<
 		const rawResults = res.results as PageObjectResponse[];
 		const rawResponse = res;
 
-		const results: Partial<DatabaseSchemaType>[] = rawResults.map((result) => {
+		const results: Array<Partial<DatabaseSchemaType>> = rawResults.map((result) => {
 			const simpleResult: Partial<DatabaseSchemaType> = {};
 			const properties = Object.entries(result.properties);
 
 			for (const [columnName, result] of properties) {
 				const camelizeColumnName = camelize(columnName);
 
-				const columnType = this.propNameToColumnName[camelizeColumnName].type;
+				const columnType = this.propNameToColumnName[camelizeColumnName]?.type;
 
-				// @ts-ignore
-				simpleResult[camelizeColumnName] = this.getResponseValue(
-					columnType,
-					result
-				);
+				if (columnType) {
+					// @ts-ignore
+					simpleResult[camelizeColumnName] = this.getResponseValue(
+						columnType,
+						result
+					);
+				}
+				else {
+					console.log("No column type found for: ", camelizeColumnName);
+				}
+
 			}
 			return simpleResult;
 		});
@@ -150,7 +160,7 @@ export class DatabaseActions<
 				if (select) {
 					return select["name"];
 				}
-				return undefined;
+				return null;
 			}
 			case "title": {
 				const { title } = x;
@@ -160,13 +170,12 @@ export class DatabaseActions<
 					);
 					return combinedText.join("");
 				}
-				return undefined;
+				return null;
 			}
 			case "url": {
 				const { url } = x;
 				return url;
 			}
-
 			case "multi_select": {
 				const { multi_select } = x;
 				if (multi_select) {
@@ -175,10 +184,35 @@ export class DatabaseActions<
 					);
 					return multi_selectArr;
 				}
-				return undefined;
+				return null;
+			}
+			case "checkbox": {
+				const { checkbox } = x;
+				return Boolean(checkbox);
+			}
+			case "status": {
+				const { status } = x;
+				if (status) {
+					return status["name"];
+				}
+				return null;
+			}
+			case "rich_text": {
+				const { rich_text } = x;
+				if (rich_text && Array.isArray(rich_text)) {
+					const combinedText = rich_text.map(
+						({ plain_text }: { plain_text: string }) => plain_text
+					);
+					return combinedText.join("");
+				}
+				return null;
+			}
+			case "number": {
+				const { number } = x;
+				return number;
 			}
 			default: {
-				return "lol";
+				return null;
 			}
 		}
 	}
