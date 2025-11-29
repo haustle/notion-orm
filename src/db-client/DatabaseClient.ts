@@ -7,17 +7,12 @@ import type {
 } from "@notionhq/client/build/src/api-endpoints";
 import type { ZodTypeAny } from "zod";
 import { buildPropertyValueForAddPage } from "./add";
+import { buildQueryResponse, recursivelyBuildFilter } from "./query";
 import type {
-  apiFilterType,
-  apiSingleFilter,
   Query,
-  QueryFilter,
   SimpleQueryResponse,
-  SingleFilter,
   SupportedNotionColumnType,
 } from "./queryTypes";
-
-import { camelize } from "../helpers";
 
 export type camelPropertyNameToNameAndTypeMapType = Record<
   string,
@@ -95,7 +90,10 @@ export class DatabaseClient<
     };
 
     const filters = query.filter
-      ? this.recursivelyBuildFilter(query.filter)
+      ? recursivelyBuildFilter(
+          query.filter,
+          this.camelPropertyNameToNameAndTypeMap
+        )
       : undefined;
     if (filters) {
       queryCall["sorts"] = query.sort ?? [];
@@ -104,163 +102,13 @@ export class DatabaseClient<
     }
 
     const response = await this.client.dataSources.query(queryCall);
-    const simplifiedResponse = this.buildQueryResponse(response);
+    const simplifiedResponse = buildQueryResponse<DatabaseSchemaType>(
+      response,
+      this.camelPropertyNameToNameAndTypeMap,
+      (result) => this.validateDatabaseSchema(result)
+    );
 
     return simplifiedResponse;
-  }
-
-  private buildQueryResponse(
-    res: QueryDataSourceResponse
-  ): SimpleQueryResponse<DatabaseSchemaType> {
-    const rawResults = res.results;
-    const rawResponse = res;
-
-    const results: Array<Partial<DatabaseSchemaType>> = rawResults
-      .map((result, index) => {
-        if (result.object === "page" && !("properties" in result)) {
-          // biome-ignore lint/suspicious/noConsole: surfaced for debugging
-          // unexpected Notion payloads
-          console.log("Skipping this page: ", { result });
-          return undefined;
-        }
-
-        const simpleResult: Partial<DatabaseSchemaType> = {};
-        const properties = Object.entries(result.properties);
-
-        for (const [columnName, result] of properties) {
-          const camelizeColumnName = camelize(columnName);
-          const columnType =
-            this.camelPropertyNameToNameAndTypeMap[camelizeColumnName]?.type;
-
-          if (columnType) {
-            // @ts-expect-error
-            simpleResult[camelizeColumnName] = this.getResponseValue(
-              columnType,
-              result
-            );
-          }
-        }
-
-        if (index === 0) {
-          this.validateDatabaseSchema(simpleResult);
-        }
-        return simpleResult;
-      })
-      .filter((result) => result !== undefined);
-
-    return {
-      results,
-      rawResponse,
-    };
-  }
-
-  private getResponseValue(
-    prop: SupportedNotionColumnType,
-    x: Record<string, any>
-  ) {
-    switch (prop) {
-      case "select": {
-        const { select } = x;
-        if (select) {
-          return select["name"];
-        }
-        return null;
-      }
-      case "title": {
-        const { title } = x;
-        if (title) {
-          const combinedText = title.map(
-            ({ plain_text }: { plain_text: string }) => plain_text
-          );
-          return combinedText.join("");
-        }
-        return null;
-      }
-      case "url": {
-        const { url } = x;
-        return url;
-      }
-      case "multi_select": {
-        const { multi_select } = x;
-        if (multi_select) {
-          const multi_selectArr: string[] = multi_select.map(
-            ({ name }: { name: string }) => name
-          );
-          return multi_selectArr;
-        }
-        return null;
-      }
-      case "checkbox": {
-        const { checkbox } = x;
-        return Boolean(checkbox);
-      }
-      case "status": {
-        const { status } = x;
-        if (status) {
-          return status["name"];
-        }
-        return null;
-      }
-      case "rich_text": {
-        const { rich_text } = x;
-        if (rich_text && Array.isArray(rich_text)) {
-          const combinedText = rich_text.map(
-            ({ plain_text }: { plain_text: string }) => plain_text
-          );
-          return combinedText.join("");
-        }
-        return null;
-      }
-      case "number": {
-        const { number } = x;
-        return number;
-      }
-      default: {
-        return null;
-      }
-    }
-  }
-
-  private recursivelyBuildFilter(
-    queryFilter: QueryFilter<DatabaseSchemaType, ColumnNameToColumnType>
-  ): apiFilterType {
-    // Need to loop because we don't kno
-    for (const prop in queryFilter) {
-      // if the filter is "and" || "or" we need to recursively
-      if (prop === "and" || prop === "or") {
-        const compoundFilters: QueryFilter<
-          DatabaseSchemaType,
-          ColumnNameToColumnType
-        >[] =
-          // @ts-expect-error
-          queryFilter[prop];
-
-        const compoundApiFilters = compoundFilters.map(
-          (i: QueryFilter<DatabaseSchemaType, ColumnNameToColumnType>) => {
-            return this.recursivelyBuildFilter(i);
-          }
-        );
-
-        // Either have an `and` or an `or` compound filter
-        const temp: apiFilterType = {
-          ...(prop === "and"
-            ? { and: compoundApiFilters }
-            : { or: compoundApiFilters }),
-        };
-        return temp;
-      } else {
-        const propType = this.camelPropertyNameToNameAndTypeMap[prop].type;
-        const temp: apiSingleFilter = {
-          property: this.camelPropertyNameToNameAndTypeMap[prop].columnName,
-        };
-
-        //@ts-expect-error
-        temp[propType] = (queryFilter as SingleFilter<ColumnNameToColumnType>)[
-          prop
-        ];
-        return temp;
-      }
-    }
   }
 
   private validateDatabaseSchema(result: Partial<DatabaseSchemaType>) {

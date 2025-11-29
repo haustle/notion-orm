@@ -1,3 +1,8 @@
+/**
+ * Column property generators for Notion database properties.
+ * Maps Notion property types to AST generators that create TypeScript types and Zod schemas.
+ */
+
 import * as ts from "typescript";
 import type {
   DatabasePropertyType,
@@ -11,8 +16,8 @@ import {
   createPropertyValuesArray,
   createTextProperty,
   toPascalCase,
-} from "./generateTypes";
-import { ZodMetadata } from "./zod";
+} from "./ast-builders";
+import { ZodMetadata } from "./zod-schema";
 
 export interface PropertyASTResult {
   tsPropertySignature: ts.TypeElement;
@@ -197,3 +202,4 @@ export const propertyASTGenerators = {
     enumConstStatement: undefined,
   }),
 } as const satisfies Record<SupportedNotionColumnType, PropertyASTGenerator>;
+

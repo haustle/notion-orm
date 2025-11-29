@@ -1,5 +1,6 @@
 /**
- * Internal module for type generation - used only by CLI
+ * CLI orchestration for database type generation.
+ * Handles metadata management, file generation coordination, and CLI entry point.
  */
 
 import { Client } from "@notionhq/client";
@@ -9,11 +10,14 @@ import * as ts from "typescript";
 import { fileURLToPath } from "url";
 import { getNotionConfig } from "../config/loadConfig";
 import { DATABASES_DIR } from "../helpers";
-import { createTypescriptFileForDatabase } from "./generateTypes";
+import { createTypescriptFileForDatabase } from "./database-file-writer";
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Build directory for index files (build/src/)
+const BUILD_SRC_DIR = path.resolve(__dirname, "..");
 
 function getMetadataFilePath(): string {
   return path.resolve(DATABASES_DIR, "metadata.json");
@@ -216,22 +220,20 @@ function createDatabaseBarrelFile(args: {
   );
 }
 
-// Updates src/index.ts with static imports and NotionORM class
+// Writes directly to build/src/index.js with database imports
+// Note: src/index.ts is kept as simple boilerplate and not modified
 function updateSourceIndexFile(
   databasesMetadata: CachedDatabaseMetadata[]
 ): void {
   if (databasesMetadata.length === 0) {
-    // Create empty class when no databases
     createEmptySourceIndexFile();
     return;
   }
 
-  // Create import statements for each database
   const imports = databasesMetadata
     .map((db) => `import { ${db.camelCaseName} } from "../db/${db.className}";`)
     .join("\n");
 
-  // Create the NotionORM class with proper typing
   const notionORMClass = `
 /**
  * Main NotionORM class that provides access to all generated database types
@@ -257,42 +259,70 @@ ${databasesMetadata
 
   const completeCode = `${imports}\n${notionORMClass}`;
 
-  // Write TypeScript file - go up one directory from src/ast/ to src/
-  const indexPath = path.resolve(__dirname, "..", "index.ts");
-  fs.writeFileSync(indexPath, completeCode);
-
-  // Compile and write JavaScript file
-  compileAndWriteIndexJS(completeCode);
+  writeIndexFiles(completeCode, databasesMetadata);
 }
 
-// Dedicated function for compiling the main index file
-function compileAndWriteIndexJS(typescriptCode: string): void {
-  try {
-    // Compile TypeScript to JavaScript
-    const compiledJS = ts.transpile(typescriptCode, {
-      module: ts.ModuleKind.ES2020,
-      target: ts.ScriptTarget.ES2020,
-      esModuleInterop: true,
-      allowSyntheticDefaultImports: true,
-    });
+// Writes both index.js and index.d.ts files
+function writeIndexFiles(
+  typescriptCode: string,
+  databasesMetadata: CachedDatabaseMetadata[]
+): void {
+  // Ensure build directory exists
+  if (!fs.existsSync(BUILD_SRC_DIR)) {
+    fs.mkdirSync(BUILD_SRC_DIR, { recursive: true });
+  }
 
-    // Ensure build/src directory exists
-    const buildSrcDir = path.resolve(__dirname, "../../build/src");
-    if (!fs.existsSync(buildSrcDir)) {
-      fs.mkdirSync(buildSrcDir, { recursive: true });
-    }
+  // Compile TypeScript to JavaScript
+  const compiledJS = ts.transpile(typescriptCode, {
+    module: ts.ModuleKind.ES2020,
+    target: ts.ScriptTarget.ES2020,
+    esModuleInterop: true,
+    allowSyntheticDefaultImports: true,
+  });
 
-    // Write compiled JavaScript
-    const buildIndexPath = path.resolve(buildSrcDir, "index.js");
-    fs.writeFileSync(buildIndexPath, compiledJS);
-  } catch (error) {
-    console.error("❌ Failed to compile index.ts:");
-    console.error(error);
-    throw error;
+  // Write JavaScript file
+  fs.writeFileSync(path.resolve(BUILD_SRC_DIR, "index.js"), compiledJS);
+
+  // Generate and write declaration file
+  const declarationCode = generateDeclarationFile(databasesMetadata);
+  fs.writeFileSync(path.resolve(BUILD_SRC_DIR, "index.d.ts"), declarationCode);
+
+  // Remove the declaration map that points back to src/index.ts
+  // This ensures "Go to Definition" stays in the generated build/src/index.d.ts
+  const declarationMapPath = path.resolve(BUILD_SRC_DIR, "index.d.ts.map");
+  if (fs.existsSync(declarationMapPath)) {
+    fs.unlinkSync(declarationMapPath);
   }
 }
 
-// Creates an empty NotionORM class in src/index.ts when no databases are available
+// Generates the TypeScript declaration file content
+function generateDeclarationFile(
+  databasesMetadata: CachedDatabaseMetadata[]
+): string {
+  if (databasesMetadata.length === 0) {
+    return `export default class NotionORM {
+    constructor(config: { auth: string });
+}`;
+  }
+
+  // Generate class properties with inline ReturnType references
+  // This ensures "Go to Definition" navigates directly to the database files
+  const classProperties = databasesMetadata
+    .map(
+      (db) =>
+        `    public ${db.camelCaseName}: ReturnType<typeof import("../db/${db.className}").${db.camelCaseName}>;`
+    )
+    .join("\n");
+
+  return `
+export default class NotionORM {
+${classProperties}
+    constructor(config: { auth: string });
+}`;
+}
+
+// Creates an empty NotionORM class in build/src/index.js when no databases are available
+// Note: src/index.ts is kept as simple boilerplate and not modified
 function createEmptySourceIndexFile(): void {
   const emptyClass = `
 /**
@@ -305,12 +335,8 @@ export default class NotionORM {
 }
 `;
 
-  // Write TypeScript file - go up one directory from src/ast/ to src/
-  const indexPath = path.resolve(__dirname, "..", "index.ts");
-  fs.writeFileSync(indexPath, emptyClass);
-
-  // Compile and write JavaScript file
-  compileAndWriteIndexJS(emptyClass);
+  const completeCode = `${emptyClass}`;
+  writeIndexFiles(completeCode, []);
 }
 
 /**

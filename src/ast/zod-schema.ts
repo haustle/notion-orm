@@ -1,3 +1,8 @@
+/**
+ * Zod schema generation utilities.
+ * Creates Zod validation schemas from database property metadata.
+ */
+
 import * as ts from "typescript";
 
 import { type DatabasePropertyType } from "../db-client/queryTypes";

@@ -5,7 +5,7 @@ import {
   loadConfig,
   clearConfigCache,
 } from "../config/loadConfig";
-import { createDatabaseTypes } from "../ast/type-generation";
+import { createDatabaseTypes } from "../ast/generate-databases-cli";
 import {
   showSetupInstructions,
   validateAndGetUndashedUuid,
