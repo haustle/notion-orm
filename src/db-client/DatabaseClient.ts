@@ -4,9 +4,9 @@ import type {
   CreatePageResponse,
   QueryDataSourceParameters,
   QueryDataSourceResponse,
-} from "@notionhq/client/build/src/api-endpoints.js";
+} from "@notionhq/client/build/src/api-endpoints";
 import type { ZodTypeAny } from "zod";
-import { getCall } from "./BuildCall.js";
+import { buildPropertyValueForAddPage } from "./add";
 import type {
   apiFilterType,
   apiSingleFilter,
@@ -15,11 +15,11 @@ import type {
   SimpleQueryResponse,
   SingleFilter,
   SupportedNotionColumnType,
-} from "./queryTypes.js";
+} from "./queryTypes";
 
-import { camelize } from "./utils.js";
+import { camelize } from "../helpers";
 
-export type propNameToColumnNameType = Record<
+export type camelPropertyNameToNameAndTypeMapType = Record<
   string,
   { columnName: string; type: SupportedNotionColumnType }
 >;
@@ -33,21 +33,22 @@ export class DatabaseClient<
 > {
   private client: Client;
   private id: string;
-  private propNameToColumnName: propNameToColumnNameType;
+  private camelPropertyNameToNameAndTypeMap: camelPropertyNameToNameAndTypeMapType;
   private schema: ZodTypeAny;
   public name: string;
   private loggedSchemaValidationIssues: Set<string>;
 
   constructor(args: {
     id: string;
-    propNameToColumnName: propNameToColumnNameType;
+    camelPropertyNameToNameAndTypeMap: camelPropertyNameToNameAndTypeMapType;
     auth: string;
     name: string;
     schema: ZodTypeAny;
   }) {
     this.client = new Client({ auth: args.auth, notionVersion: "2025-09-03" });
     this.id = args.id;
-    this.propNameToColumnName = args.propNameToColumnName;
+    this.camelPropertyNameToNameAndTypeMap =
+      args.camelPropertyNameToNameAndTypeMap;
     this.schema = args.schema;
     this.name = args.name;
     this.loggedSchemaValidationIssues = new Set();
@@ -70,8 +71,9 @@ export class DatabaseClient<
     callBody.icon = icon;
 
     Object.entries(pageObject).forEach(([propertyName, value]) => {
-      const { type, columnName } = this.propNameToColumnName[propertyName];
-      const columnObject = getCall({
+      const { type, columnName } =
+        this.camelPropertyNameToNameAndTypeMap[propertyName];
+      const columnObject = buildPropertyValueForAddPage({
         type,
         value,
       });
@@ -116,7 +118,8 @@ export class DatabaseClient<
     const results: Array<Partial<DatabaseSchemaType>> = rawResults
       .map((result, index) => {
         if (result.object === "page" && !("properties" in result)) {
-          // biome-ignore lint/suspicious/noConsole: surfaced for debugging unexpected Notion payloads
+          // biome-ignore lint/suspicious/noConsole: surfaced for debugging
+          // unexpected Notion payloads
           console.log("Skipping this page: ", { result });
           return undefined;
         }
@@ -127,7 +130,7 @@ export class DatabaseClient<
         for (const [columnName, result] of properties) {
           const camelizeColumnName = camelize(columnName);
           const columnType =
-            this.propNameToColumnName[camelizeColumnName]?.type;
+            this.camelPropertyNameToNameAndTypeMap[camelizeColumnName]?.type;
 
           if (columnType) {
             // @ts-expect-error
@@ -246,9 +249,9 @@ export class DatabaseClient<
         };
         return temp;
       } else {
-        const propType = this.propNameToColumnName[prop].type;
+        const propType = this.camelPropertyNameToNameAndTypeMap[prop].type;
         const temp: apiSingleFilter = {
-          property: this.propNameToColumnName[prop].columnName,
+          property: this.camelPropertyNameToNameAndTypeMap[prop].columnName,
         };
 
         //@ts-expect-error
@@ -270,7 +273,7 @@ export class DatabaseClient<
 
     // Check for missing expected properties (schema drift detection)
     const missingProperties: string[] = [];
-    for (const propName in this.propNameToColumnName) {
+    for (const propName in this.camelPropertyNameToNameAndTypeMap) {
       if (!remoteColumnNames.has(propName)) {
         missingProperties.push(propName);
       }
@@ -284,7 +287,8 @@ export class DatabaseClient<
 
       if (!this.loggedSchemaValidationIssues.has(issueSignature)) {
         this.loggedSchemaValidationIssues.add(issueSignature);
-        // biome-ignore lint/suspicious/noConsole: surface schema drift to the developer console
+        // biome-ignore lint/suspicious/noConsole: surface schema drift to the
+        // developer console
         console.error(
           `⚠️ [@haustle/notion-orm] Schema drift detected for the following Notion database ${schemaLabel}
 					\nMissing properties: ${missingProperties
@@ -298,7 +302,7 @@ export class DatabaseClient<
 
     // Check for unexpected properties
     for (const remoteColName of remoteColumnNames) {
-      if (!this.propNameToColumnName[remoteColName]) {
+      if (!this.camelPropertyNameToNameAndTypeMap[remoteColName]) {
         const issueSignature = JSON.stringify({
           type: "unexpected_property",
           property: remoteColName,
@@ -306,7 +310,8 @@ export class DatabaseClient<
 
         if (!this.loggedSchemaValidationIssues.has(issueSignature)) {
           this.loggedSchemaValidationIssues.add(issueSignature);
-          // biome-ignore lint/suspicious/noConsole: surfaced for debugging unexpected Notion payloads
+          // biome-ignore lint/suspicious/noConsole: surfaced for debugging
+          // unexpected Notion payloads
           console.error(
             `⚠️ [@haustle/notion-orm] Schema drift detected for the following Notion database ${schemaLabel}
 						\nUnexpected property found in remote data: \`${remoteColName}\`
@@ -335,7 +340,8 @@ export class DatabaseClient<
       return;
     }
     this.loggedSchemaValidationIssues.add(issueSignature);
-    // biome-ignore lint/suspicious/noConsole: surface schema drift to the developer console
+    // biome-ignore lint/suspicious/noConsole: surface schema drift to the
+    // developer console
     console.error(
       `⚠️ [@haustle/notion-orm] Schema drift detected for the following Notion database ${schemaLabel}
 			\nValidation issues: ${parseResult.error.issues
@@ -344,7 +350,8 @@ export class DatabaseClient<
 			\n\n✅ To easily fix this, please run \`notion generate\` to refresh all database schemas.
 			`
     );
-    // biome-ignore lint/suspicious/noConsole: surface schema drift to the developer console
+    // biome-ignore lint/suspicious/noConsole: surface schema drift to the
+    // developer console
     console.log("Validation details:", {
       issues: parseResult.error.issues,
       result: result,

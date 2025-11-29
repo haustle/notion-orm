@@ -1,5 +1,5 @@
 // Export types for user configuration
-export type { NotionConfigType } from "./types.js";
+export type { NotionConfigType } from "./config/helpers";
 
 /**
  * Main NotionORM class that provides access to all generated database types
