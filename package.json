@@ -1,46 +1,49 @@
 {
-  "name": "@haustle/notion-orm",
-  "version": "0.0.44",
-  "description": "tool to bring notion databases schemas/types to typescript",
-  "main": "build/src/index.js",
-  "files": [
-    "/build"
-  ],
-  "bin": {
-    "notion": "build/src/cli.js"
-  },
-  "scripts": {
-    "start": "npx tsc && node build/src/index.js",
-    "build": "rm -rf build && tsc",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "refresh": "rm -rf ./node_modules ./package-lock.json && npm install"
-  },
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "@types/node": "^22.0.0",
-    "typescript": "^5.6.3"
-  },
-  "dependencies": {
-    "@babel/generator": "^7.28.0",
-    "@babel/parser": "^7.28.0",
-    "@babel/types": "^7.28.2",
-    "@notionhq/client": "^4.0.1"
-  },
-  "optionalDependencies": {
-    "ts-node": "^10.9.2"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Haustle/notion-orm"
-  },
-  "homepage": "https://github.com/Haustle/notion-orm#readme",
-  "keywords": [
-    "notion orm",
-    "typescript",
-    "notion typesafety",
-    "notion auto-complete",
-    "notion databases",
-    "notion-tables"
-  ]
+	"name": "@haustle/notion-orm",
+	"version": "0.0.44",
+	"type": "module",
+	"description": "tool to bring notion databases schemas/types to typescript",
+	"main": "build/src/index.js",
+	"files": [
+		"/build"
+	],
+	"bin": {
+		"notion": "build/src/cli.js"
+	},
+	"scripts": {
+		"start": "bun run build && bun build/src/index.js",
+		"build": "rm -rf build && bunx tsc",
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"refresh": "rm -rf ./node_modules ./bun.lockb && bun install"
+	},
+	"author": "",
+	"license": "ISC",
+	"devDependencies": {
+		"@biomejs/biome": "2.3.4",
+		"@types/node": "^22.0.0",
+		"typescript": "^5.6.3"
+	},
+	"dependencies": {
+		"@babel/generator": "^7.28.0",
+		"@babel/parser": "^7.28.0",
+		"@babel/types": "^7.28.2",
+		"@notionhq/client": "5.3.0",
+		"zod": "^3.23.8"
+	},
+	"optionalDependencies": {
+		"ts-node": "^10.9.2"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Haustle/notion-orm"
+	},
+	"homepage": "https://github.com/Haustle/notion-orm#readme",
+	"keywords": [
+		"notion orm",
+		"typescript",
+		"notion typesafety",
+		"notion auto-complete",
+		"notion databases",
+		"notion-tables"
+	]
 }

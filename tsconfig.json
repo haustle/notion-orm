@@ -1,22 +1,21 @@
 {
   "compilerOptions": {
     /* Visit https://aka.ms/tsconfig to read more about this file */
-    "target": "ES6",                                 
-    "lib": ["es6"],                                      
-    "module": "commonjs",                                
-    "rootDir": ".",                                    
-    "resolveJsonModule": true,                           
-    "allowJs": true,                                     
-    "outDir": "build",                                    
-    "esModuleInterop": true,                             
-    "strict": true,      
-    "baseUrl": "src",                                
+    "target": "ES2020",
+    "lib": ["ES2020"],
+    "module": "ES2020",
+    "moduleResolution": "node",
+    "rootDir": ".",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "outDir": "build",
+    "esModuleInterop": true,
+    "strict": true,
+    "baseUrl": "src",
     "noImplicitAny": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true,                             
+    "sourceMap": true
   },
   "include": ["src"]
 }
-
-

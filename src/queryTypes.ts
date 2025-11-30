@@ -1,30 +1,56 @@
 /**
  * Column types' for all query options
  */
-// import { PageObjectResponse }
 
-import {
-	PageObjectResponse,
-	QueryDatabaseResponse,
+import type {
+	DataSourceObjectResponse,
+	QueryDataSourceParameters,
+	QueryDataSourceResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 
-type columnDiscriminatedUnionTypes = PageObjectResponse["properties"];
-export type NotionColumnTypes =
+type columnDiscriminatedUnionTypes = DataSourceObjectResponse["properties"];
+export type DatabasePropertyType =
 	columnDiscriminatedUnionTypes[keyof columnDiscriminatedUnionTypes]["type"];
-// type SupportedQueryableNotionColumnTypes = Exclude<NotionColumnTypes, "created_by" | >
 
-export type SupportedNotionColumnTypes = Exclude<
-	NotionColumnTypes,
-	| "formula"
-	| "files"
-	| "people"
-	| "relation"
-	| "rollup"
-	| "created_by"
-	| "last_edited_by"
-	| "created_time"
-	| "last_edited_time"
->;
+export const SUPPORTED_PROPERTY_TYPES = {
+	// These are currently not supported by our package
+	formula: false,
+	files: false,
+	people: false,
+	relation: false,
+	rollup: false,
+	created_by: false,
+	last_edited_by: false,
+	created_time: false,
+	last_edited_time: false,
+
+	// Working property types
+	url: true,
+	phone_number: true,
+	title: true,
+	email: true,
+	checkbox: true,
+	date: true,
+	multi_select: true,
+	status: true,
+	number: true,
+	rich_text: true,
+	select: true,
+	unique_id: true,
+} as const satisfies Record<DatabasePropertyType, boolean>;
+
+export function isSupportedPropertyType(
+	propertyType: DatabasePropertyType,
+): propertyType is SupportedNotionColumnType {
+	return SUPPORTED_PROPERTY_TYPES[propertyType];
+}
+
+// Extract the keys of the object that are true
+export type SupportedNotionColumnType = {
+	[K in keyof typeof SUPPORTED_PROPERTY_TYPES]: (typeof SUPPORTED_PROPERTY_TYPES)[K] extends true
+		? K
+		: never;
+}[keyof typeof SUPPORTED_PROPERTY_TYPES];
 
 type TextPropertyFilters = {
 	equals: string;
@@ -109,39 +135,38 @@ export type FilterOptions<T = []> = {
 
 type ColumnNameToNotionColumnType<T> = Record<
 	keyof T,
-	SupportedNotionColumnTypes
+	SupportedNotionColumnType
 >;
-type ColumnNameToPossibleValues = Record<string, any>;
 // T is a column name to column type
 // Y is the collection type
 export type SingleFilter<
 	Y extends Record<string, any>,
-	T extends ColumnNameToNotionColumnType<Y>
+	T extends ColumnNameToNotionColumnType<Y>,
 > = {
 	// Passing the type from collection
-	[Property in keyof Y]?: T[Property] extends keyof FilterOptions<Y[Property]> 
+	[Property in keyof Y]?: T[Property] extends keyof FilterOptions<Y[Property]>
 		? Partial<FilterOptions<Y[Property]>[T[Property]]>
 		: never;
 };
 
 export type CompoundFilters<
 	Y extends Record<string, any>,
-	T extends Record<keyof Y, SupportedNotionColumnTypes>
+	T extends Record<keyof Y, SupportedNotionColumnType>,
 > =
 	| { and: Array<SingleFilter<Y, T> | CompoundFilters<Y, T>> }
 	| { or: Array<SingleFilter<Y, T> | CompoundFilters<Y, T>> };
 
 export type QueryFilter<
 	Y extends Record<string, any>,
-	T extends Record<keyof Y, SupportedNotionColumnTypes>
+	T extends Record<keyof Y, SupportedNotionColumnType>,
 > = SingleFilter<Y, T> | CompoundFilters<Y, T>;
 
 export type Query<
 	Y extends Record<string, any>,
-	T extends Record<keyof Y, SupportedNotionColumnTypes>
+	T extends Record<keyof Y, SupportedNotionColumnType>,
 > = {
 	filter?: QueryFilter<Y, T>;
-	sort?: [];
+	sort?: QueryDataSourceParameters["sorts"];
 };
 
 export type apiFilterQuery = {
@@ -175,5 +200,5 @@ type apiOrFilter = {
 
 export type SimpleQueryResponse<DatabaseSchema> = {
 	results: Partial<DatabaseSchema>[];
-	rawResponse: QueryDatabaseResponse;
+	rawResponse: QueryDataSourceResponse;
 };
