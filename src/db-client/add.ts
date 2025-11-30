@@ -1,3 +1,4 @@
+import { AST_RUNTIME_CONSTANTS } from "../ast/constants";
 import { SupportedNotionColumnType } from "./queryTypes";
 
 export function buildPropertyValueForAddPage(args: {
@@ -29,7 +30,7 @@ export function buildPropertyValueForAddPage(args: {
     return textCall({ text: value });
   } else {
     console.error(
-      `'[@haustle/notion-orm] ${type}' column type currently not supported`
+      `'${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} ${type}' column type currently not supported`
     );
   }
 }

@@ -7,7 +7,7 @@ import type { GetDataSourceResponse } from "@notionhq/client/build/src/api-endpo
 import fs from "fs";
 import path from "path";
 import * as ts from "typescript";
-import { DATABASES_DIR } from "../helpers";
+import { DATABASES_DIR } from "./constants";
 import {
   type DatabasePropertyType,
   isSupportedPropertyType,
@@ -23,6 +23,7 @@ import {
   createQueryTypeExport,
   toPascalCase,
 } from "./ast-builders";
+import { AST_IMPORT_PATHS } from "./constants";
 import { propertyASTGenerators } from "./notion-column-generators";
 import { createZodSchema, ZodMetadata } from "./zod-schema";
 
@@ -130,15 +131,15 @@ export async function createTypescriptFileForDatabase(
   const TsNodesForDatabaseFile = ts.factory.createNodeArray([
     createNameImport({
       namedImport: "DatabaseClient",
-      path: "../src/db-client/DatabaseClient",
+      path: AST_IMPORT_PATHS.DATABASE_CLIENT,
     }),
     createNameImport({
       namedImport: "z",
-      path: "zod",
+      path: AST_IMPORT_PATHS.ZOD,
     }),
     createNameImport({
       namedImport: "Query",
-      path: "../src/db-client/queryTypes",
+      path: AST_IMPORT_PATHS.QUERY_TYPES,
       typeOnly: true,
     }),
     createDatabaseIdVariable(dataSourceId),

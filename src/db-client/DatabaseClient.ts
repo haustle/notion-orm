@@ -6,6 +6,7 @@ import type {
   QueryDataSourceResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 import type { ZodTypeAny } from "zod";
+import { AST_RUNTIME_CONSTANTS } from "../ast/constants";
 import { buildPropertyValueForAddPage } from "./add";
 import { buildQueryResponse, recursivelyBuildFilter } from "./query";
 import type {
@@ -40,7 +41,10 @@ export class DatabaseClient<
     name: string;
     schema: ZodTypeAny;
   }) {
-    this.client = new Client({ auth: args.auth, notionVersion: "2025-09-03" });
+    this.client = new Client({
+      auth: args.auth,
+      notionVersion: AST_RUNTIME_CONSTANTS.NOTION_API_VERSION,
+    });
     this.id = args.id;
     this.camelPropertyNameToNameAndTypeMap =
       args.camelPropertyNameToNameAndTypeMap;
@@ -138,11 +142,11 @@ export class DatabaseClient<
         // biome-ignore lint/suspicious/noConsole: surface schema drift to the
         // developer console
         console.error(
-          `⚠️ [@haustle/notion-orm] Schema drift detected for the following Notion database ${schemaLabel}
+          `⚠️ ${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} ${AST_RUNTIME_CONSTANTS.SCHEMA_DRIFT_PREFIX} for the following Notion database ${schemaLabel}
 					\nMissing properties: ${missingProperties
             .map((prop) => `\`${prop}\``)
             .join(", ")}
-					\n\n✅ To easily fix this, please run \`notion generate\` to refresh all database schemas.
+					\n\n✅ ${AST_RUNTIME_CONSTANTS.SCHEMA_DRIFT_HELP_MESSAGE}
 					`
         );
       }
@@ -161,9 +165,9 @@ export class DatabaseClient<
           // biome-ignore lint/suspicious/noConsole: surfaced for debugging
           // unexpected Notion payloads
           console.error(
-            `⚠️ [@haustle/notion-orm] Schema drift detected for the following Notion database ${schemaLabel}
+            `⚠️ ${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} ${AST_RUNTIME_CONSTANTS.SCHEMA_DRIFT_PREFIX} for the following Notion database ${schemaLabel}
 						\nUnexpected property found in remote data: \`${remoteColName}\`
-						\n\n✅ To easily fix this, please run \`notion generate\` to refresh all database schemas.
+						\n\n✅ ${AST_RUNTIME_CONSTANTS.SCHEMA_DRIFT_HELP_MESSAGE}
 						`
           );
         }
@@ -191,11 +195,11 @@ export class DatabaseClient<
     // biome-ignore lint/suspicious/noConsole: surface schema drift to the
     // developer console
     console.error(
-      `⚠️ [@haustle/notion-orm] Schema drift detected for the following Notion database ${schemaLabel}
+      `⚠️ ${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} ${AST_RUNTIME_CONSTANTS.SCHEMA_DRIFT_PREFIX} for the following Notion database ${schemaLabel}
 			\nValidation issues: ${parseResult.error.issues
         .map((issue) => `\`${issue.path.join(".")}: ${issue.message}\``)
         .join(", ")}
-			\n\n✅ To easily fix this, please run \`notion generate\` to refresh all database schemas.
+			\n\n✅ ${AST_RUNTIME_CONSTANTS.SCHEMA_DRIFT_HELP_MESSAGE}
 			`
     );
     // biome-ignore lint/suspicious/noConsole: surface schema drift to the

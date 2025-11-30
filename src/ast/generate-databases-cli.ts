@@ -7,20 +7,18 @@ import { Client } from "@notionhq/client";
 import fs from "fs";
 import path from "path";
 import * as ts from "typescript";
-import { fileURLToPath } from "url";
 import { getNotionConfig } from "../config/loadConfig";
-import { DATABASES_DIR } from "../helpers";
+import { DATABASES_DIR } from "./constants";
+import {
+  AST_FS_PATHS,
+  AST_FS_FILENAMES,
+  AST_IMPORT_PATHS,
+  AST_RUNTIME_CONSTANTS,
+} from "./constants";
 import { createTypescriptFileForDatabase } from "./database-file-writer";
 
-// ES module equivalent of __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Build directory for index files (build/src/)
-const BUILD_SRC_DIR = path.resolve(__dirname, "..");
-
 function getMetadataFilePath(): string {
-  return path.resolve(DATABASES_DIR, "metadata.json");
+  return AST_FS_PATHS.metadataFile;
 }
 
 // Read existing database metadata from disk
@@ -73,7 +71,7 @@ export const createDatabaseTypes = async (
 
   const client = new Client({
     auth: config.auth,
-    notionVersion: "2025-09-03",
+    notionVersion: AST_RUNTIME_CONSTANTS.NOTION_API_VERSION,
   });
 
   // Determine target database IDs and generation mode
@@ -210,14 +208,8 @@ function createDatabaseBarrelFile(args: {
   }
 
   // Create TypeScript and JavaScript file
-  fs.writeFileSync(
-    path.resolve(DATABASES_DIR, "index.ts"),
-    typescriptCodeToString
-  );
-  fs.writeFileSync(
-    path.resolve(DATABASES_DIR, "index.js"),
-    transpileToJavaScript
-  );
+  fs.writeFileSync(AST_FS_PATHS.databaseBarrelTs, typescriptCodeToString);
+  fs.writeFileSync(AST_FS_PATHS.databaseBarrelJs, transpileToJavaScript);
 }
 
 // Writes directly to build/src/index.js with database imports
@@ -231,7 +223,12 @@ function updateSourceIndexFile(
   }
 
   const imports = databasesMetadata
-    .map((db) => `import { ${db.camelCaseName} } from "../db/${db.className}";`)
+    .map(
+      (db) =>
+        `import { ${db.camelCaseName} } from "${AST_IMPORT_PATHS.databaseClass(
+          db.className
+        )}";`
+    )
     .join("\n");
 
   const notionORMClass = `
@@ -268,8 +265,8 @@ function writeIndexFiles(
   databasesMetadata: CachedDatabaseMetadata[]
 ): void {
   // Ensure build directory exists
-  if (!fs.existsSync(BUILD_SRC_DIR)) {
-    fs.mkdirSync(BUILD_SRC_DIR, { recursive: true });
+  if (!fs.existsSync(AST_FS_PATHS.BUILD_SRC_DIR)) {
+    fs.mkdirSync(AST_FS_PATHS.BUILD_SRC_DIR, { recursive: true });
   }
 
   // Compile TypeScript to JavaScript
@@ -281,17 +278,16 @@ function writeIndexFiles(
   });
 
   // Write JavaScript file
-  fs.writeFileSync(path.resolve(BUILD_SRC_DIR, "index.js"), compiledJS);
+  fs.writeFileSync(AST_FS_PATHS.buildIndexJs, compiledJS);
 
   // Generate and write declaration file
   const declarationCode = generateDeclarationFile(databasesMetadata);
-  fs.writeFileSync(path.resolve(BUILD_SRC_DIR, "index.d.ts"), declarationCode);
+  fs.writeFileSync(AST_FS_PATHS.buildIndexDts, declarationCode);
 
   // Remove the declaration map that points back to src/index.ts
   // This ensures "Go to Definition" stays in the generated build/src/index.d.ts
-  const declarationMapPath = path.resolve(BUILD_SRC_DIR, "index.d.ts.map");
-  if (fs.existsSync(declarationMapPath)) {
-    fs.unlinkSync(declarationMapPath);
+  if (fs.existsSync(AST_FS_PATHS.buildIndexDtsMap)) {
+    fs.unlinkSync(AST_FS_PATHS.buildIndexDtsMap);
   }
 }
 
@@ -310,7 +306,11 @@ function generateDeclarationFile(
   const classProperties = databasesMetadata
     .map(
       (db) =>
-        `    public ${db.camelCaseName}: ReturnType<typeof import("../db/${db.className}").${db.camelCaseName}>;`
+        `    public ${
+          db.camelCaseName
+        }: ReturnType<typeof import("${AST_IMPORT_PATHS.databaseClass(
+          db.className
+        )}").${db.camelCaseName}>;`
     )
     .join("\n");
 
@@ -330,7 +330,7 @@ function createEmptySourceIndexFile(): void {
  */
 export default class NotionORM {
     constructor(config: { auth: string }) {
-        console.warn("⚠️  No databases found. Please run 'npx notion generate' to generate database types.");
+        console.warn("⚠️  No databases found. Please run '${AST_RUNTIME_CONSTANTS.CLI_GENERATE_COMMAND}' to generate database types.");
     }
 }
 `;
