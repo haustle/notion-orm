@@ -41,9 +41,15 @@ export class DatabaseClient<
     name: string;
     schema: ZodTypeAny;
   }) {
+    // Automatically use global fetch if available (fixes Cloudflare Workers compatibility)
+    // Bind fetch to globalThis to avoid "Illegal invocation" errors when Notion client calls it with .call(this, ...)
+    const fetchImpl =
+      typeof fetch !== "undefined" ? fetch.bind(globalThis) : undefined;
+
     this.client = new Client({
       auth: args.auth,
       notionVersion: AST_RUNTIME_CONSTANTS.NOTION_API_VERSION,
+      fetch: fetchImpl,
     });
     this.id = args.id;
     this.camelPropertyNameToNameAndTypeMap =

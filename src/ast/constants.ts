@@ -11,73 +11,106 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 // ES module equivalent of __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Only compute if import.meta.url is available (not in Cloudflare Workers)
+let __dirname: string | undefined;
+
+try {
+	if (typeof import.meta.url !== "undefined") {
+		const __filename = fileURLToPath(import.meta.url);
+		__dirname = path.dirname(__filename);
+	}
+} catch (e) {
+	// In environments like Cloudflare Workers, import.meta.url may not work
+	// This is fine - we only need file system paths at build-time, not runtime
+}
 
 /**
  * Databases output directory (build/db/)
  * Centralized here as it's structure-dependent and used across AST modules
+ * Only available at build-time, not in runtime environments like Cloudflare Workers
  */
-export const DATABASES_DIR = path.join(__dirname, "../../build", "db");
+function getDatabasesDir(): string {
+	if (!__dirname) {
+		throw new Error(
+			"DATABASES_DIR is only available at build-time, not in runtime environments like Cloudflare Workers"
+		);
+	}
+	// From build/src/ast/, go up 3 levels to project root, then into build/db/
+	return path.join(__dirname, "../../../build", "db");
+}
+
+export const DATABASES_DIR = __dirname
+	? path.join(__dirname, "../../../build", "db")
+	: ""; // Empty string fallback for runtime environments
 
 /**
  * File system paths for AST/CLI output
+ * These are only used at build-time, not runtime
  */
 export const AST_FS_PATHS = {
-  /**
-   * Build directory for index files (build/src/)
-   */
-  BUILD_SRC_DIR: path.resolve(__dirname, ".."),
+	/**
+	 * Build directory for index files (build/src/)
+	 */
+	get BUILD_SRC_DIR(): string {
+		if (!__dirname) {
+			throw new Error(
+				"BUILD_SRC_DIR is only available at build-time, not in runtime environments like Cloudflare Workers"
+			);
+		}
+		return path.resolve(__dirname, "..");
+	},
 
-  /**
-   * Databases output directory (build/db/)
-   */
-  DATABASES_DIR,
+	/**
+	 * Databases output directory (build/db/)
+	 */
+	get DATABASES_DIR(): string {
+		return getDatabasesDir();
+	},
 
-  /**
-   * Metadata file path
-   */
-  get metadataFile(): string {
-    return path.resolve(DATABASES_DIR, AST_FS_FILENAMES.METADATA);
-  },
+	/**
+	 * Metadata file path
+	 */
+	get metadataFile(): string {
+		return path.resolve(getDatabasesDir(), AST_FS_FILENAMES.METADATA);
+	},
 
-  /**
-   * Build index.js file path
-   */
-  get buildIndexJs(): string {
-    return path.resolve(AST_FS_PATHS.BUILD_SRC_DIR, AST_FS_FILENAMES.INDEX_JS);
-  },
+	/**
+	 * Build index.js file path
+	 */
+	get buildIndexJs(): string {
+		return path.resolve(AST_FS_PATHS.BUILD_SRC_DIR, AST_FS_FILENAMES.INDEX_JS);
+	},
 
-  /**
-   * Build index.d.ts file path
-   */
-  get buildIndexDts(): string {
-    return path.resolve(AST_FS_PATHS.BUILD_SRC_DIR, AST_FS_FILENAMES.INDEX_DTS);
-  },
+	/**
+	 * Build index.d.ts file path
+	 */
+	get buildIndexDts(): string {
+		return path.resolve(AST_FS_PATHS.BUILD_SRC_DIR, AST_FS_FILENAMES.INDEX_DTS);
+	},
 
-  /**
-   * Build index.d.ts.map file path
-   */
-  get buildIndexDtsMap(): string {
-    return path.resolve(
-      AST_FS_PATHS.BUILD_SRC_DIR,
-      AST_FS_FILENAMES.INDEX_DTS_MAP
-    );
-  },
+	/**
+	 * Build index.d.ts.map file path
+	 */
+	get buildIndexDtsMap(): string {
+		return path.resolve(
+			AST_FS_PATHS.BUILD_SRC_DIR,
+			AST_FS_FILENAMES.INDEX_DTS_MAP
+		);
+	},
 
-  /**
-   * Database barrel file (index.ts) path
-   */
-  get databaseBarrelTs(): string {
-    return path.resolve(DATABASES_DIR, AST_FS_FILENAMES.INDEX_TS);
-  },
+	/**
+	 * Database barrel file (index.ts) path
+	 */
+	get databaseBarrelTs(): string {
+		return path.resolve(getDatabasesDir(), AST_FS_FILENAMES.INDEX_TS);
+	},
 
-  /**
-   * Database barrel file (index.js) path
-   */
-  get databaseBarrelJs(): string {
-    return path.resolve(DATABASES_DIR, AST_FS_FILENAMES.INDEX_JS);
-  },
+	/**
+	 * Database barrel file (index.js) path
+	 */
+	get databaseBarrelJs(): string {
+		return path.resolve(getDatabasesDir(), AST_FS_FILENAMES.INDEX_JS);
+	},
 } as const;
 
 /**
