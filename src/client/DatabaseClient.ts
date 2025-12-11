@@ -6,7 +6,7 @@ import type {
   QueryDataSourceResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 import type { ZodTypeAny } from "zod";
-import { AST_RUNTIME_CONSTANTS } from "../ast/constants";
+import { AST_RUNTIME_CONSTANTS } from "../ast/shared/constants";
 import { buildPropertyValueForAddPage } from "./add";
 import { buildQueryResponse, recursivelyBuildFilter } from "./query";
 import type {
@@ -148,7 +148,9 @@ export class DatabaseClient<
         // biome-ignore lint/suspicious/noConsole: surface schema drift to the
         // developer console
         console.error(
-          `⚠️ ${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} ${AST_RUNTIME_CONSTANTS.SCHEMA_DRIFT_PREFIX} for the following Notion database ${schemaLabel}
+          `⚠️ ${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} ${
+            AST_RUNTIME_CONSTANTS.SCHEMA_DRIFT_PREFIX
+          } for the following Notion database ${schemaLabel}
 					\nMissing properties: ${missingProperties
             .map((prop) => `\`${prop}\``)
             .join(", ")}
@@ -201,7 +203,9 @@ export class DatabaseClient<
     // biome-ignore lint/suspicious/noConsole: surface schema drift to the
     // developer console
     console.error(
-      `⚠️ ${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} ${AST_RUNTIME_CONSTANTS.SCHEMA_DRIFT_PREFIX} for the following Notion database ${schemaLabel}
+      `⚠️ ${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} ${
+        AST_RUNTIME_CONSTANTS.SCHEMA_DRIFT_PREFIX
+      } for the following Notion database ${schemaLabel}
 			\nValidation issues: ${parseResult.error.issues
         .map((issue) => `\`${issue.path.join(".")}: ${issue.message}\``)
         .join(", ")}

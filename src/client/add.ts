@@ -1,4 +1,4 @@
-import { AST_RUNTIME_CONSTANTS } from "../ast/constants";
+import { AST_RUNTIME_CONSTANTS } from "../ast/shared/constants";
 import { SupportedNotionColumnType } from "./queryTypes";
 
 export function buildPropertyValueForAddPage(args: {

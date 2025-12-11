@@ -6,7 +6,8 @@ import { getNotionConfig } from "./loadConfig";
 
 export type NotionConfigType = {
   auth: string;
-  databaseIds: string[];
+  databases: string[];
+  agents: string[];
 };
 
 // Config validation function
@@ -26,21 +27,26 @@ export async function validateConfig(): Promise<void> {
     process.exit(1);
   }
 
-  if (!config.databaseIds) {
-    console.error("❌ Missing 'databaseIds' field in config");
+  if (!config.databases) {
+    console.error("❌ Missing 'databases' field in config");
     showSetupInstructions();
     process.exit(1);
   }
 
-  if (!Array.isArray(config.databaseIds)) {
-    console.error("❌ 'databaseIds' must be an array");
+  if (!Array.isArray(config.databases)) {
+    console.error("❌ 'databases' must be an array");
     showSetupInstructions();
     process.exit(1);
   }
 
-  if (config.databaseIds.length === 0) {
-    console.error("❌ 'databaseIds' array cannot be empty");
-    console.error("   Please add at least one database ID");
+  if (!config.agents) {
+    console.error("❌ Missing 'agents' field in config");
+    showSetupInstructions();
+    process.exit(1);
+  }
+
+  if (!Array.isArray(config.agents)) {
+    console.error("❌ 'agents' must be an array");
     showSetupInstructions();
     process.exit(1);
   }
@@ -87,9 +93,9 @@ export async function initializeNotionConfigFile(
       "   • Use `notion add <data-source-id or URL>` to append databases"
     );
     console.log("   • Run `notion generate` to build local types");
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Error creating config file:");
-    console.error(error.message);
+    console.error(error);
     process.exit(1);
   }
 }

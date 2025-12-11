@@ -55,7 +55,8 @@ export async function getNotionConfig(): Promise<NotionConfigType> {
     if (authFromEnv) {
       const config = {
         auth: authFromEnv,
-        databaseIds: [], // You might want to handle this differently
+        databases: [],
+        agents: [],
       };
       cachedConfig = config;
       return config;

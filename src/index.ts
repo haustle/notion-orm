@@ -1,13 +1,8 @@
-// Export types for user configuration
 export type { NotionConfigType } from "./config/helpers";
+export { AgentClient } from "./client/AgentClient";
 
-/**
- * Main NotionORM class - boilerplate
- * The actual implementation with database imports is generated in build/src/index.js
- * by running 'notion generate'
- */
 export default class NotionORM {
   constructor(config: { auth: string }) {
-    // Database properties are added dynamically in build/src/index.js
+    // Database and agent properties are added dynamically in build/src/index.js
   }
 }
