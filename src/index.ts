@@ -1,5 +1,7 @@
 export type { NotionConfigType } from "./config/helpers";
 export { AgentClient } from "./client/AgentClient";
+export { DatabaseClient } from "./client/DatabaseClient";
+export type { Query } from "./client/queryTypes";
 
 export default class NotionORM {
   constructor(config: { auth: string }) {
