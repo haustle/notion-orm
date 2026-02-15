@@ -50,12 +50,29 @@ declare module "@notionhq/agents-client" {
 		thread: (threadId: string) => ThreadRef;
 	};
 
+	export type AgentIcon =
+		| { type: "emoji"; emoji: string }
+		| { type: "file"; file: { url: string; expiry_time: string } }
+		| { type: "external"; external: { url: string } }
+		| { type: "custom_emoji"; custom_emoji: { id: string; name: string; url: string } }
+		| {
+				type: "custom_agent_avatar"
+				custom_agent_avatar: { static_url: string; animated_url: string }
+		  }
+		| null;
+
 	export class NotionAgentsClient {
 		constructor(props: { auth: string });
 		agents: {
 			list: (props: {
 				page_size?: number;
-			}) => Promise<{ results: Array<{ id: string; name: string }> }>;
+			}) => Promise<{
+				results: Array<{
+					id: string
+					name: string
+					icon: AgentIcon
+				}>
+			}>;
 			agent: (agentId: string) => Agent;
 		};
 	}

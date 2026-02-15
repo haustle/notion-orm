@@ -120,6 +120,7 @@ export const createAgentTypes = async (): Promise<{ agentNames: string[] }> => {
 			const agentMetaData = await generateAgentTypes(
 				normalizedIdForStorage,
 				agent.name,
+				agent.icon ?? null,
 			);
 			metadataMap.set(agentMetaData.id, agentMetaData);
 			agentNames.push(agentMetaData.displayName);
@@ -299,16 +300,18 @@ function createMetadata(
  *
  * @param agentId - Normalized agent ID (without dashes)
  * @param agentName - Human-readable agent name from Notion
+ * @param agentIcon - Icon data from Notion API (can be null)
  * @returns CachedAgentMetadata for the generated agent
  */
 async function generateAgentTypes(
 	agentId: string,
 	agentName: string,
+	agentIcon: { type: string; [key: string]: unknown } | null,
 ): Promise<CachedAgentMetadata> {
 	const agentClassName = camelize(agentName);
 	const agentDisplayName = agentName;
 
-	await createTypescriptFileForAgent(agentId, agentName, agentClassName);
+	await createTypescriptFileForAgent(agentId, agentName, agentClassName, agentIcon);
 
 	const agentMetaData = createMetadata(
 		agentId,
@@ -324,7 +327,7 @@ async function generateAgentTypes(
  * Generates a file that exports a factory function which creates an AgentClient instance.
  * The generated file structure:
  * - Imports AgentClient from the package
- * - Defines constants for agent id and name
+ * - Defines constants for agent id, name, and icon
  * - Exports a function that takes `auth` and returns a new AgentClient instance
  *
  * Example generated code:
@@ -332,17 +335,20 @@ async function generateAgentTypes(
  * import { AgentClient } from "@haustle/notion-orm/build/src/client/AgentClient";
  * const id = "agent-id-here";
  * const name = "Agent Name";
- * export const FoodManager = (auth: string) => new AgentClient({ auth, id, name });
+ * const icon = { type: "emoji", emoji: "🤖" };
+ * export const FoodManager = (auth: string) => new AgentClient({ auth, id, name, icon });
  * ```
  *
  * @param agentId - Normalized agent ID (without dashes)
  * @param agentName - Human-readable agent name
  * @param agentClassName - CamelCase class name (e.g., "FoodManager")
+ * @param agentIcon - Icon data from Notion API (can be null)
  */
 async function createTypescriptFileForAgent(
 	agentId: string,
 	agentName: string,
 	agentClassName: string,
+	agentIcon: { type: string; [key: string]: unknown } | null,
 ) {
 	// Creates: import { AgentClient } from "@haustle/notion-orm/build/src/client/AgentClient";
 	const agentClientImport = createNameImport({
@@ -382,7 +388,177 @@ async function createTypescriptFileForAgent(
 		),
 	);
 
-	// Creates: export const FoodManager = (auth: string) => new AgentClient({ auth, id, name });
+	// Creates: const icon = { type: "emoji", emoji: "🤖" } | null;
+	const iconValue = agentIcon
+		? (() => {
+				switch (agentIcon.type) {
+					case "emoji":
+						return ts.factory.createObjectLiteralExpression(
+							[
+								ts.factory.createPropertyAssignment(
+									ts.factory.createIdentifier("type"),
+									ts.factory.createStringLiteral("emoji"),
+								),
+								ts.factory.createPropertyAssignment(
+									ts.factory.createIdentifier("emoji"),
+									ts.factory.createStringLiteral(
+										(agentIcon.emoji as string) ?? "",
+									),
+								),
+							],
+							false,
+						);
+					case "file":
+						return ts.factory.createObjectLiteralExpression(
+							[
+								ts.factory.createPropertyAssignment(
+									ts.factory.createIdentifier("type"),
+									ts.factory.createStringLiteral("file"),
+								),
+								ts.factory.createPropertyAssignment(
+									ts.factory.createIdentifier("file"),
+									ts.factory.createObjectLiteralExpression(
+										[
+											ts.factory.createPropertyAssignment(
+												ts.factory.createIdentifier("url"),
+												ts.factory.createStringLiteral(
+													((agentIcon.file as { url: string })?.url) ?? "",
+												),
+											),
+											ts.factory.createPropertyAssignment(
+												ts.factory.createIdentifier("expiry_time"),
+												ts.factory.createStringLiteral(
+													((agentIcon.file as { expiry_time: string })
+														?.expiry_time) ?? "",
+												),
+											),
+										],
+										false,
+									),
+								),
+							],
+							false,
+						);
+					case "external":
+						return ts.factory.createObjectLiteralExpression(
+							[
+								ts.factory.createPropertyAssignment(
+									ts.factory.createIdentifier("type"),
+									ts.factory.createStringLiteral("external"),
+								),
+								ts.factory.createPropertyAssignment(
+									ts.factory.createIdentifier("external"),
+									ts.factory.createObjectLiteralExpression(
+										[
+											ts.factory.createPropertyAssignment(
+												ts.factory.createIdentifier("url"),
+												ts.factory.createStringLiteral(
+													((agentIcon.external as { url: string })?.url) ??
+														"",
+												),
+											),
+										],
+										false,
+									),
+								),
+							],
+							false,
+						);
+					case "custom_emoji":
+						return ts.factory.createObjectLiteralExpression(
+							[
+								ts.factory.createPropertyAssignment(
+									ts.factory.createIdentifier("type"),
+									ts.factory.createStringLiteral("custom_emoji"),
+								),
+								ts.factory.createPropertyAssignment(
+									ts.factory.createIdentifier("custom_emoji"),
+									ts.factory.createObjectLiteralExpression(
+										[
+											ts.factory.createPropertyAssignment(
+												ts.factory.createIdentifier("id"),
+												ts.factory.createStringLiteral(
+													((agentIcon.custom_emoji as { id: string })
+														?.id) ?? "",
+												),
+											),
+											ts.factory.createPropertyAssignment(
+												ts.factory.createIdentifier("name"),
+												ts.factory.createStringLiteral(
+													((agentIcon.custom_emoji as { name: string })
+														?.name) ?? "",
+												),
+											),
+											ts.factory.createPropertyAssignment(
+												ts.factory.createIdentifier("url"),
+												ts.factory.createStringLiteral(
+													((agentIcon.custom_emoji as { url: string })
+														?.url) ?? "",
+												),
+											),
+										],
+										false,
+									),
+								),
+							],
+							false,
+						);
+					case "custom_agent_avatar":
+						return ts.factory.createObjectLiteralExpression(
+							[
+								ts.factory.createPropertyAssignment(
+									ts.factory.createIdentifier("type"),
+									ts.factory.createStringLiteral("custom_agent_avatar"),
+								),
+								ts.factory.createPropertyAssignment(
+									ts.factory.createIdentifier("custom_agent_avatar"),
+									ts.factory.createObjectLiteralExpression(
+										[
+											ts.factory.createPropertyAssignment(
+												ts.factory.createIdentifier("static_url"),
+												ts.factory.createStringLiteral(
+													((agentIcon.custom_agent_avatar as {
+														static_url: string
+													})?.static_url) ?? "",
+												),
+											),
+											ts.factory.createPropertyAssignment(
+												ts.factory.createIdentifier("animated_url"),
+												ts.factory.createStringLiteral(
+													((agentIcon.custom_agent_avatar as {
+														animated_url: string
+													})?.animated_url) ?? "",
+												),
+											),
+										],
+										false,
+									),
+								),
+							],
+							false,
+						);
+					default:
+						return ts.factory.createNull();
+				}
+		  })()
+		: ts.factory.createNull();
+
+	const iconVariable = ts.factory.createVariableStatement(
+		undefined,
+		ts.factory.createVariableDeclarationList(
+			[
+				ts.factory.createVariableDeclaration(
+					ts.factory.createIdentifier("icon"),
+					undefined,
+					undefined,
+					iconValue,
+				),
+			],
+			ts.NodeFlags.Const,
+		),
+	);
+
+	// Creates: export const FoodManager = (auth: string) => new AgentClient({ auth, id, name, icon });
 	const agentClientFunction = ts.factory.createVariableStatement(
 		[ts.factory.createModifier(ts.SyntaxKind.ExportKeyword)],
 		ts.factory.createVariableDeclarationList(
@@ -415,7 +591,7 @@ async function createTypescriptFileForAgent(
 							ts.factory.createIdentifier("AgentClient"),
 							undefined,
 							[
-								// Creates: { auth, id, name } (object literal argument)
+								// Creates: { auth, id, name, icon } (object literal argument)
 								ts.factory.createObjectLiteralExpression(
 									[
 										ts.factory.createPropertyAssignment(
@@ -429,6 +605,10 @@ async function createTypescriptFileForAgent(
 										ts.factory.createPropertyAssignment(
 											ts.factory.createIdentifier("name"),
 											ts.factory.createIdentifier("name"),
+										),
+										ts.factory.createPropertyAssignment(
+											ts.factory.createIdentifier("icon"),
+											ts.factory.createIdentifier("icon"),
 										),
 									],
 									false,
@@ -446,6 +626,7 @@ async function createTypescriptFileForAgent(
 		agentClientImport,
 		idVariable,
 		nameVariable,
+		iconVariable,
 		agentClientFunction,
 	]);
 

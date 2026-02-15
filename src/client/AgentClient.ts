@@ -10,15 +10,28 @@ import {
 	type ThreadStatus,
 } from "@notionhq/agents-client";
 
+export type AgentIcon =
+	| { type: "emoji"; emoji: string }
+	| { type: "file"; file: { url: string; expiry_time: string } }
+	| { type: "external"; external: { url: string } }
+	| { type: "custom_emoji"; custom_emoji: { id: string; name: string; url: string } }
+	| {
+			type: "custom_agent_avatar"
+			custom_agent_avatar: { static_url: string; animated_url: string }
+	  }
+	| null;
+
 export class AgentClient {
 	public readonly id: string;
 	public readonly name: string;
+	public readonly icon: AgentIcon;
 	private readonly client: NotionAgentsClient;
 	private readonly agent: Agent;
 
-	constructor(props: { auth: string; id: string; name: string }) {
+	constructor(props: { auth: string; id: string; name: string; icon?: AgentIcon }) {
 		this.id = props.id;
 		this.name = props.name;
+		this.icon = props.icon ?? null;
 		this.client = new NotionAgentsClient({
 			auth: props.auth,
 		});
