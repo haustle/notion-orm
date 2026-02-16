@@ -7,6 +7,8 @@ import { NotionAgentsClient } from "@notionhq/agents-client";
 import fs from "fs";
 import path from "path";
 import * as ts from "typescript";
+import { syncAgentsInConfigWithAST } from "../../cli/helpers";
+import { findConfigFile } from "../../config/helpers";
 import { getNotionConfig } from "../../config/loadConfig";
 import { camelize } from "../../helpers";
 import {
@@ -22,8 +24,6 @@ import {
 	AST_FS_PATHS,
 	AST_IMPORT_PATHS,
 } from "../shared/constants";
-import { findConfigFile } from "../../config/helpers";
-import { syncAgentsInConfigWithAST } from "../../cli/helpers";
 
 /**
  * Returns the file path where agent metadata is stored.
@@ -99,14 +99,16 @@ export const createAgentTypes = async (): Promise<{ agentNames: string[] }> => {
 	// Sync agents in config file
 	const configFile = findConfigFile();
 	if (configFile) {
-		const agentsToSync = agentsList.results.map((a: { id: string; name: string }) => ({
-			id: a.id,
-			name: a.name,
-		}));
+		const agentsToSync = agentsList.results.map(
+			(a: { id: string; name: string }) => ({
+				id: a.id,
+				name: a.name,
+			}),
+		);
 		await syncAgentsInConfigWithAST(
 			configFile.path,
 			agentsToSync,
-			configFile.isTS
+			configFile.isTS,
 		);
 	}
 
@@ -311,7 +313,12 @@ async function generateAgentTypes(
 	const agentClassName = camelize(agentName);
 	const agentDisplayName = agentName;
 
-	await createTypescriptFileForAgent(agentId, agentName, agentClassName, agentIcon);
+	await createTypescriptFileForAgent(
+		agentId,
+		agentName,
+		agentClassName,
+		agentIcon,
+	);
 
 	const agentMetaData = createMetadata(
 		agentId,
@@ -422,14 +429,14 @@ async function createTypescriptFileForAgent(
 											ts.factory.createPropertyAssignment(
 												ts.factory.createIdentifier("url"),
 												ts.factory.createStringLiteral(
-													((agentIcon.file as { url: string })?.url) ?? "",
+													(agentIcon.file as { url: string })?.url ?? "",
 												),
 											),
 											ts.factory.createPropertyAssignment(
 												ts.factory.createIdentifier("expiry_time"),
 												ts.factory.createStringLiteral(
-													((agentIcon.file as { expiry_time: string })
-														?.expiry_time) ?? "",
+													(agentIcon.file as { expiry_time: string })
+														?.expiry_time ?? "",
 												),
 											),
 										],
@@ -453,8 +460,7 @@ async function createTypescriptFileForAgent(
 											ts.factory.createPropertyAssignment(
 												ts.factory.createIdentifier("url"),
 												ts.factory.createStringLiteral(
-													((agentIcon.external as { url: string })?.url) ??
-														"",
+													(agentIcon.external as { url: string })?.url ?? "",
 												),
 											),
 										],
@@ -478,22 +484,21 @@ async function createTypescriptFileForAgent(
 											ts.factory.createPropertyAssignment(
 												ts.factory.createIdentifier("id"),
 												ts.factory.createStringLiteral(
-													((agentIcon.custom_emoji as { id: string })
-														?.id) ?? "",
+													(agentIcon.custom_emoji as { id: string })?.id ?? "",
 												),
 											),
 											ts.factory.createPropertyAssignment(
 												ts.factory.createIdentifier("name"),
 												ts.factory.createStringLiteral(
-													((agentIcon.custom_emoji as { name: string })
-														?.name) ?? "",
+													(agentIcon.custom_emoji as { name: string })?.name ??
+														"",
 												),
 											),
 											ts.factory.createPropertyAssignment(
 												ts.factory.createIdentifier("url"),
 												ts.factory.createStringLiteral(
-													((agentIcon.custom_emoji as { url: string })
-														?.url) ?? "",
+													(agentIcon.custom_emoji as { url: string })?.url ??
+														"",
 												),
 											),
 										],
@@ -517,17 +522,21 @@ async function createTypescriptFileForAgent(
 											ts.factory.createPropertyAssignment(
 												ts.factory.createIdentifier("static_url"),
 												ts.factory.createStringLiteral(
-													((agentIcon.custom_agent_avatar as {
-														static_url: string
-													})?.static_url) ?? "",
+													(
+														agentIcon.custom_agent_avatar as {
+															static_url: string;
+														}
+													)?.static_url ?? "",
 												),
 											),
 											ts.factory.createPropertyAssignment(
 												ts.factory.createIdentifier("animated_url"),
 												ts.factory.createStringLiteral(
-													((agentIcon.custom_agent_avatar as {
-														animated_url: string
-													})?.animated_url) ?? "",
+													(
+														agentIcon.custom_agent_avatar as {
+															animated_url: string;
+														}
+													)?.animated_url ?? "",
 												),
 											),
 										],
@@ -540,7 +549,7 @@ async function createTypescriptFileForAgent(
 					default:
 						return ts.factory.createNull();
 				}
-		  })()
+			})()
 		: ts.factory.createNull();
 
 	const iconVariable = ts.factory.createVariableStatement(
@@ -660,4 +669,3 @@ async function createTypescriptFileForAgent(
 	fs.writeFileSync(tsFilePath, typescriptCodeToString);
 	fs.writeFileSync(jsFilePath, transpileToJavaScript);
 }
-
