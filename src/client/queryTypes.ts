@@ -178,25 +178,11 @@ export type apiFilterQuery = {
  * actually build schema for query request
  */
 
-type apiColumnTypeToOptions = {
-  [prop in keyof FilterOptions]?: Partial<FilterOptions[prop]>;
-};
-export interface apiSingleFilter extends apiColumnTypeToOptions {
-  property: string;
-}
-
-export type apiFilterType =
-  | apiSingleFilter
-  | apiAndFilter
-  | apiOrFilter
-  | undefined;
-type apiAndFilter = {
-  and: Array<apiFilterType>;
-};
-
-type apiOrFilter = {
-  or: Array<apiFilterType>;
-};
+type NotionApiFilter = NonNullable<QueryDataSourceParameters["filter"]>;
+export type apiSingleFilter = Extract<NotionApiFilter, { property: string }>;
+export type apiAndFilter = Extract<NotionApiFilter, { and: unknown }>;
+export type apiOrFilter = Extract<NotionApiFilter, { or: unknown }>;
+export type apiFilterType = QueryDataSourceParameters["filter"];
 
 export type SimpleQueryResponse<DatabaseSchema> = {
   results: Partial<DatabaseSchema>[];
