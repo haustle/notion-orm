@@ -3,7 +3,7 @@
  * Maps Notion property types to AST generators that create TypeScript types and Zod schemas.
  */
 
-import type * as ts from "typescript";
+import * as ts from "typescript";
 import type { SupportedNotionColumnType } from "../../client/queryTypes";
 import {
 	createCheckboxProperty,
@@ -187,6 +187,82 @@ export const propertyASTGenerators = {
 		};
 	},
 
+	formula: ({ camelizedName }) => ({
+		tsPropertySignature: createFormulaProperty(camelizedName),
+		zodMeta: {
+			isRequired: false,
+		},
+		enumConstStatement: undefined,
+	}),
+
+	files: ({ camelizedName }) => ({
+		tsPropertySignature: createFilesProperty(camelizedName),
+		zodMeta: {
+			isRequired: false,
+		},
+		enumConstStatement: undefined,
+	}),
+
+	people: ({ camelizedName }) => ({
+		tsPropertySignature: createStringArrayProperty(camelizedName),
+		zodMeta: {
+			isRequired: false,
+		},
+		enumConstStatement: undefined,
+	}),
+
+	relation: ({ camelizedName }) => ({
+		tsPropertySignature: createStringArrayProperty(camelizedName),
+		zodMeta: {
+			isRequired: false,
+		},
+		enumConstStatement: undefined,
+	}),
+
+	created_by: ({ camelizedName }) => ({
+		tsPropertySignature: createTextProperty({
+			name: camelizedName,
+			isTitle: false,
+		}),
+		zodMeta: {
+			isRequired: false,
+		},
+		enumConstStatement: undefined,
+	}),
+
+	last_edited_by: ({ camelizedName }) => ({
+		tsPropertySignature: createTextProperty({
+			name: camelizedName,
+			isTitle: false,
+		}),
+		zodMeta: {
+			isRequired: false,
+		},
+		enumConstStatement: undefined,
+	}),
+
+	created_time: ({ camelizedName }) => ({
+		tsPropertySignature: createTextProperty({
+			name: camelizedName,
+			isTitle: false,
+		}),
+		zodMeta: {
+			isRequired: false,
+		},
+		enumConstStatement: undefined,
+	}),
+
+	last_edited_time: ({ camelizedName }) => ({
+		tsPropertySignature: createTextProperty({
+			name: camelizedName,
+			isTitle: false,
+		}),
+		zodMeta: {
+			isRequired: false,
+		},
+		enumConstStatement: undefined,
+	}),
+
 	unique_id: ({ camelizedName }) => ({
 		tsPropertySignature: createTextProperty({
 			name: camelizedName,
@@ -198,3 +274,68 @@ export const propertyASTGenerators = {
 		enumConstStatement: undefined,
 	}),
 } as const satisfies Record<SupportedNotionColumnType, PropertyASTGenerator>;
+
+function createStringArrayProperty(name: string): ts.TypeElement {
+	return ts.factory.createPropertySignature(
+		undefined,
+		ts.factory.createIdentifier(name),
+		ts.factory.createToken(ts.SyntaxKind.QuestionToken),
+		ts.factory.createArrayTypeNode(
+			ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
+		),
+	);
+}
+
+function createFilesProperty(name: string): ts.TypeElement {
+	const fileObjectType = ts.factory.createTypeLiteralNode([
+		ts.factory.createPropertySignature(
+			undefined,
+			ts.factory.createIdentifier("name"),
+			undefined,
+			ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
+		),
+		ts.factory.createPropertySignature(
+			undefined,
+			ts.factory.createIdentifier("url"),
+			undefined,
+			ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
+		),
+	]);
+
+	return ts.factory.createPropertySignature(
+		undefined,
+		ts.factory.createIdentifier(name),
+		ts.factory.createToken(ts.SyntaxKind.QuestionToken),
+		ts.factory.createArrayTypeNode(fileObjectType),
+	);
+}
+
+function createFormulaProperty(name: string): ts.TypeElement {
+	const dateType = ts.factory.createTypeLiteralNode([
+		ts.factory.createPropertySignature(
+			undefined,
+			ts.factory.createIdentifier("start"),
+			undefined,
+			ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
+		),
+		ts.factory.createPropertySignature(
+			undefined,
+			ts.factory.createIdentifier("end"),
+			ts.factory.createToken(ts.SyntaxKind.QuestionToken),
+			ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
+		),
+	]);
+
+	return ts.factory.createPropertySignature(
+		undefined,
+		ts.factory.createIdentifier(name),
+		ts.factory.createToken(ts.SyntaxKind.QuestionToken),
+		ts.factory.createUnionTypeNode([
+			ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
+			ts.factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword),
+			ts.factory.createKeywordTypeNode(ts.SyntaxKind.BooleanKeyword),
+			dateType,
+			ts.factory.createLiteralTypeNode(ts.factory.createNull()),
+		]),
+	);
+}
