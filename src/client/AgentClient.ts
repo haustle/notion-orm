@@ -2,10 +2,10 @@ import {
 	type Agent,
 	collectMessages,
 	NotionAgentsClient,
+	type ThreadInfo as NotionThreadInfo,
 	type PollThreadOptions,
 	StreamError,
 	stripLangTags,
-	type ThreadInfo,
 	type ThreadListItem,
 	type ThreadStatus,
 } from "@notionhq/agents-client";
@@ -14,12 +14,21 @@ export type AgentIcon =
 	| { type: "emoji"; emoji: string }
 	| { type: "file"; file: { url: string; expiry_time: string } }
 	| { type: "external"; external: { url: string } }
-	| { type: "custom_emoji"; custom_emoji: { id: string; name: string; url: string } }
 	| {
-			type: "custom_agent_avatar"
-			custom_agent_avatar: { static_url: string; animated_url: string }
+			type: "custom_emoji";
+			custom_emoji: { id: string; name: string; url: string };
+	  }
+	| {
+			type: "custom_agent_avatar";
+			custom_agent_avatar: { static_url: string; animated_url: string };
 	  }
 	| null;
+
+export type ThreadInfo = {
+	threadId: NotionThreadInfo["thread_id"];
+	agentId: NotionThreadInfo["agent_id"];
+	messages: NotionThreadInfo["messages"];
+};
 
 export class AgentClient {
 	public readonly id: string;
@@ -28,7 +37,12 @@ export class AgentClient {
 	private readonly client: NotionAgentsClient;
 	private readonly agent: Agent;
 
-	constructor(props: { auth: string; id: string; name: string; icon?: AgentIcon }) {
+	constructor(props: {
+		auth: string;
+		id: string;
+		name: string;
+		icon?: AgentIcon;
+	}) {
 		this.id = props.id;
 		this.name = props.name;
 		this.icon = props.icon ?? null;
@@ -99,7 +113,7 @@ export class AgentClient {
 	 * @param props.message - The message to send to the agent
 	 * @param props.threadId - The thread ID to resume (optional)
 	 * @param props.onMessage - Optional callback for each message received
-	 * @returns ThreadInfo containing thread_id, agent_id, and all messages
+	 * @returns ThreadInfo containing threadId, agentId, and all messages
 	 */
 	async chatStream(props: {
 		message: string;
@@ -123,7 +137,7 @@ export class AgentClient {
 			});
 
 			// Iterate through all chunks to completion
-			// The generator's return value (ThreadInfo) is available when done is true
+			// The generator's return value (NotionThreadInfo) is available when done is true
 			let result = await generator.next();
 			while (!result.done) {
 				result = await generator.next();
@@ -133,7 +147,11 @@ export class AgentClient {
 				throw new Error("Failed to get thread info from stream");
 			}
 
-			return result.value;
+			return {
+				threadId: result.value.thread_id,
+				agentId: result.value.agent_id,
+				messages: result.value.messages,
+			};
 		} catch (error) {
 			if (error instanceof StreamError) {
 				throw new Error(`Stream error [${error.code}]: ${error.message}`);
