@@ -14,11 +14,11 @@ Ensure changes made in the ORM repo are correctly consumed and validated in exte
 Use this skill when:
 - The user changed code in the ORM package.
 - The user asks to test package changes in a separate consuming app.
-- The user mentions `bun link`, local package linking, or regeneration via `bun notion generate`.
+- The user mentions `bun link`, local package linking, or regeneration via `bun notion sync`.
 
 ## Required Inputs
 
-- `orm_repo_path` (default: `/Users/tyrus/repos/orm`)
+- `orm_repo_path` (default: `/Users/haustle/repos/orm`)
 - `consumer_app_paths` (one or more absolute paths)
 
 If `consumer_app_paths` are missing, ask for them before running commands.
@@ -59,7 +59,7 @@ bun link @haustle/notion-orm
 Still inside each consuming app, run:
 
 ```bash
-bun notion generate
+bun notion sync
 ```
 
 ### 4) Validate behavior in each consuming app
@@ -87,4 +87,4 @@ Return results as:
 
 - If ORM build fails, stop and report errors before attempting consumer validation.
 - If any consumer step fails, continue with remaining consumer apps when possible, then provide a combined failure summary.
-- Include exact failing command and concise error details for each failure.
+- Include exact failing command and concid error details for each failure.
