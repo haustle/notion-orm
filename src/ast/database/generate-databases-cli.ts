@@ -73,11 +73,6 @@ export const createDatabaseTypes = async (
 	const isFullGenerate = options.type === "all";
 	const targetIds = isFullGenerate ? config.databases : [options.id];
 
-	if (targetIds.length === 0) {
-		console.error("Please pass some database Ids");
-		process.exit(1);
-	}
-
 	// Prepare for full or incremental generation
 	let metadataMap: Map<string, CachedDatabaseMetadata>;
 
@@ -98,7 +93,20 @@ export const createDatabaseTypes = async (
 		console.log("🔄 Updating all database schemas...");
 		metadataMap = new Map();
 	} else {
+		if (targetIds.length === 0) {
+			console.error("Please pass some database Ids");
+			process.exit(1);
+		}
 		metadataMap = prepareIncrementalMetadata(config.databases);
+	}
+
+	if (targetIds.length === 0) {
+		console.log("⚠️  No database IDs found in config. Skipping database generation.");
+		writeDatabaseMetadata([]);
+		createDatabaseBarrelFile({ databaseInfo: [] });
+		const agentsMetadata = readAgentMetadataFromDisk();
+		updateSourceIndexFile([], agentsMetadata);
+		return { databaseNames: [] };
 	}
 
 	const databaseNames: string[] = [];
