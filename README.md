@@ -3,10 +3,16 @@
 A lightweight TypeScript [Notion API](https://developers.notion.com/) wrapper that aims to improve interactions with databases and custom agents, by leveraging static schema types
 
 ## Key Features
+- Type inference when interacting with databases (e.g, `add` and `query`)
 - Sync remote schema changes in single command
-- Easily interact with your custom agents (ex. chat, streaming)
-- Intellisense when adding and querying
-- Exposed database metadata (ex. types, zod validators)
+- Quickly start/resume chat streams with your agents
+- Exposed types for consumption (ex. values, and zod validators)
+
+
+## Installation
+```bash
+bun add @haustle/notion-orm
+```
 
 ## Basic examples
 ### Add page to database
@@ -17,7 +23,7 @@ await notion.databases.books.add({
     type: "emoji",
     emoji: "📕",
   },
-  // Expected `properties` object's keys and values are typed to `book` database schema
+  // Expected <key,value> is constrained to `books` database schema
   properties: {
     bookName: "Creativity, Inc.",
     genre: ["Non-fiction"],
@@ -33,7 +39,7 @@ await notion.databases.books.add({
 
 ```ts
 const response = await notion.databases.books.query({
-  // Expected `filter` object is typed to the `book` database schema
+  // Expected `properties` object is constrained to `books` database schema
   filter: {
     and: [
       { genre: { contains: "Non-fiction" } },
@@ -71,15 +77,7 @@ const thread = await notion.agents.helpBot.chatStream({
 ```
 
 
-# Installation
-
-You need a Notion integration key. Add shared data source IDs only if you want generated database clients.
-
-```bash
-bun add @haustle/notion-orm
-```
-
-## Quickstart
+# Quick start
 
 Initialize config from your project root (recommended):
 
@@ -99,7 +97,6 @@ Generated config shape:
 
 ```ts
 // notion.config.ts
-// Be sure to create a .env.local file and add your NOTION_KEY
 
 // If you don't have an API key, sign up for free
 // [here](https://developers.notion.com)
@@ -120,35 +117,31 @@ export default NotionConfig;
 
 ### Adding databases
 
-To add a new database fetch the datasource ID and run the following
+Add new database to track and generate static types (ex. how to find ID [here](https://developers.notion.com/guides/data-apis/working-with-databases#adding-pages-to-a-database) )
 
 ```bash
 bun notion add <database-id>
 ```
 
-Automatically builds related types and updates config (a following `sync` is not required).
 
 ### Adding agents
-`agents` linked to the integration are automatically populated when running `bun notion sync` (no manual edits needed). If you only care about agents, you're done setting up!
 
+Agents linked to the integration are automatically populated during `notion sync` (No manual edits required)
 
 ### Full sync command (`notion sync`)
 
-Use `bun notion sync` as the full sync command when you want to refresh everything from your integration in one run (database schemas + custom agents).
+Fetch/refresh database schemas + custom agents.
 
 ```bash
 bun notion sync
 ```
 
-`notion sync` creates and refreshes:
-
-- `build/db/*` generated database clients/types
-- `build/agents/*` generated agent clients/types
-- `build/src/index.*` generated package entry that wires both groups into `NotionORM`
-
 # Implementation
 
-Generated database and agent names are camelCased and exposed on an instance of `NotionORM`.
+
+### Client setup
+
+Create a single ORM instance with your Notion integration key:
 
 ```ts
 import NotionORM from "@haustle/notion-orm";
@@ -157,68 +150,15 @@ const notion = new NotionORM({
   auth: process.env.NOTION_KEY!,
 });
 
-await notion.databases.menuRecipes.query({});
-await notion.agents.yourAgentName.listThreads();
-```
-
-## Public client
-
-### Runtime shape
-
-```ts
-const db = notion.databases.books; // DatabaseClient
+const db = notion.databases.yourDatabaseName; // DatabaseClient
 const agent = notion.agents.yourAgentName; // AgentClient
 ```
 
-### Runtime access
+Generated database and agent names are camelCased and exposed on an instance of `NotionORM`.
 
-
-| runtime property   | type                             | description                                                    | go deeper                                                            |
-| ------------------ | -------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `notion.databases` | `Record<string, DatabaseClient>` | Generated database client map keyed by camelCase database name | [Adding](#adding), [Querying](#querying)                             |
-| `notion.agents`    | `Record<string, AgentClient>`    | Generated agent client map keyed by camelCase agent name       | [Agents](#agents), [Agent method reference](#agent-method-reference) |
-
-
-### Database client (public methods)
-
-
-| member                       | kind     | description                                                   | go deeper                                                                              |
-| ---------------------------- | -------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `id`                         | property | Notion data source ID used by this client instance            | -                                                                                      |
-| `name`                       | property | Human-readable database name captured during generation       | -                                                                                      |
-| `add({ properties, icon? })` | method   | Creates a page in the database using typed `properties`       | [Adding](#adding)                                                                      |
-| `query({ filter?, sort? })`  | method   | Queries database pages and returns `{ results, rawResponse }` | [Querying](#querying), [Supported database properties](#supported-database-properties) |
-
-
-### Agent client (public methods)
-
-
-| member                                           | kind     | description                                           | go deeper                                                            |
-| ------------------------------------------------ | -------- | ----------------------------------------------------- | -------------------------------------------------------------------- |
-| `id`                                             | property | Notion agent ID used by this client instance          | -                                                                    |
-| `name`                                           | property | Human-readable agent name                             | -                                                                    |
-| `icon`                                           | property | Normalized agent icon metadata (or `null`)            | -                                                                    |
-| `listThreads()`                                  | method   | Lists recent threads with `id`, `title`, and `status` | [Agent method reference](#agent-method-reference)                    |
-| `getThreadInfo(threadId)`                        | method   | Fetches a single thread record                        | [Agent method reference](#agent-method-reference)                    |
-| `getThreadTitle(threadId)`                       | method   | Convenience helper to fetch just the thread title     | [Agent method reference](#agent-method-reference)                    |
-| `chat({ message, threadId? })`                   | method   | Sends a message and creates/resumes a thread          | [Agents](#agents), [Agent method reference](#agent-method-reference) |
-| `chatStream({ message, threadId?, onMessage? })` | method   | Streams messages and returns final `ThreadInfo`       | [Agents](#agents), [Agent method reference](#agent-method-reference) |
-| `getMessages(threadId, { role? })`               | method   | Gets full (or role-filtered) message history          | [Agent method reference](#agent-method-reference)                    |
-| `pollThread(threadId, options?)`                 | method   | Polls until thread processing completes               | [Agent method reference](#agent-method-reference)                    |
-
-
-### Generated exports
-
-
-| import path                                    | what you get                                                                                                                                                                 | when to use                                                  |
-| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `@haustle/notion-orm/build/db/<databaseName>`  | `<databaseName>(auth)` factory, `DatabaseSchemaType`, `QuerySchemaType`, generated Zod schema, generated option tuples (for select/status/multi-select), schema/type aliases | Script-level direct DB usage without the `NotionORM` wrapper |
-| `@haustle/notion-orm/build/agents/<agentName>` | `<agentName>(auth)` factory that returns an `AgentClient`                                                                                                                    | Script-level direct agent usage                              |
-| `@haustle/notion-orm/build/db`                 | `databases` barrel object (all database factories)                                                                                                                           | Dynamic database selection or custom registry wiring         |
-| `@haustle/notion-orm/build/agents`             | `agents` barrel object (all agent factories)                                                                                                                                 | Dynamic agent selection or custom registry wiring            |
-
-
-If you need the final plain-text agent response from stream output, import `AgentClient` from `@haustle/notion-orm` and use `AgentClient.getAgentResponse(threadInfo)`.
+- Use `notion.databases.<camelCaseDatabaseName>` for `add()` and `query()`.
+- Use `notion.agents.<camelCaseAgentName>` for `chat()`, `chatStream()`, thread helpers, and history APIs.
+- For full method signatures and response shapes, see [API Reference](#api-reference).
 
 # Available database operations
 
@@ -290,7 +230,7 @@ Successful query shape:
   rawResponse: { /* full Notion API response */ },
   results: [
     {
-      bookName: "How to Change Your Mind",
+      bookName: "The Dream Machine",
       genre: ["Non-fiction"],
       numberOfPages: 460,
     },
@@ -309,7 +249,7 @@ Agents are generated from those shared with your integration and exposed at `not
 
 ```ts
 const chat = await notion.agents.yourAgentName.chat({
-  message: "Create a 5-day high-protein meal plan.",
+  message: "Give me a summary of this month",
 });
 
 await notion.agents.yourAgentName.pollThread(chat.threadId);
@@ -333,144 +273,98 @@ const nextTurn = await notion.agents.yourAgentName.chat({
 
 #### Streaming patterns
 
-##### Resume old chat stream
 
-- Useful when you want to continue a streamed conversation with additional context.
-- Helpful for resuming after a page refresh or when the user returns to an existing thread.
 
-```ts
-const previousThreadId = "1f4e6f4a-5b58-4d91-a7fc-2f5f2a0f6bb1"; // from listThreads() or prior chatStream
-
-const thread = await notion.agents.yourAgentName.chatStream({
-  threadId: previousThreadId,
-  message: "Add a 6th day to that meal plan.",
-  onMessage: (msg) => {
-    if (msg.role === "agent") process.stdout.write(msg.content);
-  },
-});
-```
-
-##### Stream to stdout
-
-- Useful for CLI tools and quick terminal feedback.
-- Helpful when you only need incremental text output from the agent.
-
+How to start a new chat stream (pass `threadId` to resume):
 ```ts
 import { AgentClient } from "@haustle/notion-orm";
 
 const thread = await notion.agents.yourAgentName.chatStream({
   message: "Generate a prep list for that plan.",
+
   onMessage: (msg) => {
     if (msg.role === "agent") process.stdout.write(msg.content);
   },
 });
 
+
 const finalResponse = AgentClient.getAgentResponse(thread);
-console.log("\nFinal:", finalResponse);
+console.log("Thread ID:", thread.threadId);
+console.log("Final:", finalResponse);
 ```
 
-##### Terminal chat app (`while` loop + thread continuation)
-
-- Useful for local testing and prompt iteration during development.
-- Helpful as a minimal chat REPL before building a UI.
-
-```ts
-import { createInterface } from "node:readline/promises";
-
-const rl = createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
-
-let threadId: string | undefined;
-
-while (true) {
-  const input = (await rl.question("You: ")).trim();
-  if (!input || input === "/exit") break;
-
-  process.stdout.write("Agent: ");
-  const thread = await notion.agents.yourAgentName.chatStream({
-    message: input,
-    threadId,
-    onMessage: (msg) => {
-      if (msg.role === "agent") process.stdout.write(msg.content);
-    },
-  });
-  process.stdout.write("\n");
-
-  threadId = thread.thread_id;
-}
-
-rl.close();
-```
-
-##### SSE endpoint (stream to browser/client)
-
-- Useful when streaming agent responses into a web app in real time.
-- Helpful for server-to-client incremental updates without WebSockets.
-
-```ts
-app.post("/api/agent/stream", async (req, res) => {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-
-  const { message, threadId } = req.body;
-
-  const thread = await notion.agents.yourAgentName.chatStream({
-    message,
-    threadId,
-    onMessage: (msg) => {
-      if (msg.role !== "agent") return;
-      res.write(`data: ${JSON.stringify({ event: "delta", text: msg.content })}\n\n`);
-    },
-  });
-
-  res.write(`data: ${JSON.stringify({ event: "done", threadId: thread.thread_id })}\n\n`);
-  res.end();
-});
-```
-
-#### Agent method reference
 
 
-| method                                           | returns                                                | what it is for                                                  |
-| ------------------------------------------------ | ------------------------------------------------------ | --------------------------------------------------------------- |
-| `listThreads()`                                  | `Array<{ id: string; title: string; status: string }>` | Show recent conversations to users before they select one       |
-| `getThreadInfo(threadId)`                        | `ThreadListItem`                                       | Fetch full metadata for one thread                              |
-| `getThreadTitle(threadId)`                       | `string`                                               | Resolve a thread name for UI labels                             |
-| `chat({ message, threadId? })`                   | `{ status, threadId, isNewChat }`                      | Non-streaming send/continue call, then poll or fetch messages   |
-| `chatStream({ message, threadId?, onMessage? })` | `ThreadInfo`                                           | Streaming UX path with optional callback for each message chunk |
-| `getMessages(threadId, { role? })`               | `Array<{ role: "user" | "agent"; content: string }>`   | Read thread history, optionally filtered to one role            |
-| `pollThread(threadId, options?)`                 | `{ status, threadId, title? }`                         | Wait until Notion finishes processing a thread                  |
-| `AgentClient.getAgentResponse(threadInfo)`       | `string`                                               | Extract combined plain-text agent output from a streamed thread |
 
+
+See [API Reference](#api-reference) for full method signatures, `ThreadInfo` shape, and message schemas.
+
+# API Reference
+
+## Runtime access (detailed)
+
+| runtime property   | type                             | description                                                    | go deeper                                                            |
+| ------------------ | -------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `notion.databases` | `Record<string, DatabaseClient>` | Generated database client map keyed by camelCase database name | [Adding](#adding), [Querying](#querying)                             |
+| `notion.agents`    | `Record<string, AgentClient>`    | Generated agent client map keyed by camelCase agent name       | [Agents](#agents), [Agent methods](#agent-methods) |
+
+## Database client methods
+
+| member                       | kind     | description                                                   | go deeper                                                                              |
+| ---------------------------- | -------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `id`                         | property | Notion data source ID used by this client instance            | -                                                                                      |
+| `name`                       | property | Human-readable database name captured during generation       | -                                                                                      |
+| `add({ properties, icon? })` | method   | Creates a page in the database using typed `properties`       | [Adding](#adding)                                                                      |
+| `query({ filter?, sort? })`  | method   | Queries database pages and returns `{ results, rawResponse }` | [Querying](#querying), [Supported database properties](#supported-database-properties) |
+
+## Agent methods
+
+| member                                           | kind     | description                                           | go deeper                                                            |
+| ------------------------------------------------ | -------- | ----------------------------------------------------- | -------------------------------------------------------------------- |
+| `id`                                             | property | Notion agent ID used by this client instance          | -                                                                    |
+| `name`                                           | property | Human-readable agent name                             | -                                                                    |
+| `icon`                                           | property | Normalized agent icon metadata (or `null`)            | -                                                                    |
+| `listThreads()`                                  | method   | Lists recent threads with `id`, `title`, and `status` | [Thread response shapes](#thread-response-shapes)                    |
+| `getThreadInfo(threadId)`                        | method   | Fetches a single thread record                        | [Thread response shapes](#thread-response-shapes)                    |
+| `getThreadTitle(threadId)`                       | method   | Convenience helper to fetch just the thread title     | [Thread response shapes](#thread-response-shapes)                    |
+| `chat({ message, threadId? })`                   | method   | Sends a message and creates/resumes a thread          | [Agents](#agents), [Thread response shapes](#thread-response-shapes) |
+| `chatStream({ message, threadId?, onMessage? })` | method   | Streams messages and returns final `ThreadInfo`       | [Agents](#agents), [Thread response shapes](#thread-response-shapes) |
+| `getMessages(threadId, { role? })`               | method   | Gets full (or role-filtered) message history          | [Thread response shapes](#thread-response-shapes)                    |
+| `pollThread(threadId, options?)`                 | method   | Polls until thread processing completes               | [Thread response shapes](#thread-response-shapes)                    |
+| `AgentClient.getAgentResponse(threadInfo)`       | method   | Extract combined plain-text agent output from a streamed thread | [Thread response shapes](#thread-response-shapes)             |
+
+## Generated exports
+
+| import path                                    | what you get                                                                                                                                                                 | when to use                                                  |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `@haustle/notion-orm/build/db/<databaseName>`  | `<databaseName>(auth)` factory, `DatabaseSchemaType`, `QuerySchemaType`, generated Zod schema, generated option tuples (for select/status/multi-select), schema/type aliases | Script-level direct DB usage without the `NotionORM` wrapper |
+| `@haustle/notion-orm/build/agents/<agentName>` | `<agentName>(auth)` factory that returns an `AgentClient`                                                                                                                    | Script-level direct agent usage                              |
+| `@haustle/notion-orm/build/db`                 | `databases` barrel object (all database factories)                                                                                                                           | Dynamic database selection or custom registry wiring         |
+| `@haustle/notion-orm/build/agents`             | `agents` barrel object (all agent factories)                                                                                                                                 | Dynamic agent selection or custom registry wiring            |
+
+## Thread response shapes
 
 `chatStream(...)` returns `ThreadInfo` with the following properties:
 
-
 | ThreadInfo property | type                                                 | description                                              | example                                                                                            |
 | ------------------- | ---------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `thread_id`         | `string`                                             | Stable thread identifier used to continue a conversation | `"1f4e6f4a-5b58-4d91-a7fc-2f5f2a0f6bb1"`                                                           |
-| `agent_id`          | `string`                                             | Agent identifier that produced the response              | `"2c3c495da03c8078b95500927f02d213"`                                                               |
+| `threadId`          | `string`                                             | Stable thread identifier used to continue a conversation | `"1f4e6f4a-5b58-4d91-a7fc-2f5f2a0f6bb1"`                                                           |
+| `agentId`           | `string`                                             | Agent identifier that produced the response              | `"2c3c495da03c8078b95500927f02d213"`                                                               |
 | `messages`          | `Array<{ role: "user" | "agent"; content: string }>` | Full message history currently available in the thread   | `[{ role: "user", content: "Plan meals" }, { role: "agent", content: "Here is a 3-day plan..." }]` |
 
-
 `messages` item shape:
-
 
 | message property | type               | description                |
 | ---------------- | ------------------ | -------------------------- |
 | `role`           | `user` | `agent` (`string`) | Message author             |
 | `content`        | `string`           | Plain text message content |
 
-
 ## Supported database properties
 
 
 | property_type      | expected returned shape                                              | example value                                 |
 | ------------------ | -------------------------------------------------------------------- | --------------------------------------------- |
-| `title`            | `string`                                                             | `"How to Change Your Mind"`                   |
+| `title`            | `string`                                                             | `"The Dream Machine"`                         |
 | `rich_text`        | `string`                                                      | `"Long-form notes from the page"`             |
 | `number`           | `number`                                                      | `460`                                         |
 | `date`             | `{ start: string; end: string }`                             | `{ start: "2026-03-01", end: "2026-03-02" }`  |
@@ -483,8 +377,8 @@ app.post("/api/agent/stream", async (req, res) => {
 | `url`              | `string`                                                      | `"https://developers.notion.com/"`            |
 | `formula`          | `string | number | boolean | { start: string; end?: string }` | `42`                                          |
 | `files`            | `Array<{ name: string; url: string }>`                               | `[{ name: "brief.pdf", url: "https://..." }]` |
-| `people`           | `string[]`                                                           | `["Ada Lovelace", "user_123"]`                |
-| `relation`         | `string[]`                                                           | `["6f7f9cbf8d4548f8a194661e73f7f5d9"]`        |
+| `people`           | `string[]`                                                           | `["1f4e6f4a-5b58-4d91-a7fc-2f5f2a0f6bb1"]`    |
+| `relation`         | `string[]`                                                           | `["6f7f9cbf-8d45-48f8-a194-661e73f7f5d9"]`    |
 | `created_by`       | `string`                                                      | `"Ada Lovelace"`                              |
 | `last_edited_by`   | `string`                                                      | `"user_123"`                                  |
 | `created_time`     | `string`                                                      | `"2026-03-01T10:30:00.000Z"`                  |
