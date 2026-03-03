@@ -223,11 +223,23 @@ await notion.databases.books.query({
 });
 ```
 
+You can request the full Notion payload by setting `includeRawResponse: true`:
+
+```ts
+const response = await notion.databases.books.query({
+  filter: {
+    genre: { contains: "Sci-Fi" },
+  },
+  includeRawResponse: true,
+});
+
+response.rawResponse; // strongly typed full Notion query response
+```
+
 Successful query shape:
 
 ```ts
 {
-  rawResponse: { /* full Notion API response */ },
   results: [
     {
       bookName: "The Dream Machine",
@@ -235,6 +247,14 @@ Successful query shape:
       numberOfPages: 460,
     },
   ],
+}
+```
+
+When `includeRawResponse: true` is provided, the response additionally includes:
+
+```ts
+{
+  rawResponse: { /* full Notion API response */ },
 }
 ```
 
@@ -315,7 +335,7 @@ See [API Reference](#api-reference) for full method signatures, `ThreadInfo` sha
 | `id`                         | property | Notion data source ID used by this client instance            | -                                                                                      |
 | `name`                       | property | Human-readable database name captured during generation       | -                                                                                      |
 | `add({ properties, icon? })` | method   | Creates a page in the database using typed `properties`       | [Adding](#adding)                                                                      |
-| `query({ filter?, sort? })`  | method   | Queries database pages and returns `{ results, rawResponse }` | [Querying](#querying), [Supported database properties](#supported-database-properties) |
+| `query({ filter?, sort?, includeRawResponse? })`  | method   | Queries database pages and returns `{ results }` by default (`rawResponse` is included when `includeRawResponse: true`) | [Querying](#querying), [Supported database properties](#supported-database-properties) |
 
 ## Agent methods
 

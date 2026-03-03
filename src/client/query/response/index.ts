@@ -44,9 +44,11 @@ export const simplifiedPropertyValueTransformers = {
 	unique_id: resolveUniqueId,
 } as const satisfies Record<SupportedNotionColumnType, ResponseResolver>;
 
-export function getSimplifiedResult(
-	columnType: SupportedNotionColumnType,
-	propertyValue: NotionPropertyValue,
-) {
-	return simplifiedPropertyValueTransformers[columnType](propertyValue);
+export function getSimplifiedResult(args: {
+	columnType: SupportedNotionColumnType;
+	propertyValue: NotionPropertyValue;
+}) {
+	return simplifiedPropertyValueTransformers[args.columnType](
+		args.propertyValue,
+	);
 }

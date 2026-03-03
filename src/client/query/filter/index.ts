@@ -108,7 +108,7 @@ function buildLeafFilterObject(
 	return undefined;
 }
 
-export function recursivelyBuildFilter<
+export function transformQueryFilterToApiFilter<
 	DatabaseSchemaType extends Record<string, unknown>,
 	ColumnNameToColumnType extends Record<
 		keyof DatabaseSchemaType,
@@ -120,7 +120,10 @@ export function recursivelyBuildFilter<
 ): apiFilterType {
 	if ("and" in queryFilter && Array.isArray(queryFilter.and)) {
 		const andFilter = buildCompoundFilter("and", queryFilter.and, (filter) =>
-			recursivelyBuildFilter(filter, camelPropertyNameToNameAndTypeMap),
+			transformQueryFilterToApiFilter(
+				filter,
+				camelPropertyNameToNameAndTypeMap,
+			),
 		);
 		if (isApiFilter(andFilter)) {
 			return andFilter;
@@ -130,7 +133,10 @@ export function recursivelyBuildFilter<
 
 	if ("or" in queryFilter && Array.isArray(queryFilter.or)) {
 		const orFilter = buildCompoundFilter("or", queryFilter.or, (filter) =>
-			recursivelyBuildFilter(filter, camelPropertyNameToNameAndTypeMap),
+			transformQueryFilterToApiFilter(
+				filter,
+				camelPropertyNameToNameAndTypeMap,
+			),
 		);
 		if (isApiFilter(orFilter)) {
 			return orFilter;
@@ -140,3 +146,8 @@ export function recursivelyBuildFilter<
 
 	return buildLeafFilterObject(queryFilter, camelPropertyNameToNameAndTypeMap);
 }
+
+/**
+ * @deprecated Use `transformQueryFilterToApiFilter` instead.
+ */
+export const recursivelyBuildFilter = transformQueryFilterToApiFilter;

@@ -1,8 +1,10 @@
 import type { QueryDataSourceResponse } from "@notionhq/client/build/src/api-endpoints";
 import { camelize } from "../../helpers";
 import type { camelPropertyNameToNameAndTypeMapType } from "../DatabaseClient";
-import type { SimpleQueryResponse } from "../queryTypes";
-import { recursivelyBuildFilter } from "./filter";
+import type {
+	QueryResponseWithoutRawResponse,
+	QueryResponseWithRawResponse,
+} from "../queryTypes";
 import { getSimplifiedResult } from "./response";
 import type { QueryDataSourcePageResultWithProperties } from "./types";
 
@@ -28,7 +30,7 @@ function normalizePageResult<
 		}
 
 		Object.defineProperty(normalizedResult, camelizedColumnName, {
-			value: getSimplifiedResult(columnType, propertyValue),
+			value: getSimplifiedResult({ columnType, propertyValue }),
 			enumerable: true,
 			configurable: true,
 			writable: true,
@@ -73,15 +75,45 @@ export function buildQueryResponse<
 	res: QueryDataSourceResponse,
 	camelPropertyNameToNameAndTypeMap: camelPropertyNameToNameAndTypeMapType,
 	validateSchema: (result: Partial<DatabaseSchemaType>) => void,
-): SimpleQueryResponse<DatabaseSchemaType> {
+	options: { includeRawResponse: true },
+): QueryResponseWithRawResponse<DatabaseSchemaType>;
+export function buildQueryResponse<
+	DatabaseSchemaType extends Record<string, unknown>,
+>(
+	res: QueryDataSourceResponse,
+	camelPropertyNameToNameAndTypeMap: camelPropertyNameToNameAndTypeMapType,
+	validateSchema: (result: Partial<DatabaseSchemaType>) => void,
+	options?: { includeRawResponse?: false | undefined },
+): QueryResponseWithoutRawResponse<DatabaseSchemaType>;
+export function buildQueryResponse<
+	DatabaseSchemaType extends Record<string, unknown>,
+>(
+	res: QueryDataSourceResponse,
+	camelPropertyNameToNameAndTypeMap: camelPropertyNameToNameAndTypeMapType,
+	validateSchema: (result: Partial<DatabaseSchemaType>) => void,
+	options?: { includeRawResponse?: boolean },
+):
+	| QueryResponseWithoutRawResponse<DatabaseSchemaType>
+	| QueryResponseWithRawResponse<DatabaseSchemaType> {
+	const results = mapQueryResults<DatabaseSchemaType>(
+		res.results,
+		camelPropertyNameToNameAndTypeMap,
+		validateSchema,
+	);
+
+	if (options?.includeRawResponse === true) {
+		return {
+			results,
+			rawResponse: res,
+		};
+	}
+
 	return {
-		results: mapQueryResults<DatabaseSchemaType>(
-			res.results,
-			camelPropertyNameToNameAndTypeMap,
-			validateSchema,
-		),
-		rawResponse: res,
+		results,
 	};
 }
 
-export { getSimplifiedResult as getResponseValue, recursivelyBuildFilter };
+export {
+	recursivelyBuildFilter,
+	transformQueryFilterToApiFilter,
+} from "./filter";
