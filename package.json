@@ -1,6 +1,6 @@
 {
   "name": "@elumixor/notion-orm",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Bring Notion database schemas/types to TypeScript",
   "main": "dist/index.js",
@@ -34,6 +34,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/elumixor/notion-orm"
+    "url": "git+https://github.com/elumixor/notion-orm.git"
   }
 }
