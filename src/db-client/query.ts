@@ -5,8 +5,8 @@ import type {
   QueryFilter,
   SingleFilter,
   SupportedNotionColumnType,
-} from "./queryTypes";
-import type { camelPropertyNameToNameAndTypeMapType } from "./DatabaseClient";
+} from "./types";
+import type { camelPropertyNameToNameAndTypeMapType } from "./client";
 import { camelize } from "../helpers";
 
 /**

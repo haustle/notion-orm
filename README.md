@@ -1,267 +1,164 @@
-# Notion ORM
+# notion-orm
 
-⚠️ This package is Still in development 🏗️
-
-A library to simplify adding and querying [Notion](https://notion.so/product) databases/tables. Giving typeahead/intellisense support on columns and expected column values on user specified databases. Built on top of [Notion API](https://developers.notion.com/)
-
-Databases with the following column types are supported:
-
-- Multi-select
-- Select
-- Status
-- Date
-- Text
-- Url
-- Checkbox
-- Email
-- Phone Number
+TypeScript ORM for Notion databases. Generates fully-typed clients from your Notion schemas.
 
 ## Installation
 
-The only requirement is a Notion Developer API key ([here](https://developers.notion.com/)) and database IDs you want. Be sure to connect your [integration](https://developers.notion.com/docs/working-with-databases#adding-pages-to-a-database) (🚧 *Permissions* section) with your tables
+```bash
+npm install @elumixor/notion-orm
+```
+
+## Setup
+
+**1. Initialize config**
 
 ```bash
-npm install @haustle/notion-orm --save-dev
+notion init
 ```
 
-At the root of your project run the CLI to scaffold a config file (defaults to JavaScript unless a `tsconfig.json` is present):
+Creates `notion.config.ts` in your project root:
 
-```bash
-npx notion init
-# or
-bun notion init
-```
+```ts
+import type { NotionConfigType } from "@elumixor/notion-orm";
 
-You can force a specific format with `--js` or `--ts`. You’ll need to pass your developer key and database IDs. How to get database IDs [here](https://developers.notion.com/docs/working-with-databases#adding-pages-to-a-database)
-
-```tsx
-// notion.config.ts (generated with `notion init --ts`)
-
-// Be sure to create a .env.local file and add your NOTION_KEY
-
-// If you don't have an API key, sign up for free
-// [here](https://developers.notion.com)
-
-const auth = process.env.NOTION_KEY || "your-notion-api-key-here";
-const NotionConfig = {
-  auth,
-  databaseIds: [
-    // Add undashed database source IDs here (ex. "2a3c495da03c80bc99fe000bbf2be4bb")
-    // or use the following command to automatically update
-    // `notion add <database-source-id or URL>`
-    // If you decide to manually add database IDs, be sure to run
-    // `notion generate` to properly update the local database types
-  ],
-};
-
-export default NotionConfig;
-```
-
-Execute the following command from the root project directory.
-
-```bash
-npx notion generate
-```
-
-**Package Size**
-Unpackaged size is 70.6KB and the installation size is 5.12MB (5.03MB from `@notionhq/client` dependency)
-
-## Implementation
-
-Databases can be imported via barrel file or from the individual database file. All database names will be camelCase 🐫.
-
-```tsx
-// Barrel Import (access to all databases)
-import * as notion from "@haustle/notion-orm";
-notion.databaseName.add();
-notion.databaseName2.query();
-```
-
-```jsx
-// Individual Database Import
-import {
-  databaseName,
-  DatabaseSchemaType,
-  QuerySchemaType,
-} from "@haustle/notion-orm/build/db/databaseName";
-
-databaseName.add();
-```
-
-- `DatabaseSchemaType`: Object type accepted in the database’s `add()` function
-- `QuerySchemaType`: Object type accepted in the database’s `query()` function
-
-The following examples for querying & adding are for server-side calls. If you’re looking to use this framework to execute client-side calls (ex. button click add/query X) visit the [Client (React)](https://www.notion.so/Notion-ORM-README-fdd30271bf944a3e85cb999ec8d5447d) section after reading
-
-**Adding**
-
-Only required column required is the title.
-
-```jsx
-notion.books.add({
-  bookName: "Raphael, Painter in Rome: a Novel", // title
-  author: "Stephanie Storey", // text
-  status: "In progress", // status
-  numberOfPages: 307, // number
-  genre: ["Historical Fiction"], // multi-select
-  rating: "⭐️⭐️⭐️⭐️", // select
-  startDate: {
-    // date
-    start: "2023-01-01",
+export default {
+  auth: process.env.NOTION_API_KEY ?? "",
+  databases: {
+    tasks: "2ec26381fbfd80f78a11ceed660e9a07",
+    people: "abcdef1234567890abcdef1234567890",
   },
-  phone: "0000000000", // phone
-  email: "tyrus@haustle.studio", // email
+} satisfies NotionConfigType;
+```
+
+**2. Generate types**
+
+```bash
+notion generate
+```
+
+Generates `generated/notion-orm/` with a typed client per database and an `index.ts` entry point.
+
+**3. Use in your project**
+
+```ts
+import { NotionORM } from "../generated/notion-orm";
+
+const notion = new NotionORM(process.env.NOTION_API_KEY);
+
+// or with a config object
+const notion = new NotionORM({ auth: process.env.NOTION_API_KEY });
+```
+
+## API
+
+All methods are fully typed based on your Notion schema.
+
+### Reading
+
+```ts
+// All records
+const tasks = await notion.tasks.findMany();
+
+// With filter, sort, and limit
+const tasks = await notion.tasks.findMany({
+  where: { status: { equals: "In Progress" } },
+  orderBy: { name: "asc" },
+  take: 10,
+});
+
+// First match or null
+const task = await notion.tasks.findFirst({
+  where: { name: { contains: "bug" } },
+});
+
+// By page ID
+const task = await notion.tasks.findUnique({ where: { id: "page-id" } });
+
+// Page-by-page (UI pagination)
+const page1 = await notion.tasks.paginate({ take: 20 });
+const page2 = await notion.tasks.paginate({ take: 20, after: page1.nextCursor });
+// => { data, nextCursor, hasMore }
+
+// Streaming all results in batches (AsyncIterable)
+for await (const task of notion.tasks.findMany({ stream: 50 })) {
+  console.log(task.name);
+}
+
+// Count
+const total = await notion.tasks.count({ where: { status: { equals: "Done" } } });
+```
+
+### Select / omit
+
+```ts
+// Return only specific fields
+const tasks = await notion.tasks.findMany({
+  select: { name: true, status: true },
+});
+
+// Exclude specific fields
+const tasks = await notion.tasks.findMany({
+  omit: { internalNotes: true },
 });
 ```
 
-All column types in Notion databases are mapped to a typescript type.
+### Writing
 
-| Column Type  | Object         |
-| ------------ | -------------- |
-| Title        | string         |
-| Text         | string         |
-| Select       | string         |
-| Multi-select | Array (string) |
-| Status       | string         |
-| Number       | number         |
-| Date         | Object         |
-| Phone number | string         |
-| Email        | string         |
+```ts
+// Create
+const task = await notion.tasks.create({
+  data: { name: "Fix bug", status: "Todo" },
+});
 
-**Querying**
+// Create many
+await notion.tasks.createMany({
+  data: [{ name: "Task A" }, { name: "Task B" }],
+});
 
-For each column type you’ll be presented with the available querying filter. Find all filter conditions [here](https://developers.notion.com/reference/post-database-query-filter)
+// Update by ID
+await notion.tasks.update({
+  where: { id: "page-id" },
+  data: { status: "Done" },
+});
 
-While the querying functionality works, it’s **not complete and there is room for user error**. For instance, the `filter` object should contain one child. Either the column name (signifies single filter), or `and` or `or` (signify compound filters). However there is no typecheck in place to stop adding multiple children
+// Update all matching
+await notion.tasks.updateMany({
+  where: { status: { equals: "Todo" } },
+  data: { status: "In Progress" },
+});
 
-Unlike `add()` , there is no transformation after the inputted object. So the querying object you’re creating is exactly what you’d normally use to query the Notion API. Learn more about them [here](https://developers.notion.com/reference/post-database-query-filter)
+// Upsert
+await notion.tasks.upsert({
+  where: { name: { equals: "Fix bug" } },
+  create: { name: "Fix bug", status: "Todo" },
+  update: { status: "In Progress" },
+});
 
-Example of a single filter
+// Delete by ID
+await notion.tasks.delete({ where: { id: "page-id" } });
 
-```tsx
-notion.books.query({
-  filter: {
-    genre: {
-      contains: "Sci-Fi",
-    },
-  },
-  sort: [
-    {
-      property: "name",
-      direction: "ascending",
-    },
-    {
-      property: "Author name",
-      direction: "ascending",
-    },
-  ],
+// Delete all matching
+await notion.tasks.deleteMany({
+  where: { status: { equals: "Done" } },
 });
 ```
 
-Example of compound filters, which is signified with `and` and `or`. You can nest these are far as you want (i.e `and` filters within `or` filter). Learn more [here](https://developers.notion.com/reference/post-database-query-filter#compound-filter-object)
+## CLI
 
-```tsx
-await notion.books.query({
-  filter: {
-    or: [
-      {
-        genre: {
-          contains: "Sci-Fi",
-        },
-      },
-      {
-        genre: {
-          contains: "Biography",
-        },
-      },
-    ],
-  },
-});
+```
+notion init                              Create notion.config.ts
+notion generate                          Generate types for all configured databases
+notion add <name> <database-id-or-url>   Add a database and generate its types
 ```
 
-Down below is what’s returned on a successful response. `results` being a simplified extracted version of the `rawResponse` (response from Notion API)
+## Config options
 
-```tsx
-{
-	rawResponse: { /* Whatever Notion API returns */},
-	results: [
-		{
-			bookName: "How to Change Your Mind",
-			genre: ["Non-fiction"],
-			numberPages: 460,
-			rating: "⭐️⭐️⭐️⭐️"
-		},
-	]
-}
-```
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `auth` | `string` | — | Notion integration token |
+| `databases` | `Record<string, string>` | — | Map of name → database ID |
+| `outputDir` | `string` | `"generated/notion-orm"` | Output directory (relative to project root) |
 
-## Client-side (React)
+## Environment
 
-Notion API currently blocks calls from browser (per CORS)
-
-You can get around this by creating API endpoints on stack of your choice. I’ve provided examples only for **Next.js**, but the high level implementation should work with any backend.
-
-If you’re planning to only make server-side calls to your Notion database (from `GetStaticProps` or `GetServerSideProps`). These calls work totally fine, as these functions are executed server-side before page load. So you can ignore the proceeding steps
-
-```tsx
-export const getStaticProps: GetStaticProps = async () => {
-	const response = await NotionClient.books.query({
-		filter: {
-			genre: {
-				is_not_empty: true,
-			},
-		},
-	});
-	return {
-		props: {
-			apiResponse: response
-		}
-	}
-```
-
-To execute calls client-side (ex. on button click) an API endpoint is needed to get around CORS. In this example we’re passing the databases `DatabaseSchemaType` as the body of the API call.
-
-```tsx
-import { DatabaseSchemaType } from "@haustle/notion-orm/build/db/books";
-
-async function addPageToNotionDatabase() {
-  const example: DatabaseSchemaType = {
-    bookName: "How to Change Your Mind",
-    genre: ["Non-fiction"],
-  };
-
-  // make sure this route reflects your API path
-  await fetch("/api/notion/books", {
-    method: "POST",
-    body: JSON.stringify(example),
-  });
-}
-```
-
-```jsx
-<button onClick={ async() => await addPageToNotionDatabase()}>
-```
-
-Example API endpoint below, where we’re taking the body of type `DatabaseSchemaType` and passing it into the respected databases `add()` function to add a new page to the database. Learn more about _Next.js_ API’s and routing [here](https://nextjs.org/docs/api-routes/introduction).
-
-```tsx
-// pages/api/notion/yourDatabaseName.ts
-
-import type { NextApiRequest, NextApiResponse } from "next";
-import {
-  DatabaseSchemaType,
-  yourDatabaseName,
-} from "@haustle/notion-orm/build/db/yourDatabaseName";
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  const { method, body } = req;
-
-  if (method === "POST") {
-    const bodyJSON = JSON.parse(body) as DatabaseSchemaType;
-    await yourDatabaseName.add(bodyJSON);
-  }
-}
-```
+Set `NOTION_API_KEY` in your environment or `.env` file, or pass it directly via the `auth` field in `notion.config.ts`.

@@ -15,42 +15,46 @@ const PACKAGE_ROOT = path.resolve(__dirname, "../../");
 // When installed externally, use the package name so generated files resolve correctly.
 const IS_DEV = process.cwd() === PACKAGE_ROOT;
 
-/** Generated DB files directory — always relative to the consuming project */
-export const DATABASES_DIR = path.join(process.cwd(), "generated");
+/** Default output directory for generated files, relative to consuming project root */
+export const DEFAULT_OUTPUT_DIR = "generated/notion-orm";
+
+/** Resolve the absolute path to the databases output directory */
+export function getDatabasesDir(outputDir?: string): string {
+  return path.join(process.cwd(), outputDir ?? DEFAULT_OUTPUT_DIR);
+}
 
 /** File system paths for CLI output */
-export const AST_FS_PATHS = {
-  /** metadata.json inside generated/ */
-  get metadataFile() {
-    return path.join(DATABASES_DIR, AST_FS_FILENAMES.METADATA);
-  },
-
-  /** src/index.ts — the dynamic barrel rewritten on every generate */
-  get sourceIndexTs() {
-    return path.join(process.cwd(), "src", "index.ts");
-  },
-
-  /** generated/index.ts — barrel exporting all DB clients */
-  get generatedBarrelTs() {
-    return path.join(DATABASES_DIR, AST_FS_FILENAMES.INDEX_TS);
-  },
-} as const;
+export function getFSPaths(databasesDirPath: string) {
+  return {
+    /** metadata.json inside the output directory */
+    metadataFile: path.join(databasesDirPath, AST_FS_FILENAMES.METADATA),
+    /** index.ts — the NotionORM class written to the output directory */
+    notionORMFile: path.join(databasesDirPath, AST_FS_FILENAMES.INDEX_TS),
+  } as const;
+}
 
 export const AST_FS_FILENAMES = {
   METADATA: "metadata.json",
   INDEX_TS: "index.ts",
 } as const;
 
-/** Import path strings used when generating TypeScript code */
-export const AST_IMPORT_PATHS = {
-  DATABASE_CLIENT: IS_DEV ? "../src/db-client/DatabaseClient" : "@elumixor/notion-orm",
-  QUERY_TYPES: IS_DEV ? "../src/db-client/queryTypes" : "@elumixor/notion-orm",
-  ZOD: "zod",
-
-  databaseClass(className: string): string {
-    return `../generated/${className}`;
-  },
-} as const;
+/** Import path strings used when generating TypeScript code inside a given output directory */
+export function getImportPaths(databasesDirPath: string) {
+  if (IS_DEV) {
+    const relTo = (target: string) =>
+      path.relative(databasesDirPath, path.join(PACKAGE_ROOT, target)).replace(/\\/g, "/");
+    return {
+      DATABASE_CLIENT: relTo("src/db-client/client"),
+      QUERY_TYPES: relTo("src/db-client/types"),
+      ZOD: "zod",
+    } as const;
+  }
+  return {
+    DATABASE_CLIENT: "@elumixor/notion-orm",
+    QUERY_TYPES: "@elumixor/notion-orm",
+    ZOD: "zod",
+  } as const;
+}
 
 export const AST_RUNTIME_CONSTANTS = {
   NOTION_API_VERSION: "2025-09-03",

@@ -5,19 +5,15 @@ import { getNotionConfig } from "./loadConfig";
 export type NotionConfigType = {
   auth: string;
   databases: Record<string, string>;
+  /** Output directory for generated files, relative to project root. Defaults to "generated/notion-orm" */
+  outputDir?: string;
 };
 
 export async function validateConfig(): Promise<void> {
   const config = await getNotionConfig();
-
-  if (!config.auth) {
-    console.error("❌ Missing 'auth' in config. Add your Notion integration token.");
-    process.exit(1);
-  }
-  if (!config.databases || Object.keys(config.databases).length === 0) {
-    console.error("❌ 'databases' must be a non-empty object in config.");
-    process.exit(1);
-  }
+  if (!config.auth) throw new Error("Integration key not found. Add NOTION_API_KEY to your env or notion.config.ts");
+  if (!config.databases || Object.keys(config.databases).length === 0)
+    throw new Error("'databases' must be a non-empty object in notion.config.ts");
 }
 
 export function findConfigFile(): { path: string; isTS: true } | undefined {
@@ -26,12 +22,8 @@ export function findConfigFile(): { path: string; isTS: true } | undefined {
   return undefined;
 }
 
-export async function initializeNotionConfigFile(): Promise<void> {
-  const existing = findConfigFile();
-  if (existing) {
-    console.log("⚠️  notion.config.ts already exists — skipping init.");
-    return;
-  }
+export async function initializeNotionConfigFile(): Promise<"created" | "exists"> {
+  if (findConfigFile()) return "exists";
 
   const configPath = path.join(process.cwd(), "notion.config.ts");
   const template = `import type { NotionConfigType } from "@elumixor/notion-orm";
@@ -45,5 +37,5 @@ export default {
 } satisfies NotionConfigType;
 `;
   fs.writeFileSync(configPath, template);
-  console.log("✅ Created notion.config.ts");
+  return "created";
 }

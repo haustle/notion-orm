@@ -5,7 +5,7 @@
 
 import * as ts from "typescript";
 
-import { type DatabasePropertyType } from "../db-client/queryTypes";
+import { type DatabasePropertyType } from "../db-client/types";
 
 export interface ZodMetadata {
   propName: string;

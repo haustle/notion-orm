@@ -6,8 +6,8 @@ import type { GetDataSourceResponse } from "@notionhq/client/build/src/api-endpo
 import fs from "fs";
 import path from "path";
 import * as ts from "typescript";
-import { DATABASES_DIR, AST_IMPORT_PATHS } from "./constants";
-import { type DatabasePropertyType, isSupportedPropertyType } from "../db-client/queryTypes";
+import { getImportPaths } from "./constants";
+import { type DatabasePropertyType, isSupportedPropertyType } from "../db-client/types";
 import { camelize } from "../helpers";
 import {
   createColumnNameToColumnProperties,
@@ -24,8 +24,13 @@ import { type ZodMetadata, createZodSchema } from "./zod-schema";
 
 type CamelPropertyNameToNameAndTypeMap = Record<string, { columnName: string; type: DatabasePropertyType }>;
 
-export async function createTypescriptFileForDatabase(dataSourceResponse: GetDataSourceResponse, name: string) {
+export async function createTypescriptFileForDatabase(
+  dataSourceResponse: GetDataSourceResponse,
+  name: string,
+  databasesDirPath: string,
+) {
   const { id: dataSourceId, properties } = dataSourceResponse;
+  const importPaths = getImportPaths(databasesDirPath);
 
   const camelPropertyNameToNameAndTypeMap: CamelPropertyNameToNameAndTypeMap = {};
   const enumConstStatements: ts.Statement[] = [];
@@ -34,14 +39,9 @@ export async function createTypescriptFileForDatabase(dataSourceResponse: GetDat
   const databaseClassName = name;
   const databaseColumnTypeProps: ts.TypeElement[] = [];
 
-  Object.entries(properties).forEach(([propertyName, value], index) => {
+  Object.entries(properties).forEach(([propertyName, value]) => {
     const { type: propertyType } = value;
-    if (!isSupportedPropertyType(propertyType)) {
-      console.error(
-        `${index === 0 ? "\n" : ""}[${databaseClassName}] Property '${propertyName}' with type '${propertyType}' is not supported and will be skipped.`,
-      );
-      return;
-    }
+    if (!isSupportedPropertyType(propertyType)) return;
 
     const camelizedColumnName = camelize(propertyName);
     camelPropertyNameToNameAndTypeMap[camelizedColumnName] = { columnName: propertyName, type: propertyType };
@@ -72,9 +72,9 @@ export async function createTypescriptFileForDatabase(dataSourceResponse: GetDat
   );
 
   const nodes = ts.factory.createNodeArray([
-    createNameImport({ namedImport: "DatabaseClient", path: AST_IMPORT_PATHS.DATABASE_CLIENT }),
-    createNameImport({ namedImport: "z", path: AST_IMPORT_PATHS.ZOD }),
-    createNameImport({ namedImport: "Query", path: AST_IMPORT_PATHS.QUERY_TYPES, typeOnly: true }),
+    createNameImport({ namedImport: "DatabaseClient", path: importPaths.DATABASE_CLIENT }),
+    createNameImport({ namedImport: "z", path: importPaths.ZOD }),
+    createNameImport({ namedImport: "Query", path: importPaths.QUERY_TYPES, typeOnly: true }),
     createDatabaseIdVariable(dataSourceId),
     ...enumConstStatements,
     zodSchemaStatement,
@@ -89,10 +89,10 @@ export async function createTypescriptFileForDatabase(dataSourceResponse: GetDat
   const sourceFile = ts.createSourceFile("", "", ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
   const code = ts.createPrinter().printList(ts.ListFormat.MultiLine, nodes, sourceFile);
 
-  if (!fs.existsSync(DATABASES_DIR)) fs.mkdirSync(DATABASES_DIR, { recursive: true });
-  fs.writeFileSync(path.resolve(DATABASES_DIR, `${databaseClassName}.ts`), code);
+  if (!fs.existsSync(databasesDirPath)) fs.mkdirSync(databasesDirPath, { recursive: true });
+  fs.writeFileSync(path.resolve(databasesDirPath, `${databaseClassName}.ts`), code);
   fs.writeFileSync(
-    path.resolve(DATABASES_DIR, `${databaseClassName}.js`),
+    path.resolve(databasesDirPath, `${databaseClassName}.js`),
     ts.transpile(code, { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ESNext }),
   );
 

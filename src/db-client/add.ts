@@ -1,5 +1,5 @@
 import { AST_RUNTIME_CONSTANTS } from "../ast/constants";
-import { SupportedNotionColumnType } from "./queryTypes";
+import { SupportedNotionColumnType } from "./types";
 
 export function buildPropertyValueForAddPage(args: {
   type: SupportedNotionColumnType;
@@ -35,7 +35,7 @@ export function buildPropertyValueForAddPage(args: {
   }
 }
 
-/* 
+/*
 ======================================================
 GENERATE OBJECT BASED ON TYPE
 ======================================================

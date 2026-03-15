@@ -7,7 +7,7 @@ import * as ts from "typescript";
 import type {
   DatabasePropertyType,
   SupportedNotionColumnType,
-} from "../db-client/queryTypes";
+} from "../db-client/types";
 import {
   createCheckboxProperty,
   createDateProperty,

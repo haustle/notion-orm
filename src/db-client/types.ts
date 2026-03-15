@@ -78,7 +78,6 @@ type CheckBoxPropertyFilters = {
   does_not_equal: boolean;
 };
 
-//
 type SelectPropertyFilters<T> = {
   equals: (T extends Array<any> ? T[number] : T) | (string & {});
   does_not_equal: (T extends Array<any> ? T[number] : T) | (string & {});
@@ -86,7 +85,6 @@ type SelectPropertyFilters<T> = {
   is_not_empty: true;
 };
 
-// pay in array --> need to turn into union
 type MultiSelectPropertyFilters<T> = {
   contains: (T extends Array<any> ? T[number] : T) | (string & {});
   does_not_contain: (T extends Array<any> ? T[number] : T) | (string & {});
@@ -136,13 +134,11 @@ type ColumnNameToNotionColumnType<T> = Record<
   keyof T,
   SupportedNotionColumnType
 >;
-// T is a column name to column type
-// Y is the collection type
+
 export type SingleFilter<
   Y extends Record<string, any>,
   T extends ColumnNameToNotionColumnType<Y>
 > = {
-  // Passing the type from collection
   [Property in keyof Y]?: T[Property] extends keyof FilterOptions<Y[Property]>
     ? Partial<FilterOptions<Y[Property]>[T[Property]]>
     : never;
@@ -160,17 +156,43 @@ export type QueryFilter<
   T extends Record<keyof Y, SupportedNotionColumnType>
 > = SingleFilter<Y, T> | CompoundFilters<Y, T>;
 
-export type Query<
+/** Prisma-style orderBy: `{ fieldName: 'asc' | 'desc' }` or an array of those */
+export type OrderByInput<Y> =
+  | { [K in keyof Y]?: "asc" | "desc" }
+  | { [K in keyof Y]?: "asc" | "desc" }[];
+
+export type FindManyArgs<
   Y extends Record<string, any>,
   T extends Record<keyof Y, SupportedNotionColumnType>
 > = {
-  filter?: QueryFilter<Y, T>;
-  sort?: QueryDataSourceParameters["sorts"];
+  where?: QueryFilter<Y, T>;
+  orderBy?: OrderByInput<Y>;
   select?: Partial<Record<keyof Y, true>>;
   omit?: Partial<Record<keyof Y, true>>;
-  limit?: number;
-  pagination?: { pageSize: number };
+  take?: number;
+  skip?: number;
+  /** When set, findMany returns an AsyncIterable, fetching results in batches of this size */
+  stream?: number;
 };
+
+export type PaginateArgs<
+  Y extends Record<string, any>,
+  T extends Record<keyof Y, SupportedNotionColumnType>
+> = {
+  where?: QueryFilter<Y, T>;
+  orderBy?: OrderByInput<Y>;
+  select?: Partial<Record<keyof Y, true>>;
+  omit?: Partial<Record<keyof Y, true>>;
+  take?: number;
+  /** Opaque cursor token returned by a previous paginate() call */
+  after?: string;
+};
+
+/** @deprecated Use FindManyArgs */
+export type Query<
+  Y extends Record<string, any>,
+  T extends Record<keyof Y, SupportedNotionColumnType>
+> = FindManyArgs<Y, T>;
 
 export type apiFilterQuery = {
   filter?: apiSingleFilter | apiAndFilter | apiOrFilter;
@@ -209,4 +231,3 @@ export type QueryResultType<Y, Args> =
     : Args extends { omit: infer O extends Record<string, unknown> }
     ? { [K in Exclude<keyof Y, keyof O>]?: Y[K] } & { id: string }
     : Partial<Y> & { id: string };
-
