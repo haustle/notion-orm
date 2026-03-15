@@ -40,7 +40,7 @@ async function runAdd(input: string): Promise<void> {
   if (config.databaseIds.includes(undashedUuid)) {
     console.log(`⚠️  Database ID already in config — regenerating types...`);
   } else {
-    const wasModified = await writeConfigFileWithAST(configFile.path, undashedUuid);
+    const wasModified = writeConfigFileWithAST(configFile.path, undashedUuid);
     if (wasModified) console.log("🔗 Added database to config");
   }
 

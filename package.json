@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Bring Notion database schemas/types to TypeScript",
-  "main": "src/index.ts",
+  "main": "src/index.js",
   "types": "src/index.ts",
   "bin": {
     "notion": "src/cli/index.ts"
@@ -15,12 +15,10 @@
   },
   "license": "ISC",
   "devDependencies": {
-    "@biomejs/biome": "2.4.6"
+    "@biomejs/biome": "2.4.6",
+    "@types/node": "^25.5.0"
   },
   "dependencies": {
-    "@babel/generator": "^7.28.0",
-    "@babel/parser": "^7.28.0",
-    "@babel/types": "^7.28.2",
     "@notionhq/client": "5.3.0",
     "typescript": "^5.6.3",
     "zod": "^3.23.8"

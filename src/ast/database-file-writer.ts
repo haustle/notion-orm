@@ -94,6 +94,10 @@ export async function createTypescriptFileForDatabase(dataSourceResponse: GetDat
 
   if (!fs.existsSync(DATABASES_DIR)) fs.mkdirSync(DATABASES_DIR, { recursive: true });
   fs.writeFileSync(path.resolve(DATABASES_DIR, `${databaseClassName}.ts`), code);
+  fs.writeFileSync(
+    path.resolve(DATABASES_DIR, `${databaseClassName}.js`),
+    ts.transpile(code, { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ESNext }),
+  );
 
   return { databaseName, databaseClassName, databaseId: dataSourceId };
 }

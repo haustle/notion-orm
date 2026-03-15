@@ -130,14 +130,25 @@ function createGeneratedBarrelFile(databasesMetadata: CachedDatabaseMetadata[]):
 
   if (!fs.existsSync(DATABASES_DIR)) fs.mkdirSync(DATABASES_DIR, { recursive: true });
   fs.writeFileSync(AST_FS_PATHS.generatedBarrelTs, code);
+  // JS barrel uses .js imports
+  const jsCode = code.replace(/from "\.\/(\w+)\.ts"/g, 'from "./$1.js"');
+  fs.writeFileSync(
+    AST_FS_PATHS.generatedBarrelTs.replace(".ts", ".js"),
+    ts.transpile(jsCode, { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ESNext }),
+  );
+}
+
+function writeWithJs(tsPath: string, tsCode: string): void {
+  fs.writeFileSync(tsPath, tsCode);
+  fs.writeFileSync(
+    tsPath.replace(".ts", ".js"),
+    ts.transpile(tsCode, { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ESNext }),
+  );
 }
 
 function updateSourceIndexFile(databasesMetadata: CachedDatabaseMetadata[]): void {
   if (databasesMetadata.length === 0) {
-    fs.writeFileSync(
-      AST_FS_PATHS.sourceIndexTs,
-      `export default class NotionORM {\n  constructor(_config: { auth: string }) {}\n}\n`,
-    );
+    writeWithJs(AST_FS_PATHS.sourceIndexTs, `export default class NotionORM {\n  constructor(_config) {}\n}\n`);
     return;
   }
 
@@ -153,8 +164,8 @@ function updateSourceIndexFile(databasesMetadata: CachedDatabaseMetadata[]): voi
     .map(({ camelCaseName }) => `    this.${camelCaseName} = ${camelCaseName}(config.auth);`)
     .join("\n");
 
-  const code = `${imports}\n\nexport default class NotionORM {\n${properties}\n\n  constructor(config: { auth: string }) {\n${assignments}\n  }\n}\n`;
-  fs.writeFileSync(AST_FS_PATHS.sourceIndexTs, code);
+  const tsCode = `${imports}\n\nexport default class NotionORM {\n${properties}\n\n  constructor(config: { auth: string }) {\n${assignments}\n  }\n}\n`;
+  writeWithJs(AST_FS_PATHS.sourceIndexTs, tsCode);
 }
 
 async function resolveDataSourceId(client: Client, id: string): Promise<string> {

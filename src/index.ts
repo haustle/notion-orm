@@ -1,9 +1,9 @@
-import { people } from "../generated/people";
+import { hypocrisy } from "../generated/hypocrisy";
 
 export default class NotionORM {
-  public people: ReturnType<typeof people>;
+  public hypocrisy: ReturnType<typeof hypocrisy>;
 
   constructor(config: { auth: string }) {
-    this.people = people(config.auth);
+    this.hypocrisy = hypocrisy(config.auth);
   }
 }
