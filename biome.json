@@ -1,4 +1,105 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.6/schema.json",
-  "extends": ["../atma/services/biome.json"]
+  "files": {
+    "includes": [
+      "apps/**",
+      "packages/**",
+      "*.json",
+      "*.ts",
+      "!apps/backend/generated",
+      "!apps/backend/drizzle",
+      "!apps/dashboard/.svelte-kit",
+      "!apps/dashboard/generated",
+      "!apps/dashboard/src/app.css"
+    ],
+    "ignoreUnknown": true
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "suspicious": {
+        "noExplicitAny": "error",
+        "useAwait": "error"
+      },
+      "style": {
+        "useShorthandAssign": "error",
+        "useConsistentObjectDefinitions": "error",
+        "useConsistentArrowReturn": "error"
+      },
+      "nursery": {
+        "noFloatingPromises": "error"
+      }
+    }
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "always"
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["apps/dashboard/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useImportType": "off"
+          },
+          "correctness": {
+            "noUnusedImports": "off",
+            "noUnusedVariables": "off"
+          }
+        }
+      },
+      "css": {
+        "parser": {
+          "cssModules": false,
+          "allowWrongLineComments": true
+        },
+        "linter": { "enabled": false },
+        "formatter": { "enabled": false }
+      }
+    },
+    {
+      "includes": ["apps/web/**"],
+      "css": {
+        "parser": {
+          "cssModules": false,
+          "tailwindDirectives": true
+        }
+      }
+    },
+    {
+      "includes": ["apps/backend/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useExhaustiveDependencies": "off"
+          },
+          "suspicious": {
+            "noEmptyBlockStatements": "error"
+          },
+          "complexity": {
+            "noUselessCatch": "error"
+          },
+          "style": {
+            "useConsistentMemberAccessibility": "error"
+          }
+        }
+      },
+      "javascript": {
+        "formatter": {
+          "jsxQuoteStyle": "double",
+          "bracketSameLine": true
+        }
+      }
+    }
+  ]
 }
