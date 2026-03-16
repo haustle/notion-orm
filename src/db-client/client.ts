@@ -1,8 +1,6 @@
 import { Client } from "@notionhq/client";
 import type {
-  CreatePageParameters,
   QueryDataSourceParameters,
-  UpdatePageParameters,
 } from "@notionhq/client/build/src/api-endpoints";
 import type { ZodTypeAny } from "zod";
 import { AST_RUNTIME_CONSTANTS } from "../ast/constants";
@@ -11,6 +9,7 @@ import { buildPropertyValueForAddPage } from "./add";
 import { buildQueryResponse, getResponseValue, recursivelyBuildFilter } from "./query";
 import type {
   FindManyArgs,
+  IconCoverResult,
   PaginateArgs,
   QueryFilter,
   QueryResult,
@@ -61,14 +60,14 @@ export class DatabaseClient<
   // ─── Read ────────────────────────────────────────────────────────────────────
 
   /** Find all matching records. When `stream` is set, returns an AsyncIterable fetching in batches of that size. */
-  public findMany(args: FindManyArgs<DatabaseSchemaType, ColumnNameToColumnType> & { stream: number }): AsyncIterable<Partial<DatabaseSchemaType> & { id: string }>;
-  public findMany<S extends Partial<Record<keyof DatabaseSchemaType, true>>>(
-    args: Omit<FindManyArgs<DatabaseSchemaType, ColumnNameToColumnType>, "stream" | "select"> & { select: S }
-  ): Promise<({ [K in Extract<keyof S, keyof DatabaseSchemaType>]?: DatabaseSchemaType[K] } & { id: string })[]>;
-  public findMany<O extends Partial<Record<keyof DatabaseSchemaType, true>>>(
-    args: Omit<FindManyArgs<DatabaseSchemaType, ColumnNameToColumnType>, "stream" | "omit"> & { omit: O }
-  ): Promise<({ [K in Exclude<keyof DatabaseSchemaType, keyof O>]?: DatabaseSchemaType[K] } & { id: string })[]>;
-  public findMany(args?: Omit<FindManyArgs<DatabaseSchemaType, ColumnNameToColumnType>, "stream">): Promise<(Partial<DatabaseSchemaType> & { id: string })[]>;
+  public findMany<Args extends FindManyArgs<DatabaseSchemaType, ColumnNameToColumnType> & { stream: number }>(args: Args): AsyncIterable<Partial<DatabaseSchemaType> & { id: string } & IconCoverResult<Args>>;
+  public findMany<S extends Partial<Record<keyof DatabaseSchemaType, true>>, Args extends Omit<FindManyArgs<DatabaseSchemaType, ColumnNameToColumnType>, "stream" | "select"> & { select: S }>(
+    args: Args
+  ): Promise<({ [K in Extract<keyof S, keyof DatabaseSchemaType>]?: DatabaseSchemaType[K] } & { id: string } & IconCoverResult<Args>)[]>;
+  public findMany<O extends Partial<Record<keyof DatabaseSchemaType, true>>, Args extends Omit<FindManyArgs<DatabaseSchemaType, ColumnNameToColumnType>, "stream" | "omit"> & { omit: O }>(
+    args: Args
+  ): Promise<({ [K in Exclude<keyof DatabaseSchemaType, keyof O>]?: DatabaseSchemaType[K] } & { id: string } & IconCoverResult<Args>)[]>;
+  public findMany<Args extends Omit<FindManyArgs<DatabaseSchemaType, ColumnNameToColumnType>, "stream">>(args?: Args): Promise<(Partial<DatabaseSchemaType> & { id: string } & IconCoverResult<Args>)[]>;
   public findMany(args: FindManyArgs<DatabaseSchemaType, ColumnNameToColumnType> = {}): unknown {
     const queryCall = this.buildQueryCall(args);
     if (args.stream) return this.streamingIterable(queryCall, args);
@@ -79,13 +78,13 @@ export class DatabaseClient<
    * Fetch one page of results using Notion's native cursor.
    * Pass the returned `nextCursor` as `after` on the next call to get the next page.
    */
-  public async paginate<S extends Partial<Record<keyof DatabaseSchemaType, true>>>(
-    args: Omit<PaginateArgs<DatabaseSchemaType, ColumnNameToColumnType>, "select"> & { select: S }
-  ): Promise<{ data: ({ [K in Extract<keyof S, keyof DatabaseSchemaType>]?: DatabaseSchemaType[K] } & { id: string })[]; nextCursor: string | null; hasMore: boolean }>;
-  public async paginate<O extends Partial<Record<keyof DatabaseSchemaType, true>>>(
-    args: Omit<PaginateArgs<DatabaseSchemaType, ColumnNameToColumnType>, "omit"> & { omit: O }
-  ): Promise<{ data: ({ [K in Exclude<keyof DatabaseSchemaType, keyof O>]?: DatabaseSchemaType[K] } & { id: string })[]; nextCursor: string | null; hasMore: boolean }>;
-  public async paginate(args?: PaginateArgs<DatabaseSchemaType, ColumnNameToColumnType>): Promise<{ data: (Partial<DatabaseSchemaType> & { id: string })[]; nextCursor: string | null; hasMore: boolean }>;
+  public async paginate<S extends Partial<Record<keyof DatabaseSchemaType, true>>, Args extends Omit<PaginateArgs<DatabaseSchemaType, ColumnNameToColumnType>, "select"> & { select: S }>(
+    args: Args
+  ): Promise<{ data: ({ [K in Extract<keyof S, keyof DatabaseSchemaType>]?: DatabaseSchemaType[K] } & { id: string } & IconCoverResult<Args>)[]; nextCursor: string | null; hasMore: boolean }>;
+  public async paginate<O extends Partial<Record<keyof DatabaseSchemaType, true>>, Args extends Omit<PaginateArgs<DatabaseSchemaType, ColumnNameToColumnType>, "omit"> & { omit: O }>(
+    args: Args
+  ): Promise<{ data: ({ [K in Exclude<keyof DatabaseSchemaType, keyof O>]?: DatabaseSchemaType[K] } & { id: string } & IconCoverResult<Args>)[]; nextCursor: string | null; hasMore: boolean }>;
+  public async paginate<Args extends PaginateArgs<DatabaseSchemaType, ColumnNameToColumnType>>(args?: Args): Promise<{ data: (Partial<DatabaseSchemaType> & { id: string } & IconCoverResult<Args>)[]; nextCursor: string | null; hasMore: boolean }>;
   public async paginate(args?: PaginateArgs<DatabaseSchemaType, ColumnNameToColumnType>): Promise<{ data: (Partial<DatabaseSchemaType> & { id: string })[]; nextCursor: string | null; hasMore: boolean }> {
     const queryCall = this.buildQueryCall(args ?? {});
     const response = await this.client.dataSources.query({
@@ -96,7 +95,8 @@ export class DatabaseClient<
     const results = buildQueryResponse<DatabaseSchemaType>(
       response,
       this.camelPropertyNameToNameAndTypeMap,
-      (r) => this.validateDatabaseSchema(r)
+      (r) => this.validateDatabaseSchema(r),
+      { $icon: args?.$icon, $cover: args?.$cover }
     );
     return {
       data: this.applySelectOmit(results, args?.select, args?.omit),
@@ -106,20 +106,21 @@ export class DatabaseClient<
   }
 
   /** Find the first matching record, or null if none found. */
-  public async findFirst<S extends Partial<Record<keyof DatabaseSchemaType, true>>>(
-    args: Omit<FindManyArgs<DatabaseSchemaType, ColumnNameToColumnType>, "stream" | "select"> & { select: S }
-  ): Promise<({ [K in Extract<keyof S, keyof DatabaseSchemaType>]?: DatabaseSchemaType[K] } & { id: string }) | null>;
-  public async findFirst<O extends Partial<Record<keyof DatabaseSchemaType, true>>>(
-    args: Omit<FindManyArgs<DatabaseSchemaType, ColumnNameToColumnType>, "stream" | "omit"> & { omit: O }
-  ): Promise<({ [K in Exclude<keyof DatabaseSchemaType, keyof O>]?: DatabaseSchemaType[K] } & { id: string }) | null>;
-  public async findFirst(args?: Omit<FindManyArgs<DatabaseSchemaType, ColumnNameToColumnType>, "stream">): Promise<(Partial<DatabaseSchemaType> & { id: string }) | null>;
+  public async findFirst<S extends Partial<Record<keyof DatabaseSchemaType, true>>, Args extends Omit<FindManyArgs<DatabaseSchemaType, ColumnNameToColumnType>, "stream" | "select"> & { select: S }>(
+    args: Args
+  ): Promise<({ [K in Extract<keyof S, keyof DatabaseSchemaType>]?: DatabaseSchemaType[K] } & { id: string } & IconCoverResult<Args>) | null>;
+  public async findFirst<O extends Partial<Record<keyof DatabaseSchemaType, true>>, Args extends Omit<FindManyArgs<DatabaseSchemaType, ColumnNameToColumnType>, "stream" | "omit"> & { omit: O }>(
+    args: Args
+  ): Promise<({ [K in Exclude<keyof DatabaseSchemaType, keyof O>]?: DatabaseSchemaType[K] } & { id: string } & IconCoverResult<Args>) | null>;
+  public async findFirst<Args extends Omit<FindManyArgs<DatabaseSchemaType, ColumnNameToColumnType>, "stream">>(args?: Args): Promise<(Partial<DatabaseSchemaType> & { id: string } & IconCoverResult<Args>) | null>;
   public async findFirst(args?: Omit<FindManyArgs<DatabaseSchemaType, ColumnNameToColumnType>, "stream">): Promise<(Partial<DatabaseSchemaType> & { id: string }) | null> {
     const queryCall = this.buildQueryCall(args ?? {});
     const response = await this.client.dataSources.query({ ...queryCall, page_size: 1 });
     const results = buildQueryResponse<DatabaseSchemaType>(
       response,
       this.camelPropertyNameToNameAndTypeMap,
-      (r) => this.validateDatabaseSchema(r)
+      (r) => this.validateDatabaseSchema(r),
+      { $icon: args?.$icon, $cover: args?.$cover }
     );
     if (results.length === 0) return null;
     const [item] = this.applySelectOmit(results, args?.select, args?.omit);
@@ -127,17 +128,19 @@ export class DatabaseClient<
   }
 
   /** Find a record by its Notion page ID. Returns null if not found. */
-  public async findUnique(args: {
+  public async findUnique<Args extends {
     where: { id: string };
     select?: Partial<Record<keyof DatabaseSchemaType, true>>;
     omit?: Partial<Record<keyof DatabaseSchemaType, true>>;
-  }): Promise<(Partial<DatabaseSchemaType> & { id: string }) | null> {
+    $icon?: true;
+    $cover?: true;
+  }>(args: Args): Promise<(Partial<DatabaseSchemaType> & { id: string } & IconCoverResult<Args>) | null> {
     try {
       const page = await this.client.pages.retrieve({ page_id: args.where.id });
       if (!("properties" in page)) return null;
-      const result = this.parsePage(page as { id: string; properties: Record<string, any> });
+      const result = this.parsePage(page as { id: string; properties: Record<string, any>; icon?: any; cover?: any }, { $icon: args.$icon, $cover: args.$cover });
       const [item] = this.applySelectOmit([result], args.select, args.omit);
-      return item ?? null;
+      return (item ?? null) as any;
     } catch {
       return null;
     }
@@ -148,46 +151,53 @@ export class DatabaseClient<
   /** Create a new record and return it. */
   public async create(args: {
     data: DatabaseSchemaType;
-    icon?: CreatePageParameters["icon"];
+    $icon?: string;
+    $cover?: string;
   }): Promise<Partial<DatabaseSchemaType> & { id: string }> {
-    const callBody = this.buildCreateBody(args.data, args.icon);
-    const page = await this.client.pages.create(callBody);
+    const callBody = this.buildCreateBody(args.data, args.$icon, args.$cover);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const page = await this.client.pages.create(callBody as any);
     return this.parsePage(page as { id: string; properties: Record<string, any> });
   }
 
   /** Create multiple records and return them. */
   public async createMany(args: {
     data: DatabaseSchemaType[];
-    icon?: CreatePageParameters["icon"];
+    $icon?: string;
+    $cover?: string;
   }): Promise<(Partial<DatabaseSchemaType> & { id: string })[]> {
-    return Promise.all(args.data.map((data) => this.create({ data, icon: args.icon })));
+    return Promise.all(args.data.map((data) => this.create({ data, $icon: args.$icon, $cover: args.$cover })));
   }
 
   /** Update a record by its Notion page ID. */
   public async update(args: {
     where: { id: string };
     data: Partial<DatabaseSchemaType>;
-    icon?: UpdatePageParameters["icon"];
+    $icon?: string;
+    $cover?: string;
   }): Promise<void> {
-    const callBody: UpdatePageParameters = { page_id: args.where.id, properties: {} };
-    if (args.icon !== undefined) callBody.icon = args.icon;
+    const callBody: Record<string, unknown> = { page_id: args.where.id, properties: {} };
+    if (args.$icon !== undefined) callBody.icon = { type: "external", external: { url: args.$icon } };
+    if (args.$cover !== undefined) callBody.cover = { type: "external", external: { url: args.$cover } };
     for (const [propertyName, value] of Object.entries(args.data)) {
       const { type, columnName } = this.camelPropertyNameToNameAndTypeMap[propertyName];
       const columnObject = buildPropertyValueForAddPage({ type, value });
-      if (callBody.properties && columnObject) callBody.properties[columnName] = columnObject;
+      if (callBody.properties && columnObject) (callBody.properties as Record<string, unknown>)[columnName] = columnObject;
     }
-    await this.client.pages.update(callBody);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.client.pages.update(callBody as any);
   }
 
   /** Update all records matching the filter. Returns the count of updated records. */
   public async updateMany(args: {
     where?: QueryFilter<DatabaseSchemaType, ColumnNameToColumnType>;
     data: Partial<DatabaseSchemaType>;
-    icon?: UpdatePageParameters["icon"];
+    $icon?: string;
+    $cover?: string;
   }): Promise<{ count: number }> {
     const queryCall = this.buildQueryCall({ where: args.where });
     const results = await this.fetchAllPages(queryCall, {});
-    await Promise.all(results.map((r) => this.update({ where: { id: r.id }, data: args.data, icon: args.icon })));
+    await Promise.all(results.map((r) => this.update({ where: { id: r.id }, data: args.data, $icon: args.$icon, $cover: args.$cover })));
     return { count: results.length };
   }
 
@@ -196,16 +206,17 @@ export class DatabaseClient<
     where: QueryFilter<DatabaseSchemaType, ColumnNameToColumnType>;
     create: DatabaseSchemaType;
     update: Partial<DatabaseSchemaType>;
-    icon?: CreatePageParameters["icon"];
+    $icon?: string;
+    $cover?: string;
   }): Promise<{ created: boolean; id: string }> {
     const queryCall = this.buildQueryCall({ where: args.where });
     const response = await this.client.dataSources.query({ ...queryCall, page_size: 1 });
     if (response.results.length > 0) {
       const existingId = response.results[0].id;
-      await this.update({ where: { id: existingId }, data: args.update, icon: args.icon });
+      await this.update({ where: { id: existingId }, data: args.update, $icon: args.$icon, $cover: args.$cover });
       return { created: false, id: existingId };
     }
-    const created = await this.create({ data: args.create, icon: args.icon });
+    const created = await this.create({ data: args.create, $icon: args.$icon, $cover: args.$cover });
     return { created: true, id: created.id };
   }
 
@@ -235,26 +246,37 @@ export class DatabaseClient<
 
   // ─── Private helpers ─────────────────────────────────────────────────────────
 
-  private buildCreateBody(data: DatabaseSchemaType, icon?: CreatePageParameters["icon"]): CreatePageParameters {
-    const callBody: CreatePageParameters = {
+  private buildCreateBody(data: DatabaseSchemaType, $icon?: string, $cover?: string): Record<string, unknown> {
+    const callBody: Record<string, unknown> = {
       parent: { data_source_id: this.id, type: "data_source_id" },
       properties: {},
     };
-    if (icon) callBody.icon = icon;
+    if ($icon) callBody.icon = { type: "external", external: { url: $icon } };
+    if ($cover) callBody.cover = { type: "external", external: { url: $cover } };
     for (const [propertyName, value] of Object.entries(data)) {
       const { type, columnName } = this.camelPropertyNameToNameAndTypeMap[propertyName];
       const columnObject = buildPropertyValueForAddPage({ type, value });
-      if (callBody.properties && columnObject) callBody.properties[columnName] = columnObject;
+      if (callBody.properties && columnObject) (callBody.properties as Record<string, unknown>)[columnName] = columnObject;
     }
     return callBody;
   }
 
-  private parsePage(page: { id: string; properties: Record<string, any> }): Partial<DatabaseSchemaType> & { id: string } {
+  private parsePage(page: { id: string; properties: Record<string, any>; icon?: any; cover?: any }, meta?: { $icon?: true; $cover?: true }): Partial<DatabaseSchemaType> & { id: string } {
     const result = { id: page.id } as Partial<DatabaseSchemaType> & { id: string };
     for (const [columnName, value] of Object.entries(page.properties)) {
       const camelName = camelize(columnName);
       const colType = this.camelPropertyNameToNameAndTypeMap[camelName]?.type;
       if (colType) (result as Record<string, unknown>)[camelName] = getResponseValue(colType, value);
+    }
+    if (meta?.$icon) {
+      if (page.icon?.type === "external") (result as any).$icon = page.icon.external?.url ?? null;
+      else if (page.icon?.type === "file") (result as any).$icon = page.icon.file?.url ?? null;
+      else (result as any).$icon = null;
+    }
+    if (meta?.$cover) {
+      if (page.cover?.type === "external") (result as any).$cover = page.cover.external?.url ?? null;
+      else if (page.cover?.type === "file") (result as any).$cover = page.cover.file?.url ?? null;
+      else (result as any).$cover = null;
     }
     return result;
   }
@@ -285,7 +307,7 @@ export class DatabaseClient<
 
   private async fetchAllPages(
     queryCall: QueryDataSourceParameters,
-    args: Pick<FindManyArgs<DatabaseSchemaType, ColumnNameToColumnType>, "select" | "omit" | "take" | "skip">
+    args: Pick<FindManyArgs<DatabaseSchemaType, ColumnNameToColumnType>, "select" | "omit" | "take" | "skip" | "$icon" | "$cover">
   ): Promise<QueryResult<DatabaseSchemaType>[]> {
     const allResults: QueryResult<DatabaseSchemaType>[] = [];
     let cursor: string | undefined;
@@ -299,7 +321,8 @@ export class DatabaseClient<
       const page = buildQueryResponse<DatabaseSchemaType>(
         response,
         this.camelPropertyNameToNameAndTypeMap,
-        isFirst ? (r) => this.validateDatabaseSchema(r) : () => {}
+        isFirst ? (r) => this.validateDatabaseSchema(r) : () => {},
+        { $icon: args.$icon, $cover: args.$cover }
       );
       isFirst = false;
 
@@ -336,7 +359,8 @@ export class DatabaseClient<
           const page = buildQueryResponse<DatabaseSchemaType>(
             response,
             self.camelPropertyNameToNameAndTypeMap,
-            isFirst ? (r) => self.validateDatabaseSchema(r) : () => {}
+            isFirst ? (r) => self.validateDatabaseSchema(r) : () => {},
+            { $icon: args.$icon, $cover: args.$cover }
           );
           isFirst = false;
 

@@ -15,7 +15,8 @@ import { camelize } from "../helpers";
 export function buildQueryResponse<DatabaseSchemaType extends Record<string, any>>(
   res: QueryDataSourceResponse,
   camelPropertyNameToNameAndTypeMap: camelPropertyNameToNameAndTypeMapType,
-  validateSchema: (result: Partial<DatabaseSchemaType>) => void
+  validateSchema: (result: Partial<DatabaseSchemaType>) => void,
+  meta?: { $icon?: true; $cover?: true }
 ): (Partial<DatabaseSchemaType> & { id: string })[] {
   const results: Array<Partial<DatabaseSchemaType>> = res.results
     .map((result, index) => {
@@ -41,6 +42,19 @@ export function buildQueryResponse<DatabaseSchemaType extends Record<string, any
             result
           );
         }
+      }
+
+      if (meta?.$icon) {
+        const icon = (result as any).icon;
+        if (icon?.type === "external") (simpleResult as any).$icon = icon.external?.url ?? null;
+        else if (icon?.type === "file") (simpleResult as any).$icon = icon.file?.url ?? null;
+        else (simpleResult as any).$icon = null;
+      }
+      if (meta?.$cover) {
+        const cover = (result as any).cover;
+        if (cover?.type === "external") (simpleResult as any).$cover = cover.external?.url ?? null;
+        else if (cover?.type === "file") (simpleResult as any).$cover = cover.file?.url ?? null;
+        else (simpleResult as any).$cover = null;
       }
 
       if (index === 0) {

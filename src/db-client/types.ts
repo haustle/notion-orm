@@ -173,6 +173,8 @@ export type FindManyArgs<
   skip?: number;
   /** When set, findMany returns an AsyncIterable, fetching results in batches of this size */
   stream?: number;
+  $icon?: true;
+  $cover?: true;
 };
 
 export type PaginateArgs<
@@ -186,6 +188,8 @@ export type PaginateArgs<
   take?: number;
   /** Opaque cursor token returned by a previous paginate() call */
   after?: string;
+  $icon?: true;
+  $cover?: true;
 };
 
 /** @deprecated Use FindManyArgs */
@@ -224,6 +228,10 @@ type apiOrFilter = {
 };
 
 export type QueryResult<DatabaseSchema> = Partial<DatabaseSchema> & { id: string };
+
+export type IconCoverResult<Args> =
+  (Args extends { $icon: true } ? { $icon: string | null } : unknown) &
+  (Args extends { $cover: true } ? { $cover: string | null } : unknown);
 
 export type QueryResultType<Y, Args> =
   Args extends { select: infer S extends Record<string, unknown> }
