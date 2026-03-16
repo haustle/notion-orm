@@ -151,8 +151,8 @@ export class DatabaseClient<
   /** Create a new record and return it. */
   public async create(args: {
     data: DatabaseSchemaType;
-    $icon?: string;
-    $cover?: string;
+    $icon?: string | null;
+    $cover?: string | null;
   }): Promise<Partial<DatabaseSchemaType> & { id: string }> {
     const callBody = this.buildCreateBody(args.data, args.$icon, args.$cover);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -163,8 +163,8 @@ export class DatabaseClient<
   /** Create multiple records and return them. */
   public async createMany(args: {
     data: DatabaseSchemaType[];
-    $icon?: string;
-    $cover?: string;
+    $icon?: string | null;
+    $cover?: string | null;
   }): Promise<(Partial<DatabaseSchemaType> & { id: string })[]> {
     return Promise.all(args.data.map((data) => this.create({ data, $icon: args.$icon, $cover: args.$cover })));
   }
@@ -173,12 +173,12 @@ export class DatabaseClient<
   public async update(args: {
     where: { id: string };
     data: Partial<DatabaseSchemaType>;
-    $icon?: string;
-    $cover?: string;
+    $icon?: string | null;
+    $cover?: string | null;
   }): Promise<void> {
     const callBody: Record<string, unknown> = { page_id: args.where.id, properties: {} };
-    if (args.$icon !== undefined) callBody.icon = { type: "external", external: { url: args.$icon } };
-    if (args.$cover !== undefined) callBody.cover = { type: "external", external: { url: args.$cover } };
+    if (args.$icon !== undefined) callBody.icon = args.$icon === null ? null : { type: "external", external: { url: args.$icon } };
+    if (args.$cover !== undefined) callBody.cover = args.$cover === null ? null : { type: "external", external: { url: args.$cover } };
     for (const [propertyName, value] of Object.entries(args.data)) {
       const { type, columnName } = this.camelPropertyNameToNameAndTypeMap[propertyName];
       const columnObject = buildPropertyValueForAddPage({ type, value });
@@ -192,8 +192,8 @@ export class DatabaseClient<
   public async updateMany(args: {
     where?: QueryFilter<DatabaseSchemaType, ColumnNameToColumnType>;
     data: Partial<DatabaseSchemaType>;
-    $icon?: string;
-    $cover?: string;
+    $icon?: string | null;
+    $cover?: string | null;
   }): Promise<{ count: number }> {
     const queryCall = this.buildQueryCall({ where: args.where });
     const results = await this.fetchAllPages(queryCall, {});
@@ -206,8 +206,8 @@ export class DatabaseClient<
     where: QueryFilter<DatabaseSchemaType, ColumnNameToColumnType>;
     create: DatabaseSchemaType;
     update: Partial<DatabaseSchemaType>;
-    $icon?: string;
-    $cover?: string;
+    $icon?: string | null;
+    $cover?: string | null;
   }): Promise<{ created: boolean; id: string }> {
     const queryCall = this.buildQueryCall({ where: args.where });
     const response = await this.client.dataSources.query({ ...queryCall, page_size: 1 });
@@ -246,13 +246,13 @@ export class DatabaseClient<
 
   // ─── Private helpers ─────────────────────────────────────────────────────────
 
-  private buildCreateBody(data: DatabaseSchemaType, $icon?: string, $cover?: string): Record<string, unknown> {
+  private buildCreateBody(data: DatabaseSchemaType, $icon?: string | null, $cover?: string | null): Record<string, unknown> {
     const callBody: Record<string, unknown> = {
       parent: { data_source_id: this.id, type: "data_source_id" },
       properties: {},
     };
-    if ($icon) callBody.icon = { type: "external", external: { url: $icon } };
-    if ($cover) callBody.cover = { type: "external", external: { url: $cover } };
+    if ($icon !== undefined) callBody.icon = $icon === null ? null : { type: "external", external: { url: $icon } };
+    if ($cover !== undefined) callBody.cover = $cover === null ? null : { type: "external", external: { url: $cover } };
     for (const [propertyName, value] of Object.entries(data)) {
       const { type, columnName } = this.camelPropertyNameToNameAndTypeMap[propertyName];
       const columnObject = buildPropertyValueForAddPage({ type, value });
