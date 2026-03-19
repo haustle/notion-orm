@@ -18,6 +18,23 @@ import type {
 
 export type ImageInput = string | Blob | Uint8Array;
 
+const MIME_TO_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/svg+xml": "svg",
+  "image/avif": "avif",
+};
+
+function sniffMimeType(bytes: Uint8Array): string {
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "image/png";
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) return "image/gif";
+  if (bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) return "image/webp";
+  return "application/octet-stream";
+}
+
 export type camelPropertyNameToNameAndTypeMapType = Record<
   string,
   { columnName: string; type: SupportedNotionColumnType }
@@ -269,11 +286,15 @@ export class DatabaseClient<
     if (value === undefined) return undefined;
     if (value === null) return null;
     if (typeof value === "string") return { type: "external", external: { url: value } };
-    const blob = value instanceof Blob ? value : new Blob([value as Uint8Array<ArrayBuffer>]);
+    const bytes = value instanceof Blob ? new Uint8Array(await value.arrayBuffer()) : (value as Uint8Array<ArrayBuffer>);
+    const contentType = (value instanceof Blob && value.type) ? value.type : sniffMimeType(bytes);
+    const ext = MIME_TO_EXT[contentType] ?? "bin";
+    const filename = `upload.${ext}`;
+    const blob = new Blob([bytes], { type: contentType });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const upload = await (this.client.fileUploads as any).create({ filename: "upload" });
+    const upload = await (this.client.fileUploads as any).create({ filename, content_type: contentType });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (this.client.fileUploads as any).send({ file_upload_id: upload.id, file: { data: blob, filename: "upload" } });
+    await (this.client.fileUploads as any).send({ file_upload_id: upload.id, file: { data: blob, filename } });
     return { type: "file_upload", file_upload: { id: upload.id } };
   }
 
