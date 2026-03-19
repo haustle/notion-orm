@@ -16,6 +16,8 @@ import type {
   SupportedNotionColumnType,
 } from "./types";
 
+export type ImageInput = string | Blob | Uint8Array;
+
 export type camelPropertyNameToNameAndTypeMapType = Record<
   string,
   { columnName: string; type: SupportedNotionColumnType }
@@ -151,10 +153,10 @@ export class DatabaseClient<
   /** Create a new record and return it. */
   public async create(args: {
     data: DatabaseSchemaType;
-    $icon?: string | null;
-    $cover?: string | null;
+    $icon?: ImageInput | null;
+    $cover?: ImageInput | null;
   }): Promise<Partial<DatabaseSchemaType> & { id: string }> {
-    const callBody = this.buildCreateBody(args.data, args.$icon, args.$cover);
+    const callBody = await this.buildCreateBody(args.data, args.$icon, args.$cover);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const page = await this.client.pages.create(callBody as any);
     return this.parsePage(page as { id: string; properties: Record<string, any> });
@@ -163,8 +165,8 @@ export class DatabaseClient<
   /** Create multiple records and return them. */
   public async createMany(args: {
     data: DatabaseSchemaType[];
-    $icon?: string | null;
-    $cover?: string | null;
+    $icon?: ImageInput | null;
+    $cover?: ImageInput | null;
   }): Promise<(Partial<DatabaseSchemaType> & { id: string })[]> {
     return Promise.all(args.data.map((data) => this.create({ data, $icon: args.$icon, $cover: args.$cover })));
   }
@@ -173,12 +175,13 @@ export class DatabaseClient<
   public async update(args: {
     where: { id: string };
     data: Partial<DatabaseSchemaType>;
-    $icon?: string | null;
-    $cover?: string | null;
+    $icon?: ImageInput | null;
+    $cover?: ImageInput | null;
   }): Promise<void> {
     const callBody: Record<string, unknown> = { page_id: args.where.id, properties: {} };
-    if (args.$icon !== undefined) callBody.icon = args.$icon === null ? null : { type: "external", external: { url: args.$icon } };
-    if (args.$cover !== undefined) callBody.cover = args.$cover === null ? null : { type: "external", external: { url: args.$cover } };
+    const [icon, cover] = await Promise.all([this.resolveIconCover(args.$icon), this.resolveIconCover(args.$cover)]);
+    if (icon !== undefined) callBody.icon = icon;
+    if (cover !== undefined) callBody.cover = cover;
     for (const [propertyName, value] of Object.entries(args.data)) {
       const { type, columnName } = this.camelPropertyNameToNameAndTypeMap[propertyName];
       const columnObject = buildPropertyValueForAddPage({ type, value });
@@ -192,8 +195,8 @@ export class DatabaseClient<
   public async updateMany(args: {
     where?: QueryFilter<DatabaseSchemaType, ColumnNameToColumnType>;
     data: Partial<DatabaseSchemaType>;
-    $icon?: string | null;
-    $cover?: string | null;
+    $icon?: ImageInput | null;
+    $cover?: ImageInput | null;
   }): Promise<{ count: number }> {
     const queryCall = this.buildQueryCall({ where: args.where });
     const results = await this.fetchAllPages(queryCall, {});
@@ -206,8 +209,8 @@ export class DatabaseClient<
     where: QueryFilter<DatabaseSchemaType, ColumnNameToColumnType>;
     create: DatabaseSchemaType;
     update: Partial<DatabaseSchemaType>;
-    $icon?: string | null;
-    $cover?: string | null;
+    $icon?: ImageInput | null;
+    $cover?: ImageInput | null;
   }): Promise<{ created: boolean; id: string }> {
     const queryCall = this.buildQueryCall({ where: args.where });
     const response = await this.client.dataSources.query({ ...queryCall, page_size: 1 });
@@ -246,19 +249,32 @@ export class DatabaseClient<
 
   // ─── Private helpers ─────────────────────────────────────────────────────────
 
-  private buildCreateBody(data: DatabaseSchemaType, $icon?: string | null, $cover?: string | null): Record<string, unknown> {
+  private async buildCreateBody(data: DatabaseSchemaType, $icon?: ImageInput | null, $cover?: ImageInput | null): Promise<Record<string, unknown>> {
     const callBody: Record<string, unknown> = {
       parent: { data_source_id: this.id, type: "data_source_id" },
       properties: {},
     };
-    if ($icon !== undefined) callBody.icon = $icon === null ? null : { type: "external", external: { url: $icon } };
-    if ($cover !== undefined) callBody.cover = $cover === null ? null : { type: "external", external: { url: $cover } };
+    const [icon, cover] = await Promise.all([this.resolveIconCover($icon), this.resolveIconCover($cover)]);
+    if (icon !== undefined) callBody.icon = icon;
+    if (cover !== undefined) callBody.cover = cover;
     for (const [propertyName, value] of Object.entries(data)) {
       const { type, columnName } = this.camelPropertyNameToNameAndTypeMap[propertyName];
       const columnObject = buildPropertyValueForAddPage({ type, value });
       if (callBody.properties && columnObject) (callBody.properties as Record<string, unknown>)[columnName] = columnObject;
     }
     return callBody;
+  }
+
+  private async resolveIconCover(value: ImageInput | null | undefined): Promise<Record<string, unknown> | null | undefined> {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    if (typeof value === "string") return { type: "external", external: { url: value } };
+    const blob = value instanceof Blob ? value : new Blob([value as Uint8Array<ArrayBuffer>]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const upload = await (this.client.fileUploads as any).create({ filename: "upload" });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (this.client.fileUploads as any).send({ file_upload_id: upload.id, file: { data: blob, filename: "upload" } });
+    return { type: "file_upload", file_upload: { id: upload.id } };
   }
 
   private parsePage(page: { id: string; properties: Record<string, any>; icon?: any; cover?: any }, meta?: { $icon?: true; $cover?: true }): Partial<DatabaseSchemaType> & { id: string } {

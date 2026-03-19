@@ -4,6 +4,7 @@
  */
 
 export { DatabaseClient } from "./db-client/client";
+export type { ImageInput } from "./db-client/client";
 export type {
   FindManyArgs,
   PaginateArgs,

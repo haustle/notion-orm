@@ -2,7 +2,7 @@
  * CLI orchestration for database type generation.
  */
 
-import { Client, LogLevel } from "@notionhq/client";
+import { Client, LogLevel, APIResponseError, APIErrorCode } from "@notionhq/client";
 import fs from "fs";
 import path from "path";
 import * as ts from "typescript";
@@ -130,8 +130,9 @@ async function resolveDataSourceId(auth: string, id: string): Promise<string> {
     const database = await probeClient.databases.retrieve({ database_id: id });
     const dataSources = (database as { data_sources?: { id: string }[] }).data_sources;
     if (dataSources && dataSources.length > 0) return dataSources[0].id;
-  } catch {
-    // not a database_id, fall through
+  } catch (error) {
+    if (!(APIResponseError.isAPIResponseError(error) && error.code === APIErrorCode.ObjectNotFound)) throw error;
+    // not a database_id — try treating it as a data_source_id
   }
   await probeClient.dataSources.retrieve({ data_source_id: id });
   return id;
