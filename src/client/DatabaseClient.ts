@@ -4,7 +4,6 @@ import type {
 	CreatePageResponse,
 	QueryDataSourceParameters,
 } from "@notionhq/client/build/src/api-endpoints";
-import type { ZodTypeAny } from "zod";
 import { AST_RUNTIME_CONSTANTS } from "../ast/shared/constants";
 import { buildPropertyValueForAddPage } from "./add";
 import { buildQueryResponse, transformQueryFilterToApiFilter } from "./query";
@@ -18,13 +17,37 @@ import type {
 	SupportedNotionColumnType,
 } from "./queryTypes";
 
-export type camelPropertyNameToNameAndTypeMapType = Record<
+type AddPropertyValue = Parameters<
+	typeof buildPropertyValueForAddPage
+>[0]["value"];
+
+export type PropertyNameToColumnMetadataMap = Record<
 	string,
 	{ columnName: string; type: SupportedNotionColumnType }
 >;
+export type camelPropertyNameToNameAndTypeMapType =
+	PropertyNameToColumnMetadataMap;
+
+type SchemaValidationIssue = {
+	code?: string;
+	path: PropertyKey[];
+	message: string;
+};
+
+type SafeParseSchemaError = {
+	issues: SchemaValidationIssue[];
+};
+
+type SafeParseSchemaResult =
+	| { success: true }
+	| { success: false; error: SafeParseSchemaError };
+
+type SafeParseSchema = {
+	safeParse: (input: unknown) => SafeParseSchemaResult;
+};
 
 export class DatabaseClient<
-		DatabaseSchemaType extends Record<string, any>,
+		DatabaseSchemaType extends Record<string, AddPropertyValue>,
 		ColumnNameToColumnType extends Record<
 			keyof DatabaseSchemaType,
 			SupportedNotionColumnType
@@ -35,8 +58,8 @@ export class DatabaseClient<
 		public name: string;
 		public id: string;
 
-		private camelPropertyNameToNameAndTypeMap: camelPropertyNameToNameAndTypeMapType;
-		private schema: ZodTypeAny;
+		private camelPropertyNameToNameAndTypeMap: PropertyNameToColumnMetadataMap;
+		private schema: SafeParseSchema;
 		private loggedSchemaValidationIssues: Set<string>;
 
 		constructor(args: {
@@ -44,10 +67,10 @@ export class DatabaseClient<
 			camelPropertyNameToNameAndTypeMap: camelPropertyNameToNameAndTypeMapType;
 			auth: string;
 			name: string;
-			schema: ZodTypeAny;
+			schema: SafeParseSchema;
 		}) {
-			// Automatically use global fetch if available (fixes Cloudflare Workers compatibility)
-			// Bind fetch to globalThis to avoid "Illegal invocation" errors when Notion client calls it with .call(this, ...)
+			// Bind the global fetch implementation so runtimes like Cloudflare
+			// Workers do not trip over illegal invocation when the Notion SDK calls it.
 			const fetchImpl =
 				typeof fetch !== "undefined" ? fetch.bind(globalThis) : undefined;
 
@@ -126,22 +149,21 @@ export class DatabaseClient<
 			}
 
 			const response = await this.client.dataSources.query(queryCall);
+			const responseArgs = {
+				response,
+				columnNameToColumnProperties: this.camelPropertyNameToNameAndTypeMap,
+				validateSchema: (result: Partial<DatabaseSchemaType>) =>
+					this.validateDatabaseSchema(result),
+			};
+
 			if (query.includeRawResponse === true) {
-				return buildQueryResponse<DatabaseSchemaType>(
-					response,
-					this.camelPropertyNameToNameAndTypeMap,
-					(result) => this.validateDatabaseSchema(result),
-					{
-						includeRawResponse: true,
-					},
-				);
+				return buildQueryResponse<DatabaseSchemaType>({
+					...responseArgs,
+					options: { includeRawResponse: true },
+				});
 			}
 
-			return buildQueryResponse<DatabaseSchemaType>(
-				response,
-				this.camelPropertyNameToNameAndTypeMap,
-				(result) => this.validateDatabaseSchema(result),
-			);
+			return buildQueryResponse<DatabaseSchemaType>(responseArgs);
 		}
 
 		private validateDatabaseSchema(result: Partial<DatabaseSchemaType>) {

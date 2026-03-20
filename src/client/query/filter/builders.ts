@@ -56,6 +56,40 @@ const isPhoneNumberFilterValue: FilterValueGuard<"phone_number"> = (
 	value,
 ): value is FilterValueByType["phone_number"] => isFilterOperatorObject(value);
 
+const isFilesFilterValue: FilterValueGuard<"files"> = (
+	value,
+): value is FilterValueByType["files"] => isFilterOperatorObject(value);
+
+const isPeopleFilterValue: FilterValueGuard<"people"> = (
+	value,
+): value is FilterValueByType["people"] => isFilterOperatorObject(value);
+
+const isRelationFilterValue: FilterValueGuard<"relation"> = (
+	value,
+): value is FilterValueByType["relation"] => isFilterOperatorObject(value);
+
+const isCreatedByFilterValue: FilterValueGuard<"created_by"> = (
+	value,
+): value is FilterValueByType["created_by"] => isFilterOperatorObject(value);
+
+const isLastEditedByFilterValue: FilterValueGuard<"last_edited_by"> = (
+	value,
+): value is FilterValueByType["last_edited_by"] =>
+	isFilterOperatorObject(value);
+
+const isCreatedTimeFilterValue: FilterValueGuard<"created_time"> = (
+	value,
+): value is FilterValueByType["created_time"] => isFilterOperatorObject(value);
+
+const isLastEditedTimeFilterValue: FilterValueGuard<"last_edited_time"> = (
+	value,
+): value is FilterValueByType["last_edited_time"] =>
+	isFilterOperatorObject(value);
+
+const isUniqueIdFilterValue: FilterValueGuard<"unique_id"> = (
+	value,
+): value is FilterValueByType["unique_id"] => isFilterOperatorObject(value);
+
 const buildRichTextFilter: FilterLeafBuilder<"rich_text"> = (args) => ({
 	property: args.columnName,
 	rich_text: args.columnFilterValue,
@@ -111,6 +145,50 @@ const buildPhoneNumberFilter: FilterLeafBuilder<"phone_number"> = (args) => ({
 	phone_number: args.columnFilterValue,
 });
 
+const buildFilesFilter: FilterLeafBuilder<"files"> = (args) => ({
+	property: args.columnName,
+	files: args.columnFilterValue,
+});
+
+const buildPeopleFilter: FilterLeafBuilder<"people"> = (args) => ({
+	property: args.columnName,
+	people: args.columnFilterValue,
+});
+
+const buildRelationFilter: FilterLeafBuilder<"relation"> = (args) => ({
+	property: args.columnName,
+	relation: args.columnFilterValue,
+});
+
+const buildCreatedByFilter: FilterLeafBuilder<"created_by"> = (args) => ({
+	property: args.columnName,
+	created_by: args.columnFilterValue,
+});
+
+const buildLastEditedByFilter: FilterLeafBuilder<"last_edited_by"> = (
+	args,
+) => ({
+	property: args.columnName,
+	last_edited_by: args.columnFilterValue,
+});
+
+const buildCreatedTimeFilter: FilterLeafBuilder<"created_time"> = (args) => ({
+	property: args.columnName,
+	created_time: args.columnFilterValue,
+});
+
+const buildLastEditedTimeFilter: FilterLeafBuilder<"last_edited_time"> = (
+	args,
+) => ({
+	property: args.columnName,
+	last_edited_time: args.columnFilterValue,
+});
+
+const buildUniqueIdFilter: FilterLeafBuilder<"unique_id"> = (args) => ({
+	property: args.columnName,
+	unique_id: args.columnFilterValue,
+});
+
 export const filterLeafBuilders: FilterLeafBuilderRegistry = {
 	rich_text: buildRichTextFilter,
 	title: buildTitleFilter,
@@ -123,6 +201,14 @@ export const filterLeafBuilders: FilterLeafBuilderRegistry = {
 	status: buildStatusFilter,
 	email: buildEmailFilter,
 	phone_number: buildPhoneNumberFilter,
+	files: buildFilesFilter,
+	people: buildPeopleFilter,
+	relation: buildRelationFilter,
+	created_by: buildCreatedByFilter,
+	last_edited_by: buildLastEditedByFilter,
+	created_time: buildCreatedTimeFilter,
+	last_edited_time: buildLastEditedTimeFilter,
+	unique_id: buildUniqueIdFilter,
 };
 
 export const filterValueGuards: FilterValueGuardRegistry = {
@@ -137,4 +223,12 @@ export const filterValueGuards: FilterValueGuardRegistry = {
 	status: isStatusFilterValue,
 	email: isEmailFilterValue,
 	phone_number: isPhoneNumberFilterValue,
+	files: isFilesFilterValue,
+	people: isPeopleFilterValue,
+	relation: isRelationFilterValue,
+	created_by: isCreatedByFilterValue,
+	last_edited_by: isLastEditedByFilterValue,
+	created_time: isCreatedTimeFilterValue,
+	last_edited_time: isLastEditedTimeFilterValue,
+	unique_id: isUniqueIdFilterValue,
 };

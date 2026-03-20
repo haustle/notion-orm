@@ -52,15 +52,24 @@ export type SupportedNotionColumnType = {
 		: never;
 }[keyof typeof SUPPORTED_PROPERTY_TYPES];
 
+type NotionApiFilter = NonNullable<QueryDataSourceParameters["filter"]>;
+type ApiSingleFilter = Extract<NotionApiFilter, { property: string }>;
+type ApiSingleFilterByColumnType = {
+	[K in SupportedNotionColumnType]: Extract<
+		ApiSingleFilter,
+		Record<K, unknown>
+	>[K];
+};
+
 export const FILTERABLE_PROPERTY_TYPES = {
 	formula: false,
-	files: false,
-	people: false,
-	relation: false,
-	created_by: false,
-	last_edited_by: false,
-	created_time: false,
-	last_edited_time: false,
+	files: true,
+	people: true,
+	relation: true,
+	created_by: true,
+	last_edited_by: true,
+	created_time: true,
+	last_edited_time: true,
 
 	// Supported + filterable
 	url: true,
@@ -74,7 +83,7 @@ export const FILTERABLE_PROPERTY_TYPES = {
 	number: true,
 	rich_text: true,
 	select: true,
-	unique_id: false,
+	unique_id: true,
 } as const satisfies Record<SupportedNotionColumnType, boolean>;
 
 export type FilterableNotionColumnType = {
@@ -152,19 +161,38 @@ type DatePropertyFilters = {
 	next_year: {};
 };
 
+type FilesPropertyFilters = ApiSingleFilterByColumnType["files"];
+type PeoplePropertyFilters = ApiSingleFilterByColumnType["people"];
+type RelationPropertyFilters = ApiSingleFilterByColumnType["relation"];
+type CreatedByPropertyFilters = ApiSingleFilterByColumnType["created_by"];
+type LastEditedByPropertyFilters =
+	ApiSingleFilterByColumnType["last_edited_by"];
+type CreatedTimePropertyFilters = ApiSingleFilterByColumnType["created_time"];
+type LastEditedTimePropertyFilters =
+	ApiSingleFilterByColumnType["last_edited_time"];
+type UniqueIdPropertyFilters = ApiSingleFilterByColumnType["unique_id"];
+
 export type FilterOptions<T = []> = {
-	rich_text: TextPropertyFilters;
-	title: TextPropertyFilters;
-	number: NumberPropertyFilters;
-	checkbox: CheckBoxPropertyFilters;
-	select: SelectPropertyFilters<T>;
-	multi_select: MultiSelectPropertyFilters<T>;
-	url: TextPropertyFilters;
-	date: DatePropertyFilters;
-	status: StatusPropertyFilters<T>;
-	email: TextPropertyFilters;
-	phone_number: TextPropertyFilters;
-};
+		rich_text: TextPropertyFilters;
+		title: TextPropertyFilters;
+		number: NumberPropertyFilters;
+		checkbox: CheckBoxPropertyFilters;
+		select: SelectPropertyFilters<T>;
+		multi_select: MultiSelectPropertyFilters<T>;
+		url: TextPropertyFilters;
+		date: DatePropertyFilters;
+		status: StatusPropertyFilters<T>;
+		email: TextPropertyFilters;
+		phone_number: TextPropertyFilters;
+		files: FilesPropertyFilters;
+		people: PeoplePropertyFilters;
+		relation: RelationPropertyFilters;
+		created_by: CreatedByPropertyFilters;
+		last_edited_by: LastEditedByPropertyFilters;
+		created_time: CreatedTimePropertyFilters;
+		last_edited_time: LastEditedTimePropertyFilters;
+		unique_id: UniqueIdPropertyFilters;
+	};
 
 /**
  * Types to build query object user types out
@@ -234,7 +262,6 @@ export type apiFilterQuery = {
  * actually build schema for query request
  */
 
-type NotionApiFilter = NonNullable<QueryDataSourceParameters["filter"]>;
 export type apiSingleFilter = Extract<NotionApiFilter, { property: string }>;
 export type apiAndFilter = Extract<NotionApiFilter, { and: unknown }>;
 export type apiOrFilter = Extract<NotionApiFilter, { or: unknown }>;

@@ -8,59 +8,68 @@ import type {
 import { getSimplifiedResult } from "./response";
 import type { QueryDataSourcePageResultWithProperties } from "./types";
 
+/** Narrows Notion query results to page payloads that expose a property map. */
 function isPageWithProperties(
 	result: QueryDataSourceResponse["results"][number],
 ): result is QueryDataSourcePageResultWithProperties {
 	return result.object === "page" && "properties" in result;
 }
 
+/** Converts a raw Notion page into the camelized shape exposed by the client. */
 function normalizePageResult<
 	DatabaseSchemaType extends Record<string, unknown>,
->(
-	result: QueryDataSourcePageResultWithProperties,
-	camelPropertyNameToNameAndTypeMap: camelPropertyNameToNameAndTypeMapType,
-) {
+>(args: {
+	result: QueryDataSourcePageResultWithProperties;
+	camelPropertyNameToNameAndTypeMap: camelPropertyNameToNameAndTypeMapType;
+}) {
 	const normalizedResult: Partial<DatabaseSchemaType> = {};
-	for (const [columnName, propertyValue] of Object.entries(result.properties)) {
+	for (const [columnName, propertyValue] of Object.entries(
+		args.result.properties,
+	)) {
 		const camelizedColumnName = camelize(columnName);
 		const columnType =
-			camelPropertyNameToNameAndTypeMap[camelizedColumnName]?.type;
+			args.camelPropertyNameToNameAndTypeMap[camelizedColumnName]?.type;
 		if (!columnType) {
 			continue;
 		}
 
-		Object.defineProperty(normalizedResult, camelizedColumnName, {
-			value: getSimplifiedResult({ columnType, propertyValue }),
-			enumerable: true,
-			configurable: true,
-			writable: true,
+		Object.assign(normalizedResult, {
+			[camelizedColumnName]: getSimplifiedResult({ columnType, propertyValue }),
 		});
 	}
 
 	return normalizedResult;
 }
 
-function mapQueryResults<DatabaseSchemaType extends Record<string, unknown>>(
-	results: QueryDataSourceResponse["results"],
-	camelPropertyNameToNameAndTypeMap: camelPropertyNameToNameAndTypeMapType,
-	validateSchema: (result: Partial<DatabaseSchemaType>) => void,
-) {
+/**
+ * Normalizes every query result and validates the first row against the local
+ * schema so drift is surfaced without paying a validation cost on every row.
+ */
+function mapQueryResults<
+	DatabaseSchemaType extends Record<string, unknown>,
+>(args: {
+	results: QueryDataSourceResponse["results"];
+	camelPropertyNameToNameAndTypeMap: camelPropertyNameToNameAndTypeMapType;
+	validateSchema: (result: Partial<DatabaseSchemaType>) => void;
+}) {
 	const normalizedResults: Array<Partial<DatabaseSchemaType>> = [];
+	let hasValidatedFirstPage = false;
 
-	for (const [index, result] of results.entries()) {
+	for (const result of args.results) {
 		if (!isPageWithProperties(result)) {
 			// biome-ignore lint/suspicious/noConsole: surfaced for debugging unexpected Notion payloads
 			console.log("Skipping this page: ", { result });
 			continue;
 		}
 
-		const normalizedResult = normalizePageResult<DatabaseSchemaType>(
+		const normalizedResult = normalizePageResult<DatabaseSchemaType>({
 			result,
-			camelPropertyNameToNameAndTypeMap,
-		);
+			camelPropertyNameToNameAndTypeMap: args.camelPropertyNameToNameAndTypeMap,
+		});
 
-		if (index === 0) {
-			validateSchema(normalizedResult);
+		if (!hasValidatedFirstPage) {
+			args.validateSchema(normalizedResult);
+			hasValidatedFirstPage = true;
 		}
 
 		normalizedResults.push(normalizedResult);
@@ -69,42 +78,55 @@ function mapQueryResults<DatabaseSchemaType extends Record<string, unknown>>(
 	return normalizedResults;
 }
 
+type BuildQueryResponseBaseArgs<
+	DatabaseSchemaType extends Record<string, unknown>,
+> = {
+	response: QueryDataSourceResponse;
+	columnNameToColumnProperties: camelPropertyNameToNameAndTypeMapType;
+	validateSchema: (result: Partial<DatabaseSchemaType>) => void;
+};
+
+type BuildQueryResponseWithRawResponseArgs<
+	DatabaseSchemaType extends Record<string, unknown>,
+> = BuildQueryResponseBaseArgs<DatabaseSchemaType> & {
+	options: { includeRawResponse: true };
+};
+
+type BuildQueryResponseArgs<
+	DatabaseSchemaType extends Record<string, unknown>,
+> = BuildQueryResponseBaseArgs<DatabaseSchemaType> & {
+	options?: { includeRawResponse?: false | undefined };
+};
+
+export function buildQueryResponse<
+		DatabaseSchemaType extends Record<string, unknown>,
+	>(
+		args: BuildQueryResponseWithRawResponseArgs<DatabaseSchemaType>,
+	): QueryResponseWithRawResponse<DatabaseSchemaType>;
+export function buildQueryResponse<
+		DatabaseSchemaType extends Record<string, unknown>,
+	>(
+		args: BuildQueryResponseArgs<DatabaseSchemaType>,
+	): QueryResponseWithoutRawResponse<DatabaseSchemaType>;
 export function buildQueryResponse<
 	DatabaseSchemaType extends Record<string, unknown>,
 >(
-	res: QueryDataSourceResponse,
-	camelPropertyNameToNameAndTypeMap: camelPropertyNameToNameAndTypeMapType,
-	validateSchema: (result: Partial<DatabaseSchemaType>) => void,
-	options: { includeRawResponse: true },
-): QueryResponseWithRawResponse<DatabaseSchemaType>;
-export function buildQueryResponse<
-	DatabaseSchemaType extends Record<string, unknown>,
->(
-	res: QueryDataSourceResponse,
-	camelPropertyNameToNameAndTypeMap: camelPropertyNameToNameAndTypeMapType,
-	validateSchema: (result: Partial<DatabaseSchemaType>) => void,
-	options?: { includeRawResponse?: false | undefined },
-): QueryResponseWithoutRawResponse<DatabaseSchemaType>;
-export function buildQueryResponse<
-	DatabaseSchemaType extends Record<string, unknown>,
->(
-	res: QueryDataSourceResponse,
-	camelPropertyNameToNameAndTypeMap: camelPropertyNameToNameAndTypeMapType,
-	validateSchema: (result: Partial<DatabaseSchemaType>) => void,
-	options?: { includeRawResponse?: boolean },
+	args:
+		| BuildQueryResponseArgs<DatabaseSchemaType>
+		| BuildQueryResponseWithRawResponseArgs<DatabaseSchemaType>,
 ):
 	| QueryResponseWithoutRawResponse<DatabaseSchemaType>
 	| QueryResponseWithRawResponse<DatabaseSchemaType> {
-	const results = mapQueryResults<DatabaseSchemaType>(
-		res.results,
-		camelPropertyNameToNameAndTypeMap,
-		validateSchema,
-	);
+	const results = mapQueryResults<DatabaseSchemaType>({
+		results: args.response.results,
+		camelPropertyNameToNameAndTypeMap: args.columnNameToColumnProperties,
+		validateSchema: args.validateSchema,
+	});
 
-	if (options?.includeRawResponse === true) {
+	if (args.options?.includeRawResponse === true) {
 		return {
 			results,
-			rawResponse: res,
+			rawResponse: args.response,
 		};
 	}
 
