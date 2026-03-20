@@ -1,0 +1,187 @@
+---
+path: /api-reference
+title: API Reference
+description: Full method signatures, response shapes, and type definitions for Notion ORM.
+---
+
+# API Reference
+
+Complete reference for the Notion ORM API. The sections follow a learning progression: start with runtime access, then databases, then agents, then advanced usage.
+
+## Runtime access
+
+```ts
+import NotionORM from "@haustle/notion-orm";
+
+const notion = new NotionORM({
+  auth: process.env.NOTION_KEY!,
+});
+
+// DatabaseClient
+const db = notion.databases.yourDatabaseName;
+// AgentClient
+const agent = notion.agents.yourAgentName;
+```
+
+| Runtime Property   | Type                             | Description                                                    |
+| ------------------ | -------------------------------- | -------------------------------------------------------------- |
+| `notion.databases` | `Record<string, DatabaseClient>` | Generated database client map keyed by camelCase database name |
+| `notion.agents`    | `Record<string, AgentClient>`    | Generated agent client map keyed by camelCase agent name       |
+
+## Database client
+
+### Properties
+
+| Member | Description                                                   |
+| ------ | ------------------------------------------------------------- |
+| `id`   | Notion data source ID used by this client instance            |
+| `name` | Human-readable database name captured during generation        |
+
+### Methods
+
+| Member                                                       | Description                                                                                |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `add({ properties, icon? })`                                 | Creates a page in the database using typed `properties`                                     |
+| `query({ filter?, sort?, includeRawResponse? })`              | Queries database pages and returns `{ results }` by default (`rawResponse` when `includeRawResponse: true`) |
+
+### Examples
+
+See [Adding](/#adding) and [Querying](/#querying) for usage examples.
+
+```ts
+import NotionORM from "@haustle/notion-orm";
+
+const notion = new NotionORM({ auth: process.env.NOTION_KEY! });
+const tasks = notion.databases.tasks;
+
+// Add one page using typed properties.
+await tasks.add({
+  properties: {
+    title: "Launch docs refresh",
+    status: "In progress",
+    checkbox: true,
+    number: 2,
+    date: { start: "2026-03-19", end: "2026-03-20" },
+  },
+});
+
+// Filter query (for filterable fields only).
+const { results } = await tasks.query({
+  filter: {
+    and: [
+      { property: "status", status: { equals: "In progress" } },
+      { property: "checkbox", checkbox: { equals: true } },
+    ],
+  },
+});
+```
+
+### Supported database properties
+
+| Property type      | Type                                                                 | Example                                       |
+| ------------------ | -------------------------------------------------------------------- | --------------------------------------------- |
+| `title`            | `string`                                                             | `"The Dream Machine"`                         |
+| `rich_text`        | `string`                                                             | `"Long-form notes from the page"`             |
+| `number`           | `number`                                                             | `460`                                         |
+| `date`             | `{ start: string; end: string }`                                     | `{ start: "2026-03-01", end: "2026-03-02" }`  |
+| `status`           | `string`                                                             | `"In progress"`                               |
+| `select`           | `string`                                                             | `"Non-fiction"`                               |
+| `multi_select`     | `string[]`                                                           | `["Sci-Fi", "Biography"]`                      |
+| `checkbox`         | `boolean`                                                            | `true`                                        |
+| `email`            | `string`                                                             | `"tyrus@haustle.studio"`                       |
+| `phone_number`     | `string`                                                             | `"0000000000"`                                |
+| `url`              | `string`                                                             | `"https://developers.notion.com/"`            |
+| `formula`          | `string \| number \| boolean \| { start: string; end?: string }`     | `42`                                          |
+| `files`            | `Array<{ name: string; url: string }>`                                | `[{ name: "brief.pdf", url: "https://..." }]` |
+| `people`           | `string[]`                                                           | `["1f4e6f4a-5b58-4d91-a7fc-2f5f2a0f6bb1"]`   |
+| `relation`         | `string[]`                                                           | `["6f7f9cbf-8d45-48f8-a194-661e73f7f5d9"]`    |
+| `created_by`       | `string`                                                             | `"Ada Lovelace"`                              |
+| `last_edited_by`   | `string`                                                             | `"user_123"`                                  |
+| `created_time`     | `string`                                                             | `"2026-03-01T10:30:00.000Z"`                   |
+| `last_edited_time` | `string`                                                             | `"2026-03-01T13:15:00.000Z"`                  |
+| `unique_id`        | `string`                                                             | `"TASK-42"`                                   |
+
+### Unsupported and non-filterable properties
+
+Typed query filters now support most first-class Notion property filters. The remaining limitation is:
+
+| Property type                      | Status                   | Why |
+| ---------------------------------- | ------------------------ | --- |
+| `rollup`                           | Unsupported              | Rollup values are polymorphic and require additional normalization before we can provide safe, predictable filter contracts. |
+| `formula`                          | Supported, non-filterable | Formula results can vary by expression and return type, so they are currently excluded from typed filter operators. |
+
+## Agent client
+
+### Properties
+
+| Member | Description                                           |
+| ------ | ----------------------------------------------------- |
+| `id`   | Notion agent ID used by this client instance          |
+| `name` | Human-readable agent name                             |
+| `icon` | Normalized agent icon metadata (or `null`)            |
+
+### Methods
+
+| Member                                           | Description                                           |
+| ------------------------------------------------ | ----------------------------------------------------- |
+| `listThreads()`                                  | Lists recent threads with `id`, `title`, and `status`  |
+| `getThreadInfo(threadId)`                         | Fetches a single thread record                        |
+| `getThreadTitle(threadId)`                        | Convenience helper to fetch just the thread title     |
+| `chat({ message, threadId? })`                   | Sends a message and creates/resumes a thread          |
+| `chatStream({ message, threadId?, onMessage? })` | Streams messages and returns final `ThreadInfo`       |
+| `getMessages(threadId, { role? })`                | Gets full (or role-filtered) message history          |
+| `pollThread(threadId, options?)`                  | Polls until thread processing completes               |
+| `AgentClient.getAgentResponse(threadInfo)`        | Extract combined plain-text agent output from a streamed thread |
+
+See [Agents](/#agents) for usage examples.
+
+### Examples
+
+```ts
+import NotionORM from "@haustle/notion-orm";
+
+const notion = new NotionORM({ auth: process.env.NOTION_KEY! });
+const mealAgent = notion.agents.mealAgent;
+
+// Start a thread with a compact prompt.
+const firstReply = await mealAgent.chat({
+  message: "Give me a high-protein dinner idea under 30 minutes.",
+});
+
+// Continue the same thread and inspect recent agent messages.
+const nextReply = await mealAgent.chat({
+  threadId: firstReply.threadId,
+  message: "Now make it vegetarian.",
+});
+const agentMessages = await mealAgent.getMessages(nextReply.threadId, {
+  role: "agent",
+});
+```
+
+### Thread response shapes
+
+`chatStream(...)` and `chat(...)` return `ThreadInfo` with the following properties:
+
+| ThreadInfo Property | Type                                                 | Description                                              |
+| ------------------- | ---------------------------------------------------- | -------------------------------------------------------- |
+| `threadId`          | `string`                                             | Stable thread identifier used to continue a conversation |
+| `agentId`           | `string`                                             | Agent identifier that produced the response               |
+| `messages`          | `Array<{ role: "user" \| "agent"; content: string }>` | Full message history currently available in the thread   |
+
+`messages` item shape:
+
+| Message Property | Type               | Description                |
+| ---------------- | ------------------ | -------------------------- |
+| `role`           | `user` \| `agent`   | Message author             |
+| `content`        | `string`           | Plain text message content |
+
+## Generated exports (advanced)
+
+For script-level usage without the `NotionORM` wrapper:
+
+| Import Path                                    | What You Get                                                                                                                                                                 |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@haustle/notion-orm/build/db/<databaseName>`  | `<databaseName>(auth)` factory, `DatabaseSchemaType`, `QuerySchemaType`, generated Zod schema, generated option tuples (for select/status/multi-select), schema/type aliases |
+| `@haustle/notion-orm/build/agents/<agentName>` | `<agentName>(auth)` factory that returns an `AgentClient`                                                                                                                    |
+| `@haustle/notion-orm/build/db`                 | `databases` barrel object (all database factories)                                                                                                                           |
+| `@haustle/notion-orm/build/agents`             | `agents` barrel object (all agent factories)                                                                                                                                 |

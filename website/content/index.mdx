@@ -1,0 +1,347 @@
+---
+path: /
+title: Overview
+description: A lightweight TypeScript Notion API wrapper for databases and custom agents.
+---
+
+<NotionCubeLogo />
+
+# Notion ORM
+
+A lightweight TypeScript [Notion API](https://developers.notion.com/) wrapper that aims to improve interactions with databases and custom agents, by leveraging static schema types
+
+## Key Features
+
+- Type inference when interacting with databases (e.g, `add` and `query`)
+- Manage database and agents in Notion
+- Sync remote schema changes in a single command
+- Quickly start/resume chat streams with your agents
+- Access exported property values, schemas, and types (ex. `zod` validators)
+- Using `zod`, validate config and other untrusted boundary input with typed schemas and clear parse errors
+
+## Setup
+
+```bash
+bun add @haustle/notion-orm
+```
+
+Initialize config from your project root (recommended):
+
+```bash
+bun notion init
+```
+
+```ts
+// file: notion.config.ts (Root)
+// caption: Generated config from `notion init`
+
+// If you don't have an API key, sign up for free
+// [here](https://developers.notion.com)
+
+const auth = process.env.NOTION_KEY || "your-notion-api-key-here";
+const NotionConfig = {
+  auth,
+  databases: [
+    // Use: notion add <database-id>
+  ],
+  agents: [
+    // Auto-populated by: notion sync
+  ],
+};
+
+export default NotionConfig;
+```
+
+### Adding databases
+
+Add new database to track and generate static types (ex. how to find ID [here](https://developers.notion.com/guides/data-apis/working-with-databases#adding-pages-to-a-database) )
+
+```bash
+bun notion add <database-id>
+```
+
+### Adding agents
+
+Agents linked to the integration are automatically populated during `notion sync` (No manual edits required)
+
+### Full sync command (`notion sync`)
+
+- Fetch/refresh database schemas + custom agents.
+- If you're unsure of the state of the world or scared, just run this command.
+
+```bash
+bun notion sync
+```
+
+## Implementation
+
+Create a single ORM instance with your Notion integration key:
+
+```ts
+import NotionORM from "@haustle/notion-orm";
+
+const notion = new NotionORM({
+  auth: process.env.NOTION_KEY!,
+});
+
+const db = notion.databases.yourDatabaseName; // DatabaseClient
+const agent = notion.agents.yourAgentName; // AgentClient
+```
+
+Generated database and agent names are camelCased and exposed on an instance of `NotionORM`.
+
+- Use `notion.databases.<camelCaseDatabaseName>` for `add()` and `query()`.
+- Use `notion.agents.<camelCaseAgentName>` for `chat()`, `chatStream()`, thread helpers, and history APIs.
+
+## Databases
+
+See the [Database client API reference](/api-reference#database-client).
+
+### Add a page
+
+```ts
+await notion.databases.books.add({
+  icon: {
+    type: "emoji",
+    emoji: "📕",
+  },
+  // Expected <key,value> is constrained to `books` database schema
+  properties: {
+    bookName: "Creativity, Inc.",
+    genre: ["Non-fiction"],
+    publishDate: {
+      start: "2026-03-01",
+    },
+  },
+});
+```
+
+### Query with filters
+
+```ts
+const response = await notion.databases.books.query({
+  // Expected `properties` object is constrained to `books` database schema
+  filter: {
+    and: [
+      { genre: { contains: "Non-fiction" } },
+      { publishDate: { on_or_after: "2026-01-01" } },
+      {
+        or: [
+          { bookName: { contains: "Creativity" } },
+          { bookName: { contains: "Innovation" } },
+        ],
+      },
+    ],
+  },
+});
+```
+
+### Adding
+
+Only title is required by Notion for a minimal page.
+
+```ts
+await notion.databases.books.add({
+  properties: {
+    bookName: "Raphael, Painter in Rome: a Novel", // title
+    author: "Stephanie Storey", // rich_text
+    status: "In progress", // status
+    numberOfPages: 307, // number
+    genre: ["Historical Fiction"], // multi_select
+    startDate: {
+      start: "2023-01-01",
+    }, // date
+    phone: "0000000000", // phone_number
+    email: "tyrus@haustle.studio", // email
+  },
+});
+```
+
+### Querying
+
+Query filters are typed by your generated schema, including nested compound filters. Find Notion filter operators [here](https://developers.notion.com/reference/post-database-query-filter).
+
+Example single filter:
+
+```ts
+await notion.databases.books.query({
+  filter: {
+    genre: {
+      contains: "Sci-Fi",
+    },
+  },
+  sort: [
+    {
+      property: "Book Name",
+      direction: "ascending",
+    },
+  ],
+});
+```
+
+Example compound filters:
+
+```ts
+await notion.databases.books.query({
+  filter: {
+    and: [
+      {
+        or: [
+          { genre: { contains: "Sci-Fi" } },
+          { genre: { contains: "Biography" } },
+        ],
+      },
+      { numberOfPages: { greater_than: 250 } },
+    ],
+  },
+});
+```
+
+You can request the full Notion payload by setting `includeRawResponse: true`:
+
+```ts
+const response = await notion.databases.books.query({
+  filter: {
+    genre: { contains: "Sci-Fi" },
+  },
+  includeRawResponse: true,
+});
+
+response.rawResponse; // strongly typed full Notion query response
+```
+
+Successful query shape:
+
+```ts
+{
+  results: [
+    {
+      bookName: "The Dream Machine",
+      genre: ["Non-fiction"],
+      numberOfPages: 460,
+    },
+  ],
+}
+```
+
+When `includeRawResponse: true` is provided, the response additionally includes the raw untransformed response from the official Notion API:
+
+```ts
+{
+  rawResponse: { /* full Notion API response */ },
+}
+```
+
+## Agents
+
+Agents are generated from those shared with your integration and exposed at `notion.agents.*`.
+
+See the [Agent client API reference](/api-reference#agent-client) for full method signatures, thread helpers, and message APIs.
+
+#### Chat and read messages
+
+```ts
+const chat = await notion.agents.helpBot.chat({
+  message: "Is the company closed today",
+});
+await notion.agents.helpBot.pollThread(chat.threadId);
+const messages = await notion.agents.helpBot.getMessages(chat.threadId, {
+  role: "agent",
+});
+```
+
+#### Stream chat
+
+```ts
+const thread = await notion.agents.helpBot.chatStream({
+  message: "How can I update my shipping address?",
+  onMessage: (msg) => {
+    if (msg.role === "agent") process.stdout.write(msg.content);
+  },
+});
+```
+
+#### Basic chat (non-streaming)
+
+- Useful when you want a straightforward request/response flow.
+- Helpful when you plan to fetch message history after completion.
+
+```ts
+const chat = await notion.agents.yourAgentName.chat({
+  message: "Give me a summary of this month",
+});
+
+await notion.agents.yourAgentName.pollThread(chat.threadId);
+
+const messages = await notion.agents.yourAgentName.getMessages(chat.threadId, {
+  role: "agent",
+});
+```
+
+#### Continue an existing thread
+
+- Useful when you want to preserve context across follow-up prompts.
+- Helpful for chat UIs where users continue the same conversation.
+
+```ts
+const nextTurn = await notion.agents.yourAgentName.chat({
+  threadId: chat.threadId,
+  message: "Now turn that into a grocery list.",
+});
+```
+
+#### Streaming patterns
+
+How to start a new chat stream (pass `threadId` to resume):
+
+```ts
+import { AgentClient } from "@haustle/notion-orm";
+
+const thread = await notion.agents.yourAgentName.chatStream({
+  message: "Generate a prep list for that plan.",
+
+  onMessage: (msg) => {
+    if (msg.role === "agent") process.stdout.write(msg.content);
+  },
+});
+
+
+const finalResponse = AgentClient.getAgentResponse(thread);
+console.log("Thread ID:", thread.threadId);
+console.log("Final:", finalResponse);
+```
+
+See [API Reference](/api-reference) for full method signatures, `ThreadInfo` shape, and message schemas.
+
+## Size & dependencies
+
+**70.6 kB** is unpacked size (npm pack --dry-run).
+
+Runtime dependencies:
+
+- <a href="https://www.npmjs.com/package/@notionhq/client" target="_blank" rel="noopener noreferrer"><code>@notionhq/client</code></a> — Notion API client used by runtime `DatabaseClient` and `AgentClient` to call official endpoints.
+- <a href="https://www.npmjs.com/package/@babel/parser" target="_blank" rel="noopener noreferrer"><code>@babel/parser</code></a> — Parses generated TypeScript/JavaScript source into AST nodes during codegen and sync flows.
+- <a href="https://www.npmjs.com/package/@babel/generator" target="_blank" rel="noopener noreferrer"><code>@babel/generator</code></a> — Emits formatted source code from AST transforms used by generated config/registry/type files.
+- <a href="https://www.npmjs.com/package/zod" target="_blank" rel="noopener noreferrer"><code>zod</code></a> — Validates config and untrusted boundary input with typed schemas and clear parse errors.
+
+## Project Structure
+
+```txt
+.
+├── src
+│   ├── cli              # notion init / add / sync
+│   ├── config           # config discovery, loading, and validation
+│   ├── client           # runtime DatabaseClient + AgentClient
+│   │   └── query        # typed filters + response simplification
+│   ├── ast              # code generation internals
+│   │   ├── database
+│   │   ├── agents
+│   │   └── shared
+│   └── types            # local type bridges
+├── tests                # runtime, codegen, types, and CLI coverage
+├── plugins              # lint/tooling helpers
+└── build                # generated output (after build/sync)
+    ├── src
+    ├── db
+    └── agents
+```

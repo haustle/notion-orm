@@ -1,0 +1,34 @@
+{
+	"name": "@haustle/notion-orm-website",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build:content": "bun scripts/build-content.ts",
+		"build:panda:codegen": "bun x panda codegen --clean",
+		"build:panda:css": "bun x panda --clean",
+		"build:assets": "bun run build:content && bun run build:panda:codegen && bun run build:panda:css",
+		"build": "bun run build:assets && next build",
+		"dev": "bun run build:assets && concurrently -n content,panda,next -c blue,magenta,green \"bun scripts/build-content.ts --watch\" \"bun x panda --watch\" \"next dev --port 8788\"",
+		"start": "next start",
+		"deploy": "bun run build",
+		"typecheck": "bun run build:assets && tsc --noEmit"
+	},
+	"devDependencies": {
+		"@mdx-js/mdx": "^3.1.1",
+		"@pandacss/dev": "^1.9.0",
+		"@types/react": "^19.2.14",
+		"@types/react-dom": "^19.2.3",
+		"agentation": "^2.3.0",
+		"concurrently": "^9.2.1",
+		"gray-matter": "^4.0.3",
+		"remark-gfm": "^4.0.1",
+		"typescript": "^5.9.3",
+		"zod": "^4.3.6"
+	},
+	"dependencies": {
+		"next": "^16.1.7",
+		"react": "^19.2.4",
+		"react-dom": "^19.2.4",
+		"rehype-slug": "^6.0.0"
+	}
+}
