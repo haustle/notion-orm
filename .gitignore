@@ -4,3 +4,14 @@ build
 package-lock.json
 .npmignore
 .env.local
+.wrangler
+website/.wrangler
+website/.dev.vars
+website/.next/
+website/.styled-system/
+website/src/styled-system/
+website/src/generated/
+website/next-env.d.ts
+*.tsbuildinfo
+.cursor/mcp.json
+.cursor/commands/agentation.md

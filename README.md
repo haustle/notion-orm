@@ -6,12 +6,64 @@ A lightweight TypeScript [Notion API](https://developers.notion.com/) wrapper th
 - Type inference when interacting with databases (e.g, `add` and `query`)
 - Sync remote schema changes in single command
 - Quickly start/resume chat streams with your agents
-- Exposed types for consumption (ex. values, and zod validators)
+- Access exported property values, schemas, and types
+- Logs console warnings when local vs remote schema drift is detected
 
 
 ## Installation
 ```bash
 bun add @haustle/notion-orm
+```
+
+# Quick start
+
+Initialize config from your project root (recommended):
+
+```bash
+bun notion init
+```
+
+Generated config shape:
+
+```ts
+// notion.config.ts
+
+// If you don't have an API key, sign up for free
+// [here](https://developers.notion.com)
+
+const auth = process.env.NOTION_KEY || "your-notion-api-key-here";
+const NotionConfig = {
+  auth,
+  databases: [
+    // Use: notion add <database-id>
+  ],
+  agents: [
+    // Auto-populated by: notion sync
+  ],
+};
+
+export default NotionConfig;
+```
+
+### Adding databases
+
+Add new database to track and generate static types (ex. how to find ID [here](https://developers.notion.com/guides/data-apis/working-with-databases#adding-pages-to-a-database) )
+
+```bash
+bun notion add <database-id>
+```
+
+
+### Adding agents
+
+Agents linked to the integration are automatically populated during `notion sync` (No manual edits required)
+
+### Full sync command (`notion sync`)
+
+Fetch/refresh database schemas + custom agents.
+
+```bash
+bun notion sync
 ```
 
 ## Basic examples
@@ -74,66 +126,6 @@ const thread = await notion.agents.helpBot.chatStream({
   onMessage: ({content, role}) => (msg.content),
 });
 
-```
-
-
-# Quick start
-
-Initialize config from your project root (recommended):
-
-```bash
-bun notion init
-```
-
-If needed, you can force config format:
-
-```bash
-bun notion init --ts
-# or
-bun notion init --js
-```
-
-Generated config shape:
-
-```ts
-// notion.config.ts
-
-// If you don't have an API key, sign up for free
-// [here](https://developers.notion.com)
-
-const auth = process.env.NOTION_KEY || "your-notion-api-key-here";
-const NotionConfig = {
-  auth,
-  databases: [
-    // Use: notion add <database-id>
-  ],
-  agents: [
-    // Auto-populated by: notion sync
-  ],
-};
-
-export default NotionConfig;
-```
-
-### Adding databases
-
-Add new database to track and generate static types (ex. how to find ID [here](https://developers.notion.com/guides/data-apis/working-with-databases#adding-pages-to-a-database) )
-
-```bash
-bun notion add <database-id>
-```
-
-
-### Adding agents
-
-Agents linked to the integration are automatically populated during `notion sync` (No manual edits required)
-
-### Full sync command (`notion sync`)
-
-Fetch/refresh database schemas + custom agents.
-
-```bash
-bun notion sync
 ```
 
 # Implementation

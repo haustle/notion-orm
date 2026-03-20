@@ -50,6 +50,31 @@
       "bracketSameLine": true
     }
   },
+  "overrides": [
+    {
+					"includes": ["tests/golden/**/*.ts", "tests/golden/**/*.d.ts"],
+					"linter": {
+						"rules": {
+							"correctness": {
+								"noUnusedImports": "off"
+							},
+							"style": {
+								"noDefaultExport": "off"
+							}
+						}
+					}
+				},
+				{
+					"includes": ["website/src/**/*.ts", "website/src/**/*.tsx"],
+					"linter": {
+						"rules": {
+							"style": {
+								"noDefaultExport": "off"
+							}
+						}
+					}
+				}
+  ],
   "assist": {
     "enabled": true,
     "actions": {
