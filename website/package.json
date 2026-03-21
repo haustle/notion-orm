@@ -8,8 +8,10 @@
 		"build:panda:css": "bun x panda --clean",
 		"build:assets": "bun run build:content && bun run build:panda:codegen && bun run build:panda:css",
 		"build": "bun run build:assets && next build",
-		"dev": "bun run build:assets && concurrently -n content,panda,next -c blue,magenta,green \"bun scripts/build-content.ts --watch\" \"bun x panda --watch\" \"next dev --port 8788\"",
-		"start": "next start",
+		"dev:next": "next dev --webpack --port ${PORT:-8788}",
+		"dev:next:turbopack": "next dev --turbopack --port ${PORT:-8788}",
+		"dev": "bun run build:assets && concurrently -n content,panda,next -c blue,magenta,green \"bun scripts/build-content.ts --watch\" \"bun x panda --watch\" \"bun run dev:next\"",
+		"start": "next start --port ${PORT:-8788}",
 		"deploy": "bun run build",
 		"typecheck": "bun run build:assets && tsc --noEmit"
 	},
