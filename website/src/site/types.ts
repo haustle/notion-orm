@@ -1,5 +1,9 @@
 import type { ComponentType } from "react";
 
+export const sitePaths = ["/", "/api-reference"] as const;
+
+export type SitePath = (typeof sitePaths)[number];
+
 export interface TocEntry {
 	id: string;
 	label: string;
@@ -7,9 +11,10 @@ export interface TocEntry {
 }
 
 export interface SitePage {
-	path: string;
+	path: SitePath;
 	title: string;
 	description: string;
-	component: ComponentType;
+	component?: ComponentType;
+	loadComponent?: () => Promise<{ default: ComponentType }>;
 	toc: TocEntry[];
 }

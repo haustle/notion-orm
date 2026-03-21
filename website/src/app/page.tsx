@@ -1,5 +1,5 @@
-import { getPage, getPageMetadata } from "../site/page-data";
-import { SitePageView } from "../site/page-view";
+import { getPage, getPageMetadata } from "../site/site-page-data";
+import { SitePageView } from "../site/SitePageView";
 
 export const metadata = getPageMetadata(getPage("/"));
 

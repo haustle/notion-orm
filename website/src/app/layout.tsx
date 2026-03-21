@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "../styled-system/styles.css";
-import { AgentationDev } from "../site/agentation-dev";
+import { AgentationDev } from "../site/AgentationDev";
 import { siteTitle } from "../site/config";
 
 export const metadata: Metadata = {

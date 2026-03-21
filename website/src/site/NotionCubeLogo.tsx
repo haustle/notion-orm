@@ -162,17 +162,35 @@ const preClass = css({
 	p: "0",
 });
 
-export function NotionCubeLogo() {
+interface NotionCubeLogoProps {
+	animate?: boolean;
+	viewportRows?: readonly string[];
+}
+
+function viewportRowsToGrid(rows: readonly string[]): string[][] {
+	return Array.from({ length: GRID_H }, (_, r) =>
+		Array.from({ length: GRID_W }, (_, c) => rows[r]?.[c] ?? "."),
+	);
+}
+
+export function NotionCubeLogo({
+	animate = true,
+	viewportRows,
+}: NotionCubeLogoProps) {
 	const [frame, setFrame] = useState(0);
 	const [reduceMotion, setReduceMotion] = useState(false);
 
 	useEffect(() => {
+		if (!animate) {
+			setReduceMotion(true);
+			return;
+		}
 		const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
 		const update = () => setReduceMotion(mq.matches);
 		update();
 		mq.addEventListener("change", update);
 		return () => mq.removeEventListener("change", update);
-	}, []);
+	}, [animate]);
 
 	useEffect(() => {
 		if (reduceMotion) {
@@ -184,8 +202,14 @@ export function NotionCubeLogo() {
 		return () => window.clearInterval(id);
 	}, [reduceMotion]);
 
+	const staticText = viewportRows
+		? buildMonitorLines(viewportRowsToGrid(viewportRows)).join("\n")
+		: PRECOMPUTED_DISPLAY[0];
+
 	const text =
-		PRECOMPUTED_DISPLAY[reduceMotion ? 0 : frame] ?? PRECOMPUTED_DISPLAY[0];
+		reduceMotion || !animate
+			? staticText
+			: (PRECOMPUTED_DISPLAY[frame] ?? PRECOMPUTED_DISPLAY[0]);
 
 	return (
 		<div className={wrapperClass} aria-hidden="true">

@@ -1,10 +1,10 @@
 "use client";
 
 import { type FC, useEffect, useState } from "react";
-import { css } from "../styled-system/css";
+import { css, cx } from "../styled-system/css";
 import type { TocEntry } from "./types";
 
-interface TocNavProps {
+interface PageTocProps {
 	toc: TocEntry[];
 	className?: string;
 }
@@ -18,6 +18,10 @@ const tocHeadingLabelClass = css({
 	px: "3",
 });
 
+const tocRootClass = css({
+	width: "225px",
+});
+
 const tocLinksCardClass = css({
 	display: "flex",
 	flexDirection: "column",
@@ -29,21 +33,28 @@ const tocLinksCardClass = css({
 	py: "2",
 });
 
-const tocLinkClass = (active: boolean) =>
-	css({
-		display: "block",
-		py: "1",
-		fontSize: "sm",
-		lineHeight: "1.5",
-		fontWeight: active ? "600" : "400",
-		color: active ? { base: "text", _dark: "white" } : "muted",
-		transitionProperty: "color, font-weight",
-		transitionDuration: "220ms",
-		_hover: {
-			color: { base: "text", _dark: "white" },
-			fontWeight: "600",
-		},
-	});
+const tocLinkBaseClass = css({
+	display: "block",
+	py: "1",
+	fontSize: "sm",
+	lineHeight: "1.5",
+	transitionProperty: "color, font-weight",
+	transitionDuration: "220ms",
+	_hover: {
+		color: { base: "text", _dark: "white" },
+		fontWeight: "600",
+	},
+});
+
+const tocLinkActiveClass = css({
+	fontWeight: "600",
+	color: { base: "text", _dark: "white" },
+});
+
+const tocLinkInactiveClass = css({
+	fontWeight: "400",
+	color: "muted",
+});
 
 const HEADING_ACTIVATION_OFFSET = 140;
 const BOTTOM_OF_PAGE_THRESHOLD = 8;
@@ -80,7 +91,7 @@ function getActiveHeadingId(toc: TocEntry[]): string | null {
 	return activeId;
 }
 
-export const TocNav: FC<TocNavProps> = ({ toc, className }) => {
+export const PageToc: FC<PageTocProps> = ({ toc, className }) => {
 	const [activeId, setActiveId] = useState<string | null>(toc[0]?.id ?? null);
 
 	useEffect(() => {
@@ -92,7 +103,9 @@ export const TocNav: FC<TocNavProps> = ({ toc, className }) => {
 			const nextActiveId = getActiveHeadingId(toc);
 
 			if (nextActiveId) {
-				setActiveId(nextActiveId);
+				setActiveId((currentActiveId) =>
+					currentActiveId === nextActiveId ? currentActiveId : nextActiveId,
+				);
 			}
 		};
 
@@ -139,7 +152,7 @@ export const TocNav: FC<TocNavProps> = ({ toc, className }) => {
 		};
 
 		window.addEventListener("scroll", scheduleUpdate, { passive: true });
-		window.addEventListener("resize", scheduleUpdate);
+		window.addEventListener("resize", scheduleUpdate, { passive: true });
 		window.addEventListener("hashchange", onHashChange);
 
 		return () => {
@@ -158,7 +171,7 @@ export const TocNav: FC<TocNavProps> = ({ toc, className }) => {
 	}
 
 	return (
-		<div className={className}>
+		<div className={cx(tocRootClass, className)}>
 			<span className={tocHeadingLabelClass}>On page</span>
 			<nav className={tocLinksCardClass} aria-label="Table of contents">
 				{toc.map((entry) => {
@@ -167,7 +180,10 @@ export const TocNav: FC<TocNavProps> = ({ toc, className }) => {
 						<a
 							key={entry.id}
 							href={`#${entry.id}`}
-							className={tocLinkClass(active)}
+							className={cx(
+								tocLinkBaseClass,
+								active ? tocLinkActiveClass : tocLinkInactiveClass,
+							)}
 							aria-current={active ? "location" : undefined}
 							onClick={(e) => {
 								e.preventDefault();
@@ -189,3 +205,5 @@ export const TocNav: FC<TocNavProps> = ({ toc, className }) => {
 		</div>
 	);
 };
+
+export { PageToc as TocNav };

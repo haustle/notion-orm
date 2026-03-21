@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { getPage as getPageFromContent } from "../generated/content";
-import type { SitePage } from "./types";
+import type { SitePage, SitePath } from "./types";
 
-export function getPage(path: string = "/"): SitePage | undefined {
-	return getPageFromContent(path);
+const getCachedPage = cache((path: SitePath) => getPageFromContent(path));
+
+export function getPage(path: SitePath = "/"): SitePage | undefined {
+	return getCachedPage(path);
 }
 
 export function getPageMetadata(page: SitePage | undefined): Metadata {
