@@ -18,47 +18,6 @@ export function resolveUserNameOrId(user: unknown): string | null {
 	return null;
 }
 
-export function resolveFormulaValue(formula: unknown) {
-	if (!formula || typeof formula !== "object" || !("type" in formula)) {
-		return null;
-	}
-
-	switch (formula.type) {
-		case "string":
-			return "string" in formula && typeof formula.string === "string"
-				? formula.string
-				: null;
-		case "number":
-			return "number" in formula && typeof formula.number === "number"
-				? formula.number
-				: null;
-		case "boolean":
-			return "boolean" in formula && typeof formula.boolean === "boolean"
-				? formula.boolean
-				: null;
-		case "date": {
-			if (
-				"date" in formula &&
-				formula.date &&
-				typeof formula.date === "object" &&
-				"start" in formula.date &&
-				typeof formula.date.start === "string"
-			) {
-				return {
-					start: formula.date.start,
-					end:
-						"end" in formula.date && typeof formula.date.end === "string"
-							? formula.date.end
-							: undefined,
-				};
-			}
-			return null;
-		}
-		default:
-			return null;
-	}
-}
-
 export function resolveFilesValue(files: unknown) {
 	if (!Array.isArray(files)) {
 		return [];

@@ -274,7 +274,6 @@ const filesCall = (value: unknown): CreatePagePropertyByKey<"files"> => {
 
 type AddPropertyBuilder = (value: unknown) => CreatePagePropertyValue;
 const ADD_PROPERTY_BUILDERS = {
-	formula: undefined,
 	created_by: undefined,
 	last_edited_by: undefined,
 	created_time: undefined,

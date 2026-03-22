@@ -6,15 +6,6 @@ const zod_1 = require("zod");
 const id = "c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6";
 exports.EdgeCasesSchema = zod_1.z.object({
     name: zod_1.z.string(),
-    score: zod_1.z.union([
-        zod_1.z.string(),
-        zod_1.z.number(),
-        zod_1.z.boolean(),
-        zod_1.z.object({
-            start: zod_1.z.string(),
-            end: zod_1.z.string().nullable().optional()
-        }).nullable()
-    ]).nullable().optional(),
     attachments: zod_1.z.array(zod_1.z.object({
         name: zod_1.z.string(),
         url: zod_1.z.string()
@@ -30,10 +21,6 @@ const columnNameToColumnProperties = {
     "name": {
         columnName: "Name",
         type: "title"
-    },
-    "score": {
-        columnName: "Score",
-        type: "formula"
     },
     "attachments": {
         columnName: "Attachments",

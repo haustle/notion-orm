@@ -299,9 +299,9 @@ export const INVENTORY_ITEMS_FIXTURE: DataSourceFixtureSpec = {
 };
 
 /**
- * Edge-case schema covering formula, files, people, relation, created_by,
- * last_edited_by, created_time, last_edited_time, and an unsupported rollup
- * property that should be silently skipped by the emitter.
+ * Edge-case schema covering files, people, relation, created_by,
+ * last_edited_by, created_time, last_edited_time, plus unsupported formula
+ * and rollup properties that should be silently skipped by the emitter.
  */
 export const EDGE_CASES_FIXTURE: DataSourceFixtureSpec = {
 	id: "c3d4e5f6-a1b2-c3d4-e5f6-a1b2c3d4e5f6",

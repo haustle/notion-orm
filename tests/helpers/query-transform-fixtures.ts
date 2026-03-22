@@ -19,17 +19,6 @@ import type {
 type NotionPropertyValueByType<Type extends NotionPropertyValue["type"]> =
 	Extract<NotionPropertyValue, { type: Type }>;
 
-// Narrows formula values by nested `formula.type` (string/number/boolean/date).
-type NotionFormulaPropertyValue = NotionPropertyValueByType<"formula">;
-type NotionFormulaValueByType<
-	Type extends NonNullable<NotionFormulaPropertyValue["formula"]>["type"],
-> = NotionFormulaPropertyValue & {
-	formula: Extract<
-		NonNullable<NotionFormulaPropertyValue["formula"]>,
-		{ type: Type }
-	>;
-};
-
 // Borrow the file input contract from Notion's create-page API types.
 type NotionCreatePagePropertyInput = NonNullable<
 	CreatePageParameters["properties"]
@@ -67,9 +56,7 @@ type SnakeToCamelCase<Input extends string> =
 		: Input;
 
 type SupportedTypeToHelperMethodName = {
-	[K in SupportedNotionColumnType]: K extends "formula"
-		? "formulaString"
-		: SnakeToCamelCase<K>;
+	[K in SupportedNotionColumnType]: SnakeToCamelCase<K>;
 };
 
 /**
@@ -241,41 +228,6 @@ export function buildQueryScenario(args: {
 }
 
 export const databasePropertyValue = {
-	formulaString(value: string): NotionFormulaValueByType<"string"> {
-		return {
-			id: createMockShortId(),
-			type: "formula",
-			formula: { type: "string", string: value },
-		};
-	},
-	formulaNumber(value: number): NotionFormulaValueByType<"number"> {
-		return {
-			id: createMockShortId(),
-			type: "formula",
-			formula: { type: "number", number: value },
-		};
-	},
-	formulaBoolean(value: boolean): NotionFormulaValueByType<"boolean"> {
-		return {
-			id: createMockShortId(),
-			type: "formula",
-			formula: { type: "boolean", boolean: value },
-		};
-	},
-	formulaDate(start: string, end?: string): NotionFormulaValueByType<"date"> {
-		return {
-			id: createMockShortId(),
-			type: "formula",
-			formula: {
-				type: "date",
-				date: {
-					start,
-					end: end ?? null,
-					time_zone: null,
-				},
-			},
-		};
-	},
 	files(value: FixtureFileInput[]): NotionPropertyValueByType<"files"> {
 		return {
 			id: createMockShortId(),
@@ -460,7 +412,6 @@ type DatabasePropertyValueFunctionByType = {
 
 // Exhaustive + linked registry: every supported type must map to a real helper.
 export const databasePropertyValueFunctionByType = {
-	formula: databasePropertyValue.formulaString,
 	files: databasePropertyValue.files,
 	people: databasePropertyValue.people,
 	relation: databasePropertyValue.relation,

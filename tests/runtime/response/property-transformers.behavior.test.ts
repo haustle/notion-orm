@@ -5,7 +5,6 @@ import { resolveCreatedTime } from "../../../src/client/query/response/created_t
 import { resolveDate } from "../../../src/client/query/response/date";
 import { resolveEmail } from "../../../src/client/query/response/email";
 import { resolveFiles } from "../../../src/client/query/response/files";
-import { resolveFormula } from "../../../src/client/query/response/formula";
 import { resolveLastEditedBy } from "../../../src/client/query/response/last_edited_by";
 import { resolveLastEditedTime } from "../../../src/client/query/response/last_edited_time";
 import { resolveMultiSelect } from "../../../src/client/query/response/multi_select";
@@ -22,23 +21,6 @@ import { resolveUrl } from "../../../src/client/query/response/url";
 import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
 
 describe("individual property transformers", () => {
-	test("formula", () => {
-		expect(resolveFormula(databasePropertyValue.formulaString("hello"))).toBe(
-			"hello",
-		);
-		expect(resolveFormula(databasePropertyValue.formulaNumber(123))).toBe(123);
-		expect(resolveFormula(databasePropertyValue.formulaBoolean(true))).toBe(
-			true,
-		);
-		expect(
-			resolveFormula(databasePropertyValue.formulaDate("2026-03-01")),
-		).toEqual({
-			start: "2026-03-01",
-			end: undefined,
-		});
-		expect(resolveFormula(databasePropertyValue.number(1))).toBeNull();
-	});
-
 	test("files", () => {
 		expect(
 			resolveFiles(

@@ -7,7 +7,6 @@ import {
 } from "../helpers/query-transform-fixtures";
 
 type ExampleDatabaseSchema = {
-	formulaScore: number | null;
 	attachments: Array<{ name: string; url: string }>;
 	owners: string[];
 	relatedPages: string[];
@@ -32,7 +31,6 @@ type ExampleDatabaseSchema = {
 describe("runtime database capability", () => {
 	test("build schema + mock API results + transform normalized response", () => {
 		const schema = defineDatabaseSchema({
-			formulaScore: { type: "formula", columnName: "Formula Score" },
 			attachments: { type: "files", columnName: "Attachments" },
 			owners: { type: "people", columnName: "Owners" },
 			relatedPages: { type: "relation", columnName: "Related Pages" },
@@ -61,7 +59,6 @@ describe("runtime database capability", () => {
 			schema,
 			pages: [
 				{
-					"Formula Score": databasePropertyValue.formulaNumber(98),
 					Attachments: databasePropertyValue.files([
 						{ name: "menu.pdf", url: "https://files.dev/menu.pdf" },
 					]),
@@ -113,7 +110,6 @@ describe("runtime database capability", () => {
 
 		expect(validateCallCount).toBe(1);
 		expect(validatedResult).toEqual({
-			formulaScore: 98,
 			attachments: [{ name: "menu.pdf", url: "https://files.dev/menu.pdf" }],
 			owners: ["Tyrus"],
 			relatedPages: ["page-1", "page-2"],
@@ -137,7 +133,6 @@ describe("runtime database capability", () => {
 
 		expect(output.results).toEqual([
 			{
-				formulaScore: 98,
 				attachments: [{ name: "menu.pdf", url: "https://files.dev/menu.pdf" }],
 				owners: ["Tyrus"],
 				relatedPages: ["page-1", "page-2"],

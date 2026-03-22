@@ -119,12 +119,6 @@ export function createZodPropertyExpression(column: ZodMetadata) {
 				nullable: true,
 			});
 		}
-		case "formula": {
-			return applyOptionalNullable(createZodFormulaExpression(), {
-				optional,
-				nullable: true,
-			});
-		}
 		default: {
 			return assertNever(column.type);
 		}
@@ -303,61 +297,3 @@ function createZodDateExpression(optional: boolean) {
 	});
 }
 
-/**
- * Builds formula output validation union compatible with Notion formula results.
- */
-function createZodFormulaExpression() {
-	const formulaDateObject = ts.factory.createCallExpression(
-		ts.factory.createPropertyAccessExpression(
-			ts.factory.createIdentifier("z"),
-			ts.factory.createIdentifier("object"),
-		),
-		undefined,
-		[
-			ts.factory.createObjectLiteralExpression(
-				[
-					ts.factory.createPropertyAssignment(
-						ts.factory.createIdentifier("start"),
-						createZodPrimitiveCall("string"),
-					),
-					ts.factory.createPropertyAssignment(
-						ts.factory.createIdentifier("end"),
-						applyOptionalNullable(createZodPrimitiveCall("string"), {
-							optional: true,
-							nullable: true,
-						}),
-					),
-				],
-				true,
-			),
-		],
-	);
-
-	const formulaDateNullable = ts.factory.createCallExpression(
-		ts.factory.createPropertyAccessExpression(
-			formulaDateObject,
-			ts.factory.createIdentifier("nullable"),
-		),
-		undefined,
-		[],
-	);
-
-	return ts.factory.createCallExpression(
-		ts.factory.createPropertyAccessExpression(
-			ts.factory.createIdentifier("z"),
-			ts.factory.createIdentifier("union"),
-		),
-		undefined,
-		[
-			ts.factory.createArrayLiteralExpression(
-				[
-					createZodPrimitiveCall("string"),
-					createZodPrimitiveCall("number"),
-					createZodPrimitiveCall("boolean"),
-					formulaDateNullable,
-				],
-				true,
-			),
-		],
-	);
-}

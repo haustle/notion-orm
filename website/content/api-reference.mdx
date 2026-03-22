@@ -304,7 +304,6 @@ Filter operators vary by property type — see the [Notion filter reference](htt
 | `email`            | `string`                                                             | `"tyrus@haustle.studio"`                       |
 | `phone_number`     | `string`                                                             | `"0000000000"`                                |
 | `url`              | `string`                                                             | `"https://developers.notion.com/"`            |
-| `formula`          | `string \| number \| boolean \| { start: string; end?: string }`     | `42`                                          |
 | `files`            | `Array<{ name: string; url: string }>`                                | `[{ name: "brief.pdf", url: "https://..." }]` |
 | `people`           | `string[]`                                                           | `["1f4e6f4a-5b58-4d91-a7fc-2f5f2a0f6bb1"]`   |
 | `relation`         | `string[]`                                                           | `["6f7f9cbf-8d45-48f8-a194-661e73f7f5d9"]`    |
@@ -316,19 +315,14 @@ Filter operators vary by property type — see the [Notion filter reference](htt
 
 ### Unsupported properties
 
-Typed query filters now support most first-class Notion property filters. These property types are not supported in filters yet:
+These property types are intentionally excluded from the generated schema and client surface:
 
 | Property type | Why |
 | ------------- | --- |
+| `formula`     | Formula values are computed by Notion at read time, and the result shape depends on the expression plus the current value type. Because that contract is not stable enough for generated schema types, formula properties are skipped entirely instead of being exposed as readable-but-limited fields. |
 | `rollup`      | Rollup values are polymorphic and require additional normalization before we can provide safe, predictable filter contracts. |
 
-### Non-filterable properties
-
-These property types are supported on your schema and in query results, but typed filter operators are not available for them:
-
-| Property type | Why |
-| ------------- | --- |
-| `formula`     | Formula results can vary by expression and return type, so they are currently excluded from typed filter operators. |
+Formula properties are therefore omitted from generated database modules and are unavailable in typed reads, projections, or filters.
 
 ## Agent client
 

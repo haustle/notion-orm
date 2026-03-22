@@ -27,7 +27,7 @@ export type DatabasePropertyValue =
 	| { start: string; end?: string | null };
 
 export const SUPPORTED_PROPERTY_TYPES = {
-	formula: true,
+	formula: false,
 	files: true,
 	people: true,
 	relation: true,
@@ -75,7 +75,6 @@ type ApiSingleFilterByColumnType = {
 };
 
 export const FILTERABLE_PROPERTY_TYPES = {
-	formula: false,
 	files: true,
 	people: true,
 	relation: true,

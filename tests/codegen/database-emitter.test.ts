@@ -144,7 +144,10 @@ describe("database module emitter", () => {
 			});
 		});
 
-		test("skips unsupported rollup properties from emitted output", () => {
+		test("skips unsupported formula and rollup properties from emitted output", () => {
+			expect(rendered.tsCode).not.toContain("score");
+			expect(rendered.tsCode).not.toContain("Score");
+			expect(rendered.tsCode).not.toContain("formula");
 			expect(rendered.tsCode).not.toContain("summary");
 			expect(rendered.tsCode).not.toContain("Summary");
 			expect(rendered.tsCode).not.toContain("rollup");
@@ -220,5 +223,10 @@ describe("property type coverage", () => {
 	test("keeps rollup present in fixtures while remaining intentionally unsupported", () => {
 		expect(fixturePropertyTypes.has("rollup")).toBe(true);
 		expect(SUPPORTED_PROPERTY_TYPES.rollup).toBe(false);
+	});
+
+	test("keeps formula present in fixtures while remaining intentionally unsupported", () => {
+		expect(fixturePropertyTypes.has("formula")).toBe(true);
+		expect(SUPPORTED_PROPERTY_TYPES.formula).toBe(false);
 	});
 });

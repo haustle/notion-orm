@@ -119,27 +119,6 @@ const propertyPipelineCases: Array<{
 		},
 	},
 	{
-		name: "formula",
-		testCase: {
-			propertyType: "formula",
-			validPropertyValue: databasePropertyValue.formulaDate(
-				"2026-03-01",
-				"2026-03-05",
-			),
-			expectedValidValue: {
-				start: "2026-03-01",
-				end: "2026-03-05",
-			},
-			mismatchedPropertyValue: databasePropertyValue.number(1),
-			malformedPropertyValue: rawPropertyValue({
-				id: "formula",
-				type: "formula",
-				formula: { type: "date", date: { end: "2026-03-05" } },
-			}),
-			expectedMalformedValue: null,
-		},
-	},
-	{
 		name: "last_edited_by",
 		testCase: {
 			propertyType: "last_edited_by",

@@ -4,15 +4,6 @@ import type { Query } from "@haustle/notion-orm";
 const id = "c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6";
 export const EdgeCasesSchema = z.object({
     name: z.string(),
-    score: z.union([
-        z.string(),
-        z.number(),
-        z.boolean(),
-        z.object({
-            start: z.string(),
-            end: z.string().nullable().optional()
-        }).nullable()
-    ]).nullable().optional(),
     attachments: z.array(z.object({
         name: z.string(),
         url: z.string()
@@ -26,10 +17,6 @@ export const EdgeCasesSchema = z.object({
 });
 export type DatabaseSchemaType = {
     name: string;
-    score?: string | number | boolean | {
-        start: string;
-        end?: string;
-    } | null;
     attachments?: {
         name: string;
         url: string;
@@ -45,10 +32,6 @@ const columnNameToColumnProperties = {
     "name": {
         columnName: "Name",
         type: "title"
-    },
-    "score": {
-        columnName: "Score",
-        type: "formula"
     },
     "attachments": {
         columnName: "Attachments",

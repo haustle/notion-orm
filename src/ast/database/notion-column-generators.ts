@@ -230,14 +230,6 @@ export const propertyASTGenerators = {
 		};
 	},
 
-	formula: ({ camelizedName }) => ({
-		tsPropertySignature: createFormulaProperty(camelizedName),
-		zodMeta: {
-			isRequired: false,
-		},
-		enumConstStatement: undefined,
-	}),
-
 	files: ({ camelizedName }) => ({
 		tsPropertySignature: createFilesProperty(camelizedName),
 		zodMeta: {
@@ -359,36 +351,3 @@ function createFilesProperty(name: string): ts.TypeElement {
 	);
 }
 
-/**
- * Builds formula output union type:
- * `string | number | boolean | { start; end? } | null`.
- */
-function createFormulaProperty(name: string): ts.TypeElement {
-	const dateType = ts.factory.createTypeLiteralNode([
-		ts.factory.createPropertySignature(
-			undefined,
-			ts.factory.createIdentifier("start"),
-			undefined,
-			ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
-		),
-		ts.factory.createPropertySignature(
-			undefined,
-			ts.factory.createIdentifier("end"),
-			ts.factory.createToken(ts.SyntaxKind.QuestionToken),
-			ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
-		),
-	]);
-
-	return ts.factory.createPropertySignature(
-		undefined,
-		ts.factory.createIdentifier(name),
-		ts.factory.createToken(ts.SyntaxKind.QuestionToken),
-		ts.factory.createUnionTypeNode([
-			ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
-			ts.factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword),
-			ts.factory.createKeywordTypeNode(ts.SyntaxKind.BooleanKeyword),
-			dateType,
-			ts.factory.createLiteralTypeNode(ts.factory.createNull()),
-		]),
-	);
-}

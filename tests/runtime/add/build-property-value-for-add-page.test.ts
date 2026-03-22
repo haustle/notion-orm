@@ -155,13 +155,13 @@ describe("buildPropertyValueForAddPage transformed property shape validation", (
 		).toEqual({ date: { start: "2026-03-01", end: undefined } });
 	});
 
-	test("throws descriptive error for unsupported add transformation (formula)", () => {
+	test("throws descriptive error for unsupported add transformation", () => {
 		expect(() =>
 			buildPropertyValueForAddPage({
-				type: "formula",
-				value: "42",
+				type: "created_time",
+				value: "2026-03-01T00:00:00.000Z",
 			}),
-		).toThrow("add() does not support property type 'formula'");
+		).toThrow("add() does not support property type 'created_time'");
 	});
 
 	test("throws descriptive error for invalid value shape on supported type", () => {

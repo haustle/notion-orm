@@ -409,7 +409,6 @@ See [API Reference](#api-reference) for full method signatures, `ThreadInfo` sha
 | `email`            | `string`                                                      | `"tyrus@haustle.studio"`                      |
 | `phone_number`     | `string`                                                      | `"0000000000"`                                |
 | `url`              | `string`                                                      | `"https://developers.notion.com/"`            |
-| `formula`          | `string | number | boolean | { start: string; end?: string }` | `42`                                          |
 | `files`            | `Array<{ name: string; url: string }>`                               | `[{ name: "brief.pdf", url: "https://..." }]` |
 | `people`           | `string[]`                                                           | `["1f4e6f4a-5b58-4d91-a7fc-2f5f2a0f6bb1"]`    |
 | `relation`         | `string[]`                                                           | `["6f7f9cbf-8d45-48f8-a194-661e73f7f5d9"]`    |
@@ -420,9 +419,14 @@ See [API Reference](#api-reference) for full method signatures, `ThreadInfo` sha
 | `unique_id`        | `string`                                                      | `"TASK-42"`                                   |
 
 
-`rollup` is not supported yet.
+## Unsupported properties
 
-Filterable properties are a subset (for example, `formula`, `files`, and `relation` are currently non-filterable).
+`rollup` and `formula` are intentionally unsupported.
+
+- `formula`: Notion computes formula values at read time, and the actual output shape depends on the formula expression and its current result type. That makes it a poor fit for the generated static schema this client exposes. Because we cannot provide a stable contract for reads, writes, or filters, formula properties are skipped entirely during code generation.
+- `rollup`: Rollup values are polymorphic and still need additional normalization before we can expose them as a predictable typed contract.
+
+All supported properties can be used in typed filters. Formula properties are not surfaced in the generated client at all, so they are unavailable for selection, filtering, and normalized query results.
 
 ## Project Structure
 

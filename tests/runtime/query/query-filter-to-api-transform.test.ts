@@ -15,7 +15,6 @@ type QuerySchema = {
 	tags: string[];
 	neighborhood: string;
 	notes: string;
-	formulaScore: number;
 	attachments: Array<{ name: string; url: string }>;
 	relatedPages: string[];
 	owners: string[];
@@ -38,7 +37,6 @@ const map = {
 	tags: { columnName: "Tags", type: "multi_select" },
 	neighborhood: { columnName: "Neighborhood", type: "select" },
 	notes: { columnName: "Notes", type: "rich_text" },
-	formulaScore: { columnName: "Formula Score", type: "formula" },
 	attachments: { columnName: "Attachments", type: "files" },
 	relatedPages: { columnName: "Related Pages", type: "relation" },
 	owners: { columnName: "Owners", type: "people" },
@@ -108,12 +106,11 @@ describe("query filter transform", () => {
 		});
 	});
 
-	test("drops unknown schema keys and non-filterable property types", () => {
+	test("drops unknown schema keys from runtime filters", () => {
 		const runtimeFilter = JSON.parse(
 			JSON.stringify({
 				and: [
 					{ unknownProp: { equals: "x" } },
-					{ formulaScore: { equals: 99 } },
 					{ rating: { equals: 4 } },
 				],
 			}),
