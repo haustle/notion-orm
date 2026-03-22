@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { FC, ReactNode } from "react";
 import { css, cx } from "../styled-system/css";
-import { githubUrl, siteTitle, twitterUrl } from "./config";
+import { githubUrl, siteTitle } from "./config";
 import { PageToc } from "./PageToc";
 import type { SitePage, SitePath, TocEntry } from "./types";
 
@@ -12,7 +12,6 @@ interface LayoutProps {
 	sitePages: SiteNavPage[];
 	currentPath: SitePath | "";
 	toc: TocEntry[];
-	showFooter?: boolean;
 }
 
 interface SidebarProps {
@@ -111,29 +110,6 @@ const articleBaseClass = css({
 	fontSize: "md",
 	lineHeight: "1.75",
 	color: "text",
-});
-
-const footerClass = css({
-	display: "flex",
-	justifyContent: "center",
-	pt: "5",
-	bg: "background",
-	color: "muted",
-	fontSize: "sm",
-});
-
-const footerLinkClass = css({
-	color: "muted",
-	textDecoration: "none",
-	px: "2",
-	py: "1",
-	borderRadius: "full",
-	transitionProperty: "background, color",
-	transitionDuration: "200ms",
-	_hover: {
-		bg: "inlineCodeBg",
-		color: "text",
-	},
 });
 
 const proseStyles = {
@@ -358,7 +334,6 @@ export const Layout: FC<LayoutProps> = ({
 	sitePages,
 	currentPath,
 	toc,
-	showFooter = true,
 }) => {
 	const isHome = currentPath === "/";
 	const narrowMainColumn = isHome || currentPath === "/api-reference";
@@ -380,17 +355,6 @@ export const Layout: FC<LayoutProps> = ({
 					<article className={cx(articleBaseClass, articleProseClass)}>
 						{children}
 					</article>
-					{showFooter && (
-						<footer className={footerClass}>
-							<a
-								href={twitterUrl}
-								target="_blank"
-								rel="noreferrer"
-								className={footerLinkClass}>
-								Built by @haustle
-							</a>
-						</footer>
-					)}
 				</main>
 			</div>
 		</div>

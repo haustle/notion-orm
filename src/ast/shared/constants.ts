@@ -102,7 +102,7 @@ export const AST_IMPORT_PATHS = {
 
 /** Runtime constants shared by emitted clients and CLI flows. */
 export const AST_RUNTIME_CONSTANTS = {
-	NOTION_API_VERSION: "2025-09-03",
+	NOTION_API_VERSION: "2026-03-11",
 
 	PACKAGE_LOG_PREFIX: "[@haustle/notion-orm]",
 

@@ -45,7 +45,7 @@ const agent = notion.agents.yourAgentName;
 | `findFirst(args?)` | Returns the first matching row or `null` |
 | `findUnique({ where: { id } })` | Retrieves a single page by its Notion ID |
 | `count(args?)` | Returns the total number of matching rows |
-| `create({ properties, icon?, cover? })` | Creates a page with typed properties |
+| `create({ properties, icon?, cover?, markdown? })` | Creates a page with typed properties and optional [markdown body content](https://developers.notion.com/guides/data-apis/working-with-markdown-content#block-type-support) |
 | `createMany({ properties })` | Creates multiple pages sequentially |
 | `update({ where: { id }, properties })` | Updates a single page by ID |
 | `updateMany({ where, properties })` | Updates all pages matching a filter |
@@ -160,6 +160,19 @@ const result = await db.create({
 });
 // result.id — the new page ID
 ```
+
+Pass `markdown` to add body content to the page in a single call. This uses Notion's [enhanced markdown format](https://developers.notion.com/guides/data-apis/working-with-markdown-content#block-type-support) — headings, lists, code blocks, quotes, checklists, and more are all supported.
+
+```ts
+await db.create({
+  properties: {
+    bookName: "Reading Notes",
+  },
+  markdown: "# Key Takeaways\n\n- **Creativity requires candor** — honest feedback loops matter\n- Protect the new — early ideas are fragile\n\n> \"Quality is the best business plan.\"",
+});
+```
+
+`markdown` is mutually exclusive with `children` / `content`.
 
 ---
 

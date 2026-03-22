@@ -10,7 +10,7 @@ export const metadata = {
 
 # Notion ORM
 
-A typed [Notion API](https://developers.notion.com/) wrapper for databases and agents with generated local schemas
+A [Notion API](https://developers.notion.com/) TypeScript wrapper that leverages static types to deliver a better database (and custom agents) experience
 
 ## Key Features
 
@@ -132,6 +132,19 @@ await notion.databases.books.create({
     publishDate: { start: "2014-04-08" },
   },
   icon: { type: "emoji", emoji: "📕" },
+});
+```
+
+### Create a page with markdown content
+
+Add body content to a page using Notion's [enhanced markdown format](https://developers.notion.com/guides/data-apis/working-with-markdown-content#block-type-support). Headings, lists, code blocks, quotes, and checklists are all supported.
+
+```ts
+await notion.databases.books.create({
+  properties: {
+    bookName: "Reading Notes",
+  },
+  markdown: "# Key Takeaways\n\n- Creativity requires candor\n- Protect the new\n\n> \"Quality is the best business plan.\"",
 });
 ```
 
@@ -305,6 +318,6 @@ Runtime dependencies:
 
 ## Disclaimer
 
-This is an unofficial Notion API SDK. While I work at Notion currently, this is tooling I've built for side projects.
+This is an unofficial Notion API SDK.
 
 </DocsProse>

@@ -7,11 +7,11 @@
       "dependencies": {
         "@babel/generator": "^7.28.0",
         "@babel/parser": "^7.28.0",
-        "@babel/types": "^7.28.2",
-        "@notionhq/client": "5.3.0",
+        "@notionhq/client": "^5.14.0",
         "zod": "^3.23.8",
       },
       "devDependencies": {
+        "@babel/types": "^7.28.2",
         "@biomejs/biome": "2.3.4",
         "@types/node": "^22.0.0",
         "biome-plugin-no-type-assertion": "^1.0.2",
@@ -62,7 +62,7 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.29", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-uw6guiW/gcAGPDhLmd77/6lW8QLeiV5RUTsAX46Db6oLhGaVj4lhnPwb184s1bkc8kdVg/+h988dro8GRDpmYQ=="],
 
-    "@notionhq/client": ["@notionhq/client@5.3.0", "", {}, "sha512-pISuJLrP6XwxnmMZ79jT2XkMHFtbQvslfs6Rqdd29ge0KAmJOuhtWZxE1WXO7h03cj/gVAL2PiAjpFuIWrWJ3w=="],
+    "@notionhq/client": ["@notionhq/client@5.14.0", "", {}, "sha512-9bbH7/9M6D9YlHMYCZ1aAFxRCWiKRBpP/XOnAHFtBCFDf00PPhpWRSsGE1FfmjYCNW2BFRj19WshJFH5IFfNvg=="],
 
     "@tsconfig/node10": ["@tsconfig/node10@1.0.11", "", {}, "sha512-DcRjDCujK/kCk/cUe8Xz8ZSpm8mS3mNNpta+jGCA6USEDfktlNvm1+IuZ9eTcDbNk41BHwpHHeW+N1lKCz4zOw=="],
 

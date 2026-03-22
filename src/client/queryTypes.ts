@@ -336,10 +336,11 @@ export type CountArgs<
 };
 
 export type CreateArgs<Y extends Record<string, DatabasePropertyValue>> = {
-	properties: Y;
-	icon?: CreatePageParameters["icon"];
-	cover?: CreatePageParameters["cover"];
-};
+		properties: Y;
+		icon?: CreatePageParameters["icon"];
+		cover?: CreatePageParameters["cover"];
+		markdown?: CreatePageParameters["markdown"];
+	};
 
 export type CreateManyArgs<Y extends Record<string, DatabasePropertyValue>> = {
 	properties: Y[];

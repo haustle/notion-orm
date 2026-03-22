@@ -197,6 +197,21 @@ await notion.databases.books.add({
 });
 ```
 
+## Adding page content with markdown
+
+Pass a `markdown` string alongside `properties` to create a page with body content in a single call. This uses Notion's [enhanced markdown format](https://developers.notion.com/guides/data-apis/working-with-markdown-content#block-type-support), which supports headings, lists, code blocks, quotes, checklists, and more.
+
+```ts
+await notion.databases.books.create({
+  properties: {
+    bookName: "Hello World",
+  },
+  markdown: "# Hello World\n\nThis is a page created with **markdown**.",
+});
+```
+
+`markdown` is mutually exclusive with `children` / `content` — use one or the other. When `properties.title` is provided, the `# h1` heading is treated as body content; when omitted, Notion extracts it as the page title.
+
 ## Querying
 
 Query filters are typed by your generated schema, including nested compound filters. Find Notion filter operators [here](https://developers.notion.com/reference/post-database-query-filter).
@@ -349,6 +364,7 @@ See [API Reference](#api-reference) for full method signatures, `ThreadInfo` sha
 | `id`                         | property | Notion data source ID used by this client instance            | -                                                                                      |
 | `name`                       | property | Human-readable database name captured during generation       | -                                                                                      |
 | `add({ properties, icon? })` | method   | Creates a page in the database using typed `properties`       | [Adding](#adding)                                                                      |
+| `create({ properties, icon?, cover?, markdown? })` | method | Creates a page with optional [markdown body content](https://developers.notion.com/guides/data-apis/working-with-markdown-content#block-type-support) | [Adding](#adding), [Markdown](#adding-page-content-with-markdown) |
 | `query({ filter?, sort?, includeRawResponse? })`  | method   | Queries database pages and returns `{ results }` by default (`rawResponse` is included when `includeRawResponse: true`) | [Querying](#querying), [Supported database properties](#supported-database-properties) |
 
 ## Agent methods

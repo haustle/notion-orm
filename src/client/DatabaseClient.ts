@@ -124,8 +124,9 @@ export class DatabaseClient<
 			properties: DatabaseSchemaType;
 			icon?: CreatePageParameters["icon"];
 			cover?: CreatePageParameters["cover"];
+			markdown?: CreatePageParameters["markdown"];
 		}): Promise<CreatePageResponse> {
-			const { properties: pageObject, icon, cover } = args;
+			const { properties: pageObject, icon, cover, markdown } = args;
 			const callBody: CreatePageParameters = {
 				parent: {
 					data_source_id: this.id,
@@ -136,6 +137,7 @@ export class DatabaseClient<
 
 			callBody.icon = icon;
 			callBody.cover = cover;
+			callBody.markdown = markdown;
 
 			for (const [propertyName, value] of objectEntries(pageObject)) {
 				const { type, columnName } =
@@ -268,7 +270,7 @@ export class DatabaseClient<
 				const page: GetPageResponse = await this.client.pages.retrieve({
 					page_id: args.where.id,
 				});
-			if (!isFullPage(page)) return null;
+				if (!isFullPage(page)) return null;
 				return normalizePageResult<DatabaseSchemaType>({
 					result: page,
 					camelPropertyNameToNameAndTypeMap:
@@ -309,6 +311,7 @@ export class DatabaseClient<
 				properties: args.properties,
 				icon: args.icon,
 				cover: args.cover,
+				markdown: args.markdown,
 			});
 		}
 
@@ -378,7 +381,7 @@ export class DatabaseClient<
 			}
 			await this.client.pages.update({
 				page_id: args.where.id,
-				archived: true,
+				in_trash: true,
 			});
 		}
 
@@ -389,7 +392,7 @@ export class DatabaseClient<
 			for (const pageId of pageIds) {
 				await this.client.pages.update({
 					page_id: pageId,
-					archived: true,
+					in_trash: true,
 				});
 			}
 		}
@@ -459,16 +462,16 @@ export class DatabaseClient<
 			select?: { [K in keyof DatabaseSchemaType]?: true },
 			omit?: { [K in keyof DatabaseSchemaType]?: true },
 		): Partial<DatabaseSchemaType>[] {
-		if (!select && !omit) return results;
-		return results.map((row) => {
-			const projected: Partial<DatabaseSchemaType> = {};
-			for (const key of objectKeys(row)) {
-				if (select && !select[key]) continue;
-				if (omit && omit[key]) continue;
-			projected[key] = row[key];
-			}
-			return projected;
-		});
+			if (!select && !omit) return results;
+			return results.map((row) => {
+				const projected: Partial<DatabaseSchemaType> = {};
+				for (const key of objectKeys(row)) {
+					if (select && !select[key]) continue;
+					if (omit && omit[key]) continue;
+					projected[key] = row[key];
+				}
+				return projected;
+			});
 		}
 
 		private async executeFindMany(

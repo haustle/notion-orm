@@ -52,12 +52,12 @@ describe("delete", () => {
 		dataSourceQueryMock.mockReset();
 	});
 
-	test("calls pages.update with archived: true", async () => {
+	test("calls pages.update with in_trash: true", async () => {
 		const client = createClient();
 		await client.delete({ where: { id: "page-1" } });
 		expect(pagesUpdateMock).toHaveBeenCalledWith({
 			page_id: "page-1",
-			archived: true,
+			in_trash: true,
 		});
 	});
 
@@ -105,11 +105,11 @@ describe("deleteMany", () => {
 		expect(pagesUpdateMock).toHaveBeenCalledTimes(2);
 		expect(pagesUpdateMock).toHaveBeenCalledWith({
 			page_id: "p1",
-			archived: true,
+			in_trash: true,
 		});
 		expect(pagesUpdateMock).toHaveBeenCalledWith({
 			page_id: "p2",
-			archived: true,
+			in_trash: true,
 		});
 	});
 });

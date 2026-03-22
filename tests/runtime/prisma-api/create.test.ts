@@ -97,6 +97,27 @@ describe("create", () => {
 		expect(pagesCreateMock).toHaveBeenCalledTimes(2);
 	});
 
+	test("passes markdown content to API", async () => {
+		const client = createClient();
+		const md = "# Welcome\n\nThis is a page with **bold** text.";
+		await client.create({
+			properties: { shopName: "Markdown Shop", rating: 5, hasWifi: true },
+			markdown: md,
+		});
+		expect(pagesCreateMock).toHaveBeenCalledWith(
+			expect.objectContaining({ markdown: md }),
+		);
+	});
+
+	test("omits markdown from API call when not provided", async () => {
+		const client = createClient();
+		await client.create({
+			properties: { shopName: "No MD", rating: 3, hasWifi: false },
+		});
+		const callArg = pagesCreateMock.mock.calls[0][0];
+		expect(callArg.markdown).toBeUndefined();
+	});
+
 	test("propagates API errors", async () => {
 		pagesCreateMock.mockRejectedValueOnce(new Error("Conflict"));
 		const client = createClient();

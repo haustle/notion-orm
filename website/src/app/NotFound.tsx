@@ -40,7 +40,7 @@ const CUBE_404_ROWS: readonly string[] = [
 
 export default function NotFound() {
 	return (
-		<Layout sitePages={sitePages} currentPath="" toc={[]} showFooter={false}>
+		<Layout sitePages={sitePages} currentPath="" toc={[]}>
 			<div className={containerClass}>
 				<NotionCubeLogo animate={false} viewportRows={CUBE_404_ROWS} />
 				<p className={messageClass}>
