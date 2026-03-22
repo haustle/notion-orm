@@ -41,9 +41,7 @@ export function normalizePageResult<
 			const camelizedColumnName = camelize(columnName);
 			const columnType =
 				args.camelPropertyNameToNameAndTypeMap[camelizedColumnName]?.type;
-			if (!columnType) {
-				continue;
-			}
+			if (!columnType) continue;
 
 			Object.assign(normalizedResult, {
 				[camelizedColumnName]: getSimplifiedResult({

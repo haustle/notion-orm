@@ -251,9 +251,7 @@ export class DatabaseClient<
 				columnNameToColumnProperties: this.camelPropertyNameToNameAndTypeMap,
 				validateSchema: (result) => this.validateDatabaseSchema(result),
 			});
-			if (results.length === 0) {
-				return null;
-			}
+			if (results.length === 0) return null;
 			const projected = this.applyProjection(results, args?.select, args?.omit);
 			return projected[0] ?? null;
 		}
@@ -270,9 +268,7 @@ export class DatabaseClient<
 				const page: GetPageResponse = await this.client.pages.retrieve({
 					page_id: args.where.id,
 				});
-				if (!isFullPage(page)) {
-					return null;
-				}
+			if (!isFullPage(page)) return null;
 				return normalizePageResult<DatabaseSchemaType>({
 					result: page,
 					camelPropertyNameToNameAndTypeMap:
@@ -305,10 +301,6 @@ export class DatabaseClient<
 			}
 			return total;
 		}
-
-		// -------------------------------------------------------------------
-		// Prisma-style write methods
-		// -------------------------------------------------------------------
 
 		public async create(
 			args: CreateArgs<DatabaseSchemaType>,
@@ -402,10 +394,6 @@ export class DatabaseClient<
 			}
 		}
 
-		// -------------------------------------------------------------------
-		// Private helpers
-		// -------------------------------------------------------------------
-
 		private buildQueryParams(args: {
 			where?: QueryFilter<DatabaseSchemaType, ColumnNameToColumnType>;
 			sortBy?: QueryDataSourceParameters["sorts"];
@@ -436,23 +424,14 @@ export class DatabaseClient<
 			return params;
 		}
 
-		/**
-		 * Bridges schema-typed data to the string-keyed metadata map.
-		 * Uses Object.entries (not objectEntries) because `Partial<T>` key types
-		 * can't index `PropertyNameToColumnMetadataMap` in a generic context.
-		 */
 		private buildProperties(
 			data: Partial<DatabaseSchemaType>,
 		): CreatePageParameters["properties"] {
 			const properties: NonNullable<CreatePageParameters["properties"]> = {};
 			for (const [propertyName, value] of Object.entries(data)) {
-				if (value === undefined) {
-					continue;
-				}
+				if (value === undefined) continue;
 				const meta = this.camelPropertyNameToNameAndTypeMap[propertyName];
-				if (!meta) {
-					continue;
-				}
+				if (!meta) continue;
 				const columnObject = buildPropertyValueForAddPage({
 					type: meta.type,
 					value,
@@ -480,22 +459,16 @@ export class DatabaseClient<
 			select?: { [K in keyof DatabaseSchemaType]?: true },
 			omit?: { [K in keyof DatabaseSchemaType]?: true },
 		): Partial<DatabaseSchemaType>[] {
-			if (!select && !omit) {
-				return results;
+		if (!select && !omit) return results;
+		return results.map((row) => {
+			const projected: Partial<DatabaseSchemaType> = {};
+			for (const key of objectKeys(row)) {
+				if (select && !select[key]) continue;
+				if (omit && omit[key]) continue;
+			projected[key] = row[key];
 			}
-			return results.map((row) => {
-				const projected: Partial<DatabaseSchemaType> = {};
-				for (const key of objectKeys(row)) {
-					if (select && !select[key]) {
-						continue;
-					}
-					if (omit && omit[key]) {
-						continue;
-					}
-					projected[key] = row[key];
-				}
-				return projected;
-			});
+			return projected;
+		});
 		}
 
 		private async executeFindMany(
