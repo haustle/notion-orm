@@ -14,7 +14,7 @@
 
 # Object Key / Entry Iteration
 
-- When iterating an object whose type is known (schema types, typed config maps, `satisfies Record<K, V>` registries), use `objectKeys` (`src/typeUtils.ts`) or `objectEntries` (`src/helpers.ts`) instead of `Object.keys` / `Object.entries`. These return typed key arrays (`Array<keyof T>`) so downstream indexing and assignment stay type-safe without `as` casts.
+- When iterating an object whose type is known (schema types, typed config maps, `satisfies Record<K, V>` registries), use `objectKeys` or `objectEntries` from `src/typeUtils.ts` instead of `Object.keys` / `Object.entries`. These return typed key arrays / discriminated entry tuples so downstream indexing and assignment stay type-safe without `as` casts.
 - `Object.keys` / `Object.entries` are acceptable when the object is untyped at the call site (e.g. raw API responses, `unknown` after a runtime guard, diagnostic/display-only code) or when only `.length` is checked.
 - Never cast the result of `Object.keys` with `as Array<keyof T>` inline. If you need typed keys, use `objectKeys` -- it centralizes the unsound cast in one place with documentation about the trade-off.
 - When iterating `Partial<T>` with `objectEntries`, guard for `undefined` values before passing them to functions that do not accept `undefined`.
