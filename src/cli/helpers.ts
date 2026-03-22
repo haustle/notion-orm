@@ -117,7 +117,10 @@ export function showSetupInstructions(): void {
 		"1. Run: notion init [--ts|--js] (defaults to TypeScript when tsconfig.json is present)",
 	);
 	console.log("2. Add your Notion integration token and database IDs");
-	console.log("3. Run: notion sync (agents are auto-discovered)");
+	console.log("3. Run: notion sync (generates database types)");
+	console.log(
+		"4. (Optional) Run: notion setup-agents-sdk (installs the paid Agents SDK, then re-run notion sync)",
+	);
 
 	console.log("\n📝 Example JavaScript config (notion.config.js):");
 	console.log(`\n${createConfigTemplate(false).trimEnd()}\n`);

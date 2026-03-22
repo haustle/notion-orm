@@ -7,8 +7,12 @@ import {
 	initializeNotionConfigFile,
 	validateConfig,
 } from "../config/helpers";
-import { createAgentTypes } from "../ast/agents/generate-agents-cli";
+import {
+	createAgentTypes,
+	type CreateAgentTypesResult,
+} from "../ast/agents/generate-agents-cli";
 import { createDatabaseTypes } from "../ast/database/generate-databases-cli";
+import { AGENTS_SDK_SETUP_COMMAND } from "../agents-sdk-resolver";
 import {
 	readAgentMetadataFromDisk,
 	readDatabaseMetadata,
@@ -161,7 +165,7 @@ async function runSync(): Promise<void> {
 		renderer.start();
 		rendererStarted = true;
 
-		const agentsPromise = createAgentTypes({
+		const agentsPromise: Promise<CreateAgentTypesResult> = createAgentTypes({
 			skipSourceIndexUpdate: true,
 			onProgress: ({ completed, total }) => {
 				renderer.updateProgress("agents", completed, total);
@@ -176,15 +180,33 @@ async function runSync(): Promise<void> {
 			},
 		});
 
-		await Promise.all([agentsPromise, databasesPromise]);
+		const [agentsResult] = await Promise.all([
+			agentsPromise,
+			databasesPromise,
+		]);
 		renderer.complete("agents");
 		renderer.complete("databases");
 
-		updateSourceIndexFile(readDatabaseMetadata(), readAgentMetadataFromDisk());
+		const agentsMetadata = agentsResult.skipped
+			? []
+			: readAgentMetadataFromDisk();
+		updateSourceIndexFile(readDatabaseMetadata(), agentsMetadata);
 
-		console.log("💡 Agents: use `notion.agents.*`");
 		console.log("💡 Databases: use `notion.databases.*`");
+		if (!agentsResult.skipped) {
+			console.log("💡 Agents: use `notion.agents.*`");
+		}
 		console.log("");
+
+		if (agentsResult.skipped) {
+			console.log(
+				`⚠️  Agent generation skipped: Notion Agents SDK not installed.`,
+			);
+			console.log(
+				`   Run \`${AGENTS_SDK_SETUP_COMMAND}\` to enable agent support.\n`,
+			);
+		}
+
 		const configFile = findConfigFile();
 		if (configFile) {
 			const configFileName =
@@ -322,6 +344,9 @@ function showHelpMessage(): void {
 		"  notion add <id-or-url> [--type database]  - Add database to config and generate types",
 	);
 	console.log(
+		"  notion setup-agents-sdk                    - Install/update the Notion Agents SDK (paid feature)",
+	);
+	console.log(
 		"  notion generate                            - Deprecated alias for `notion sync`",
 	);
 	console.log("\nExamples:");
@@ -332,6 +357,7 @@ function showHelpMessage(): void {
 		"  notion add https://www.notion.so/workspace/c88c5ccf109f4e71937d5d3b3ddfeade?v=123",
 	);
 	console.log("  notion sync");
+	console.log("  notion setup-agents-sdk");
 	showSetupInstructions();
 }
 
@@ -360,6 +386,10 @@ async function main() {
 		case "generate":
 			console.warn("⚠️  `notion generate` is deprecated. Use `notion sync`.");
 			return runSync();
+		case "setup-agents-sdk": {
+			const { runSetupAgentsSdk } = await import("./agents-sdk-setup");
+			return runSetupAgentsSdk();
+		}
 		case "add": {
 			const input = args[1];
 			if (!input) {
