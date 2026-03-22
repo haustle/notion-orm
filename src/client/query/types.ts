@@ -1,4 +1,5 @@
 import type {
+	PageObjectResponse,
 	QueryDataSourceParameters,
 	QueryDataSourceResponse,
 } from "@notionhq/client/build/src/api-endpoints";
@@ -15,6 +16,15 @@ export type QueryDataSourcePageResultWithProperties = Extract<
 
 export type NotionPropertyValue =
 	QueryDataSourcePageResultWithProperties["properties"][string];
+
+/**
+ * Any Notion page response with a property map. Accepted by
+ * `normalizePageResult` so both query results and pages.retrieve
+ * responses can be normalized through the same pipeline.
+ */
+export type NormalizablePageResult =
+	| QueryDataSourcePageResultWithProperties
+	| PageObjectResponse;
 
 export type ResponseResolver = (property: NotionPropertyValue) => unknown;
 

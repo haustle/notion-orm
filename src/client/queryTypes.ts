@@ -3,6 +3,7 @@
  */
 
 import type {
+	CreatePageParameters,
 	DataSourceObjectResponse,
 	QueryDataSourceParameters,
 	QueryDataSourceResponse,
@@ -12,8 +13,20 @@ type NotionPropertyTypeToConfigMap = DataSourceObjectResponse["properties"];
 export type DatabasePropertyType =
 	NotionPropertyTypeToConfigMap[keyof NotionPropertyTypeToConfigMap]["type"];
 
+/**
+ * Union of all value types a database property can hold (read or write).
+ * Used as the base constraint for schema generics throughout the client.
+ */
+export type DatabasePropertyValue =
+	| string
+	| number
+	| boolean
+	| null
+	| string[]
+	| { name: string; url: string }[]
+	| { start: string; end?: string | null };
+
 export const SUPPORTED_PROPERTY_TYPES = {
-	// Rollup is still unsupported.
 	formula: true,
 	files: true,
 	people: true,
@@ -173,26 +186,26 @@ type LastEditedTimePropertyFilters =
 type UniqueIdPropertyFilters = ApiSingleFilterByColumnType["unique_id"];
 
 export type FilterOptions<T = []> = {
-		rich_text: TextPropertyFilters;
-		title: TextPropertyFilters;
-		number: NumberPropertyFilters;
-		checkbox: CheckBoxPropertyFilters;
-		select: SelectPropertyFilters<T>;
-		multi_select: MultiSelectPropertyFilters<T>;
-		url: TextPropertyFilters;
-		date: DatePropertyFilters;
-		status: StatusPropertyFilters<T>;
-		email: TextPropertyFilters;
-		phone_number: TextPropertyFilters;
-		files: FilesPropertyFilters;
-		people: PeoplePropertyFilters;
-		relation: RelationPropertyFilters;
-		created_by: CreatedByPropertyFilters;
-		last_edited_by: LastEditedByPropertyFilters;
-		created_time: CreatedTimePropertyFilters;
-		last_edited_time: LastEditedTimePropertyFilters;
-		unique_id: UniqueIdPropertyFilters;
-	};
+	rich_text: TextPropertyFilters;
+	title: TextPropertyFilters;
+	number: NumberPropertyFilters;
+	checkbox: CheckBoxPropertyFilters;
+	select: SelectPropertyFilters<T>;
+	multi_select: MultiSelectPropertyFilters<T>;
+	url: TextPropertyFilters;
+	date: DatePropertyFilters;
+	status: StatusPropertyFilters<T>;
+	email: TextPropertyFilters;
+	phone_number: TextPropertyFilters;
+	files: FilesPropertyFilters;
+	people: PeoplePropertyFilters;
+	relation: RelationPropertyFilters;
+	created_by: CreatedByPropertyFilters;
+	last_edited_by: LastEditedByPropertyFilters;
+	created_time: CreatedTimePropertyFilters;
+	last_edited_time: LastEditedTimePropertyFilters;
+	unique_id: UniqueIdPropertyFilters;
+};
 
 /**
  * Types to build query object user types out
@@ -282,3 +295,86 @@ export type QueryResponseWithoutRawResponse<DatabaseSchema> =
 export type SimpleQueryResponse<DatabaseSchema> =
 	| QueryResponseWithoutRawResponse<DatabaseSchema>
 	| QueryResponseWithRawResponse<DatabaseSchema>;
+
+export type FindManyArgs<
+		Y extends Record<string, any>,
+		T extends Record<keyof Y, SupportedNotionColumnType>,
+	> = {
+		where?: QueryFilter<Y, T>;
+		sortBy?: QueryDataSourceParameters["sorts"];
+		size?: number;
+		select?: { [K in keyof Y]?: true };
+		omit?: { [K in keyof Y]?: true };
+		stream?: number;
+		after?: string | null;
+	};
+
+export type FindFirstArgs<
+	Y extends Record<string, any>,
+	T extends Record<keyof Y, SupportedNotionColumnType>,
+> = {
+	where?: QueryFilter<Y, T>;
+	sortBy?: QueryDataSourceParameters["sorts"];
+	select?: { [K in keyof Y]?: true };
+	omit?: { [K in keyof Y]?: true };
+};
+
+export type FindUniqueArgs = {
+	where: { id: string };
+};
+
+export type PaginateResult<DatabaseSchema> = {
+	data: Partial<DatabaseSchema>[];
+	nextCursor: string | null;
+	hasMore: boolean;
+};
+
+export type CountArgs<
+	Y extends Record<string, any>,
+	T extends Record<keyof Y, SupportedNotionColumnType>,
+> = {
+	where?: QueryFilter<Y, T>;
+};
+
+export type CreateArgs<Y extends Record<string, DatabasePropertyValue>> = {
+	properties: Y;
+	icon?: CreatePageParameters["icon"];
+	cover?: CreatePageParameters["cover"];
+};
+
+export type CreateManyArgs<Y extends Record<string, DatabasePropertyValue>> = {
+	properties: Y[];
+};
+
+export type UpdateArgs<Y extends Record<string, DatabasePropertyValue>> = {
+	where: { id: string };
+	properties: Partial<Y>;
+};
+
+export type UpdateManyArgs<
+	Y extends Record<string, any>,
+	T extends Record<keyof Y, SupportedNotionColumnType>,
+> = {
+	where: QueryFilter<Y, T>;
+	properties: Partial<Y>;
+};
+
+export type UpsertArgs<
+	Y extends Record<string, any>,
+	T extends Record<keyof Y, SupportedNotionColumnType>,
+> = {
+	where: QueryFilter<Y, T>;
+	create: Y;
+	update: Partial<Y>;
+};
+
+export type DeleteArgs = {
+	where: { id: string };
+};
+
+export type DeleteManyArgs<
+	Y extends Record<string, any>,
+	T extends Record<keyof Y, SupportedNotionColumnType>,
+> = {
+	where: QueryFilter<Y, T>;
+};

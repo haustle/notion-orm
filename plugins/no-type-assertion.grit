@@ -3,5 +3,5 @@ language js
 // Match 'as' type assertions but exclude 'as const'
 `$expr as $type` where {
 	! $type <: "const",
-	register_diagnostic(span=$expr, message="Avoid type assertions. Use type guards or proper typing instead.", severity="warn")
+	register_diagnostic(span=$expr, message="Avoid type assertions. Use type guards or proper typing instead.", severity="error")
 }

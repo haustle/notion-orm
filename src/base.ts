@@ -6,7 +6,22 @@
 
 export { AgentClient } from "./client/AgentClient";
 export { DatabaseClient } from "./client/DatabaseClient";
-export type { Query } from "./client/queryTypes";
+export type {
+	CountArgs,
+	CreateArgs,
+	CreateManyArgs,
+	DatabasePropertyValue,
+	DeleteArgs,
+	DeleteManyArgs,
+	FindFirstArgs,
+	FindManyArgs,
+	FindUniqueArgs,
+	PaginateResult,
+	Query,
+	UpdateArgs,
+	UpdateManyArgs,
+	UpsertArgs,
+} from "./client/queryTypes";
 export type { NotionConfigType } from "./config/helpers";
 
 export default class NotionORMBase {

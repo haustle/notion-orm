@@ -12,6 +12,14 @@
 - Registry patterns should be exhaustive and type-linked to source unions so new properties cause compile-time failures until handled.
 - Avoid brittle string-based expectation maps for runtime validation; prefer exhaustive typed builder registries (`satisfies Record<...>`) plus local runtime guards near each transformer/builder.
 
+# Object Key / Entry Iteration
+
+- When iterating an object whose type is known (schema types, typed config maps, `satisfies Record<K, V>` registries), use `objectKeys` or `objectEntries` from `src/typeUtils.ts` instead of `Object.keys` / `Object.entries`. These return typed key arrays / discriminated entry tuples so downstream indexing and assignment stay type-safe without `as` casts.
+- `Object.keys` / `Object.entries` are acceptable when the object is untyped at the call site (e.g. raw API responses, `unknown` after a runtime guard, diagnostic/display-only code) or when only `.length` is checked.
+- Never cast the result of `Object.keys` with `as Array<keyof T>` inline. If you need typed keys, use `objectKeys` -- it centralizes the unsound cast in one place with documentation about the trade-off.
+- When iterating `Partial<T>` with `objectEntries`, guard for `undefined` values before passing them to functions that do not accept `undefined`.
+- Prefer `for...of objectKeys(x)` over `for...in x` when the object is schema-typed, since `for...in` always yields `string` and walks the prototype chain.
+
 # Zod Usage (Trust Boundaries)
 
 - Use Zod whenever data enters from an untrusted boundary (CLI args, env vars, request payloads/headers, webhooks, websocket messages, forms, `localStorage`, filesystem JSON).

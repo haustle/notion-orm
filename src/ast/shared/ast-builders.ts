@@ -5,6 +5,7 @@
 
 import * as ts from "typescript";
 import type { DatabasePropertyType } from "../../client/queryTypes";
+import { objectEntries } from "../../typeUtils";
 
 /**
  * Lookup map used to generate strongly-typed property/type metadata objects
@@ -232,44 +233,44 @@ export function createColumnNameToColumnProperties(
   colMap: camelPropertyNameToNameAndTypeMapType
 ) {
   return ts.factory.createVariableDeclarationList(
-    [
-      ts.factory.createVariableDeclaration(
-        ts.factory.createIdentifier("columnNameToColumnProperties"),
-        undefined,
-        undefined,
-        ts.factory.createAsExpression(
-          ts.factory.createObjectLiteralExpression(
-            [
-              ...Object.entries(colMap).map(([propName, value]) =>
-                ts.factory.createPropertyAssignment(
-                  ts.factory.createStringLiteral(propName),
-                  ts.factory.createObjectLiteralExpression(
-                    [
-                      ts.factory.createPropertyAssignment(
-                        ts.factory.createIdentifier("columnName"),
-                        ts.factory.createStringLiteral(value.columnName)
-                      ),
-                      ts.factory.createPropertyAssignment(
-                        ts.factory.createIdentifier("type"),
-                        ts.factory.createStringLiteral(value.type)
-                      ),
-                    ],
-                    true
-                  )
-                )
-              ),
-            ],
-            true
-          ),
-          ts.factory.createTypeReferenceNode(
-            ts.factory.createIdentifier("const"),
-            undefined
-          )
-        )
-      ),
-    ],
-    ts.NodeFlags.Const
-  );
+			[
+				ts.factory.createVariableDeclaration(
+					ts.factory.createIdentifier("columnNameToColumnProperties"),
+					undefined,
+					undefined,
+					ts.factory.createAsExpression(
+						ts.factory.createObjectLiteralExpression(
+							[
+								...objectEntries(colMap).map(([propName, value]) =>
+									ts.factory.createPropertyAssignment(
+										ts.factory.createStringLiteral(propName),
+										ts.factory.createObjectLiteralExpression(
+											[
+												ts.factory.createPropertyAssignment(
+													ts.factory.createIdentifier("columnName"),
+													ts.factory.createStringLiteral(value.columnName),
+												),
+												ts.factory.createPropertyAssignment(
+													ts.factory.createIdentifier("type"),
+													ts.factory.createStringLiteral(value.type),
+												),
+											],
+											true,
+										),
+									),
+								),
+							],
+							true,
+						),
+						ts.factory.createTypeReferenceNode(
+							ts.factory.createIdentifier("const"),
+							undefined,
+						),
+					),
+				),
+			],
+			ts.NodeFlags.Const,
+		);
 }
 
 /**

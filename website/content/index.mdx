@@ -14,7 +14,7 @@ A typed [Notion API](https://developers.notion.com/) wrapper for databases and a
 
 ## Key Features
 
-- Type inference when interacting with databases (e.g, `add` and `query`)
+- **Full type inference when interacting with databases**, including `findMany`, `create`, `update`, `delete`, and more
 - Manage databases and agents in Notion
 - Sync remote schema changes in a single command
 - Quickly start/resume chat streams with your agents
@@ -113,146 +113,78 @@ const agent = notion.agents.yourAgentName; // AgentClient (after setup-agents-sd
 
 Generated database and agent names are camelCased and exposed on an instance of `NotionORM`.
 
-- Use `notion.databases.<camelCaseDatabaseName>` for `add()` and `query()`.
+- Use `notion.databases.<camelCaseDatabaseName>` for database operations (`findMany`, `create`, `update`, `delete`, …).
 - Use `notion.agents.<camelCaseAgentName>` for `chat()`, `chatStream()`, thread helpers, and history APIs (requires `notion setup-agents-sdk`).
 
 ## Databases
 
-See the [API reference](/api-reference#database-client).
+Every generated database exposes a Prisma-style API with full type inference from your schema. Here are a few highlights — see the [full API reference](/api-reference#database-client) for `findFirst`, `findUnique`, `count`, `createMany`, `updateMany`, `upsert`, `deleteMany`, and more.
 
-### Add a page
+### Create a page
 
 ```ts
-await notion.databases.books.add({
-  icon: {
-    type: "emoji",
-    emoji: "📕",
-  },
-  // Expected <key,value> is constrained to `books` database schema
+await notion.databases.books.create({
   properties: {
     bookName: "Creativity, Inc.",
+    author: "Ed Catmull",
     genre: ["Non-fiction"],
-    publishDate: {
-      start: "2026-03-01",
-    },
+    numberOfPages: 368,
+    publishDate: { start: "2014-04-08" },
   },
+  icon: { type: "emoji", emoji: "📕" },
 });
 ```
 
-### Query with filters
+### Find many with filters
 
 ```ts
-const response = await notion.databases.books.query({
-  // Expected `properties` object is constrained to `books` database schema
-  filter: {
+const books = await notion.databases.books.findMany({
+  where: {
     and: [
       { genre: { contains: "Non-fiction" } },
-      { publishDate: { on_or_after: "2026-01-01" } },
-      {
-        or: [
-          { bookName: { contains: "Creativity" } },
-          { bookName: { contains: "Innovation" } },
-        ],
-      },
+      { publishDate: { on_or_after: "2024-01-01" } },
     ],
   },
+  sortBy: [{ property: "Book Name", direction: "ascending" }],
+  select: { bookName: true, genre: true },
 });
 ```
 
-### Adding
-
-Only title is required by Notion for a minimal page.
+### Update by ID
 
 ```ts
-await notion.databases.books.add({
-  properties: {
-    bookName: "Raphael, Painter in Rome: a Novel", // title
-    author: "Stephanie Storey", // rich_text
-    status: "In progress", // status
-    numberOfPages: 307, // number
-    genre: ["Historical Fiction"], // multi_select
-    startDate: {
-      start: "2023-01-01",
-    }, // date
-    phone: "0000000000", // phone_number
-    email: "tyrus@haustle.studio", // email
-  },
+await notion.databases.books.update({
+  where: { id: "page-id" },
+  properties: { status: "Done", numberOfPages: 460 },
 });
 ```
 
-### Querying
-
-Query filters are typed by your generated schema, including nested compound filters. Find Notion filter operators [here](https://developers.notion.com/reference/post-database-query-filter).
-
-Example single filter:
+### Delete by filter
 
 ```ts
-await notion.databases.books.query({
-  filter: {
-    genre: {
-      contains: "Sci-Fi",
-    },
-  },
-  sort: [
-    {
-      property: "Book Name",
-      direction: "ascending",
-    },
-  ],
+await notion.databases.books.deleteMany({
+  where: { status: { equals: "Archived" } },
 });
 ```
 
-Example compound filters:
+### Stream large result sets
 
 ```ts
-await notion.databases.books.query({
-  filter: {
-    and: [
-      {
-        or: [
-          { genre: { contains: "Sci-Fi" } },
-          { genre: { contains: "Biography" } },
-        ],
-      },
-      { numberOfPages: { greater_than: 250 } },
-    ],
-  },
-});
-```
-
-You can request the full Notion payload by setting `includeRawResponse: true`:
-
-```ts
-const response = await notion.databases.books.query({
-  filter: {
-    genre: { contains: "Sci-Fi" },
-  },
-  includeRawResponse: true,
-});
-
-response.rawResponse; // strongly typed full Notion query response
-```
-
-Successful query shape:
-
-```ts
-{
-  results: [
-    {
-      bookName: "The Dream Machine",
-      genre: ["Non-fiction"],
-      numberOfPages: 460,
-    },
-  ],
+for await (const book of notion.databases.books.findMany({ stream: 50 })) {
+  console.log(book.bookName);
 }
 ```
 
-When `includeRawResponse: true` is provided, the response additionally includes the raw untransformed response from the official Notion API:
+### Cursor pagination
 
 ```ts
-{
-  rawResponse: { /* full Notion API response */ },
-}
+// First page (after: null); next pages use prev.nextCursor
+const first = await notion.databases.books.findMany({ after: null, size: 10 });
+const next = await notion.databases.books.findMany({
+  after: first.nextCursor,
+  size: 10,
+});
+// first.data, first.hasMore, next.data
 ```
 
 ## Agents

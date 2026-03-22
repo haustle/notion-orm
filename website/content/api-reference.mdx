@@ -39,42 +39,255 @@ const agent = notion.agents.yourAgentName;
 
 ### Methods
 
-| Member                                                       | Description                                                                                |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
-| `add({ properties, icon? })`                                 | Creates a page in the database using typed `properties`                                     |
-| `query({ filter?, sort?, includeRawResponse? })`              | Queries database pages and returns `{ results }` by default (`rawResponse` when `includeRawResponse: true`) |
+| Method | Description |
+| ------ | ----------- |
+| `findMany(args?)` | Query rows. Returns `Partial<Schema>[]` by default, `PaginateResult` with `after`, or `AsyncIterable` with `stream` |
+| `findFirst(args?)` | Returns the first matching row or `null` |
+| `findUnique({ where: { id } })` | Retrieves a single page by its Notion ID |
+| `count(args?)` | Returns the total number of matching rows |
+| `create({ properties, icon?, cover? })` | Creates a page with typed properties |
+| `createMany({ properties })` | Creates multiple pages sequentially |
+| `update({ where: { id }, properties })` | Updates a single page by ID |
+| `updateMany({ where, properties })` | Updates all pages matching a filter |
+| `upsert({ where, create, update })` | Creates or updates depending on whether a match exists |
+| `delete({ where: { id } })` | Archives a single page by ID |
+| `deleteMany({ where })` | Archives all pages matching a filter |
 
-### Examples
+The legacy `add()` and `query()` methods are still available but deprecated. Use `create()` and `findMany()` instead.
 
-See [Adding](/#adding) and [Querying](/#querying) for usage examples.
+---
+
+### `findMany`
+
+Queries the database with optional filtering, sorting, projection, pagination, and streaming.
+
+**Overloads:**
+
+| Args | Return type |
+| ---- | ----------- |
+| No `stream` or `after` | `Promise<Partial<Schema>[]>` |
+| `after: string \| null` | `Promise<PaginateResult<Schema>>` |
+| `stream: number` | `AsyncIterable<Partial<Schema>>` |
+
+**Args:**
+
+| Property | Type | Required | Description |
+| -------- | ---- | -------- | ----------- |
+| `where` | `QueryFilter` | no | Typed filter object (single or compound `and`/`or`) |
+| `sortBy` | `QueryDataSourceParameters["sorts"]` | no | Array of sort descriptors |
+| `size` | `number` | no | Page size limit |
+| `select` | `{ [key]: true }` | no | Include only specified fields |
+| `omit` | `{ [key]: true }` | no | Exclude specified fields |
+| `stream` | `number` | no | Batch size for async iteration (mutually exclusive with `after`) |
+| `after` | `string \| null` | no | Cursor for pagination (mutually exclusive with `stream`) |
+
+`select` and `omit` are mutually exclusive — providing both throws at runtime.
 
 ```ts
-import NotionORM from "@haustle/notion-orm";
+// Simple query — returns all rows
+const allBooks = await db.findMany();
 
-const notion = new NotionORM({ auth: process.env.NOTION_KEY! });
-const tasks = notion.databases.tasks;
-
-// Add one page using typed properties.
-await tasks.add({
-  properties: {
-    title: "Launch docs refresh",
-    status: "In progress",
-    checkbox: true,
-    number: 2,
-    date: { start: "2026-03-19", end: "2026-03-20" },
-  },
+// Filtered + sorted + projected
+const recent = await db.findMany({
+  where: { publishDate: { on_or_after: "2025-01-01" } },
+  sortBy: [{ property: "Publish Date", direction: "descending" }],
+  select: { bookName: true, publishDate: true },
+  size: 20,
 });
 
-// Filter query (for filterable fields only).
-const { results } = await tasks.query({
-  filter: {
+// Cursor pagination
+const firstPage = await db.findMany({ after: null, size: 10 });
+const secondPage = await db.findMany({ after: firstPage.nextCursor, size: 10 });
+// firstPage.data, firstPage.hasMore, firstPage.nextCursor
+
+// Streaming large datasets
+for await (const row of db.findMany({ stream: 100 })) {
+  console.log(row.bookName);
+}
+```
+
+---
+
+### `findFirst`
+
+Returns the first row matching the filter, or `null` if none match.
+
+```ts
+const book = await db.findFirst({
+  where: { bookName: { equals: "Creativity, Inc." } },
+});
+```
+
+**Args:** Same as `findMany` but without `stream`, `after`, or `size`.
+
+---
+
+### `findUnique`
+
+Retrieves a single page by its Notion page ID. Returns `null` for missing or partial pages.
+
+```ts
+const page = await db.findUnique({ where: { id: "page-id-here" } });
+```
+
+---
+
+### `count`
+
+Returns the total number of rows matching an optional filter. Paginates internally to count all results.
+
+```ts
+const total = await db.count();
+const filtered = await db.count({
+  where: { status: { equals: "Done" } },
+});
+```
+
+---
+
+### `create`
+
+Creates a single page. Properties are typed to your generated schema.
+
+```ts
+const result = await db.create({
+  properties: {
+    bookName: "The Dream Machine",
+    genre: ["Non-fiction"],
+    numberOfPages: 460,
+  },
+  icon: { type: "emoji", emoji: "📗" },
+});
+// result.id — the new page ID
+```
+
+---
+
+### `createMany`
+
+Creates multiple pages sequentially and returns all responses.
+
+```ts
+const results = await db.createMany({
+  properties: [
+    { bookName: "Book A", genre: ["Sci-Fi"], numberOfPages: 300 },
+    { bookName: "Book B", genre: ["Biography"], numberOfPages: 250 },
+  ],
+});
+```
+
+---
+
+### `update`
+
+Updates a single page by ID. Requires at least one property.
+
+```ts
+await db.update({
+  where: { id: "page-id" },
+  properties: { status: "Done", numberOfPages: 512 },
+});
+```
+
+---
+
+### `updateMany`
+
+Finds all pages matching a filter and applies the same property updates to each.
+
+```ts
+await db.updateMany({
+  where: { status: { equals: "Draft" } },
+  properties: { status: "In progress" },
+});
+```
+
+---
+
+### `upsert`
+
+Finds the first row matching `where`. If found, applies `update`; otherwise runs `create`.
+
+```ts
+await db.upsert({
+  where: { bookName: { equals: "The Dream Machine" } },
+  create: {
+    bookName: "The Dream Machine",
+    genre: ["Non-fiction"],
+    numberOfPages: 460,
+  },
+  update: { numberOfPages: 500 },
+});
+```
+
+---
+
+### `delete`
+
+Archives a single page by ID (Notion does not hard-delete pages).
+
+```ts
+await db.delete({ where: { id: "page-id" } });
+```
+
+---
+
+### `deleteMany`
+
+Archives all pages matching a filter.
+
+```ts
+await db.deleteMany({
+  where: { status: { equals: "Archived" } },
+});
+```
+
+---
+
+### `PaginateResult`
+
+Returned by `findMany` when `after` is provided.
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `data` | `Partial<Schema>[]` | Current page of results |
+| `nextCursor` | `string \| null` | Pass to `after` for the next page, `null` when done |
+| `hasMore` | `boolean` | Whether more pages remain |
+
+---
+
+### Filtering
+
+Filters are typed by your generated schema. Single-property filters and compound `and`/`or` are supported.
+
+**Single filter:**
+
+```ts
+await db.findMany({
+  where: { genre: { contains: "Sci-Fi" } },
+});
+```
+
+**Compound filters:**
+
+```ts
+await db.findMany({
+  where: {
     and: [
-      { property: "status", status: { equals: "In progress" } },
-      { property: "checkbox", checkbox: { equals: true } },
+      { genre: { contains: "Sci-Fi" } },
+      { numberOfPages: { greater_than: 200 } },
+      {
+        or: [
+          { status: { equals: "In progress" } },
+          { status: { equals: "Not started" } },
+        ],
+      },
     ],
   },
 });
 ```
+
+Filter operators vary by property type — see the [Notion filter reference](https://developers.notion.com/reference/post-database-query-filter) for the full list.
 
 ### Supported database properties
 
@@ -101,14 +314,21 @@ const { results } = await tasks.query({
 | `last_edited_time` | `string`                                                             | `"2026-03-01T13:15:00.000Z"`                  |
 | `unique_id`        | `string`                                                             | `"TASK-42"`                                   |
 
-### Unsupported and non-filterable properties
+### Unsupported properties
 
-Typed query filters now support most first-class Notion property filters. The remaining limitation is:
+Typed query filters now support most first-class Notion property filters. These property types are not supported in filters yet:
 
-| Property type                      | Status                   | Why |
-| ---------------------------------- | ------------------------ | --- |
-| `rollup`                           | Unsupported              | Rollup values are polymorphic and require additional normalization before we can provide safe, predictable filter contracts. |
-| `formula`                          | Supported, non-filterable | Formula results can vary by expression and return type, so they are currently excluded from typed filter operators. |
+| Property type | Why |
+| ------------- | --- |
+| `rollup`      | Rollup values are polymorphic and require additional normalization before we can provide safe, predictable filter contracts. |
+
+### Non-filterable properties
+
+These property types are supported on your schema and in query results, but typed filter operators are not available for them:
+
+| Property type | Why |
+| ------------- | --- |
+| `formula`     | Formula results can vary by expression and return type, so they are currently excluded from typed filter operators. |
 
 ## Agent client
 
