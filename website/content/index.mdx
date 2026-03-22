@@ -1,8 +1,8 @@
----
-path: /
-title: Overview
-description: A Notion API TypeScript wrapper that aims to improve interactions with databases and agents by building local static schemas.
----
+export const metadata = {
+  path: "/",
+  title: "Overview",
+  description: "A Notion API TypeScript wrapper that aims to improve interactions with databases and agents by building local static schemas.",
+};
 
 <NotionCubeLogo fixedHero />
 
@@ -62,13 +62,35 @@ Add new database to track and generate static types (ex. how to find ID [here](h
 bun notion add <database-id>
 ```
 
-### Adding agents
+### Adding agents (paid feature)
 
-Agents linked to the integration are automatically populated during `notion sync` (No manual edits required)
+Agent support requires the [Notion Agents SDK](https://github.com/makenotion/notion-agents-sdk-js), which is **currently in alpha** and not published to npm. Because of this, a one-command setup handles the entire download-and-install flow for you:
+
+```bash
+bun notion setup-agents-sdk
+```
+
+**What this does:**
+1. Clones the SDK repository into a local cache (`node_modules/.cache/.notion-agents-sdk`)
+2. Installs the SDK's dependencies and builds it
+3. Adds the built `@notionhq/agents-client` package to your project
+
+After setup, run `notion sync` to generate agent types. Agents linked to your integration are automatically discovered.
+
+**Updating:** When the upstream SDK receives changes, rerun the same command. It pulls the latest from the cached clone, rebuilds, and reinstalls:
+
+```bash
+bun notion setup-agents-sdk
+bun notion sync
+```
+
+If you have not run the setup command, `notion sync` will skip agent generation and only produce database types. Once the SDK is published to npm, this step will no longer be necessary.
+
+Learn more about [Custom Agents](https://www.notion.com/help/custom-agents) in the Notion documentation.
 
 ### Full sync command (`notion sync`)
 
-- Fetch/refresh database schemas + custom agents.
+- Fetch/refresh database schemas. If the agents SDK is installed, also syncs custom agents.
 
 ```bash
 bun notion sync
@@ -86,17 +108,17 @@ const notion = new NotionORM({
 });
 
 const db = notion.databases.yourDatabaseName; // DatabaseClient
-const agent = notion.agents.yourAgentName; // AgentClient
+const agent = notion.agents.yourAgentName; // AgentClient (after setup-agents-sdk)
 ```
 
 Generated database and agent names are camelCased and exposed on an instance of `NotionORM`.
 
 - Use `notion.databases.<camelCaseDatabaseName>` for `add()` and `query()`.
-- Use `notion.agents.<camelCaseAgentName>` for `chat()`, `chatStream()`, thread helpers, and history APIs.
+- Use `notion.agents.<camelCaseAgentName>` for `chat()`, `chatStream()`, thread helpers, and history APIs (requires `notion setup-agents-sdk`).
 
 ## Databases
 
-See the [Database client API reference](/api-reference#database-client).
+See the [API reference](/api-reference#database-client).
 
 ### Add a page
 
@@ -235,7 +257,9 @@ When `includeRawResponse: true` is provided, the response additionally includes 
 
 ## Agents
 
-Agents are generated from those shared with your integration and exposed at `notion.agents.*`.
+Agents require the Notion Agents SDK. Run `notion setup-agents-sdk` first, then `notion sync` to generate agent types.
+
+Once set up, agents shared with your integration are exposed at `notion.agents.*`.
 
 See the [Agent client API reference](/api-reference#agent-client) for full method signatures, thread helpers, and message APIs.
 
@@ -316,7 +340,7 @@ See [API Reference](/api-reference) for full method signatures, `ThreadInfo` sha
 
 ## Size & dependencies
 
-**70.6 kB** is unpacked size (npm pack --dry-run).
+**425.2 kB** is unpacked size (npm pack --dry-run).
 
 Runtime dependencies:
 
@@ -330,7 +354,7 @@ Runtime dependencies:
 ```txt
 .
 ├── src
-│   ├── cli              # notion init / add / sync
+│   ├── cli              # notion init / add / sync / setup-agents-sdk
 │   ├── config           # config discovery, loading, and validation
 │   ├── client           # runtime DatabaseClient + AgentClient
 │   │   └── query        # typed filters + response simplification

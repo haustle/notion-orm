@@ -12,13 +12,7 @@ export async function SitePageView({ path = "/" }: SitePageViewProps) {
 		return null;
 	}
 
-	const loadedModule = page.loadComponent
-		? await page.loadComponent()
-		: undefined;
-	const PageComponent = page.component ?? loadedModule?.default;
-	if (!PageComponent) {
-		return null;
-	}
+	const PageComponent = page.component;
 
 	return (
 		<Layout sitePages={sitePages} currentPath={path} toc={page.toc}>

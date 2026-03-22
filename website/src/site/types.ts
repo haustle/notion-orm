@@ -14,7 +14,6 @@ export interface SitePage {
 	path: SitePath;
 	title: string;
 	description: string;
-	component?: ComponentType;
-	loadComponent?: () => Promise<{ default: ComponentType }>;
+	component: ComponentType;
 	toc: TocEntry[];
 }

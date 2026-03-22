@@ -1,5 +1,6 @@
 import {
 	Children,
+	createElement,
 	type FC,
 	isValidElement,
 	type ReactElement,
@@ -7,6 +8,7 @@ import {
 } from "react";
 import { css, cx } from "../styled-system/css";
 import { NotionCubeLogo } from "./NotionCubeLogo";
+import { slugify } from "./slugify";
 
 interface CodeBlockProps {
 	children?: ReactNode;
@@ -278,9 +280,7 @@ const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 };
 
 function collectChildren(children: ReactNode): ReactNode[] {
-	const result: ReactNode[] = [];
-	Children.forEach(children, (child) => result.push(child));
-	return result;
+	return Children.toArray(children);
 }
 
 interface ParsedTableData {
@@ -428,13 +428,21 @@ const DocsProse: FC<{ children?: ReactNode }> = ({ children }) => (
 	<div className={docsProseClass}>{children}</div>
 );
 
-const mdxComponents = {
+function createHeading(tag: string): FC<{ children?: ReactNode }> {
+	const HeadingWithId: FC<{ children?: ReactNode }> = ({ children }) => {
+		const id = slugify(extractText(children));
+		return createElement(tag, { id }, children);
+	};
+	return HeadingWithId;
+}
+
+export const mdxComponents = {
+	h1: createHeading("h1"),
+	h2: createHeading("h2"),
+	h3: createHeading("h3"),
+	h4: createHeading("h4"),
 	pre: CodeBlock,
 	table: StackedTable,
 	NotionCubeLogo,
 	DocsProse,
 };
-
-export function useMDXComponents() {
-	return mdxComponents;
-}
