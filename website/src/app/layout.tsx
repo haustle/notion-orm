@@ -6,6 +6,7 @@ import "../site/demo/demoPlaygroundResetButton.css";
 import "../site/siteNavGithubLink.css";
 import { AgentationDev } from "../site/AgentationDev";
 import { siteTitle } from "../site/config";
+import { DemoPlaygroundWarmup } from "../site/demo/DemoPlaygroundWarmup";
 import {
 	SITE_COLOR_MODE_ATTR,
 	SITE_COLOR_MODE_DARK,
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
 			</head>
 			<body>
 				<div className={appRootClass}>{children}</div>
+				<DemoPlaygroundWarmup />
 				<AgentationDev />
 			</body>
 		</html>

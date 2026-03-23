@@ -148,17 +148,25 @@ type ResolvedProjectionArgs<
 	: ProjectionArgs<Schema>;
 
 export type ProjectedFromArgs<
-	Schema extends object,
-	ProjectionSelection extends ProjectionArgs<Schema> | undefined = undefined,
-> = ProjectionSelection extends {
-	select: infer SelectedPropertyNames extends ProjectionPropertyList<Schema>;
-}
-	? Partial<Pick<Schema, SelectedPropertyNames[number]>>
-	: ProjectionSelection extends {
-				omit: infer OmittedPropertyNames extends ProjectionPropertyList<Schema>;
-			}
-		? Partial<Omit<Schema, OmittedPropertyNames[number]>>
-		: Partial<Schema>;
+		Schema extends object,
+		ProjectionSelection extends ProjectionArgs<Schema> | undefined = undefined,
+	> = [ProjectionSelection] extends [undefined]
+		? Partial<Schema>
+		: [ProjectionSelection] extends [
+					{
+						select: infer SelectedPropertyNames extends
+							ProjectionPropertyList<Schema>;
+					},
+				]
+			? Partial<Pick<Schema, SelectedPropertyNames[number]>>
+			: [ProjectionSelection] extends [
+						{
+							omit: infer OmittedPropertyNames extends
+								ProjectionPropertyList<Schema>;
+						},
+					]
+				? Partial<Omit<Schema, OmittedPropertyNames[number]>>
+				: Partial<Schema>;
 
 export type FindManyArgs<
 		Schema extends object,
