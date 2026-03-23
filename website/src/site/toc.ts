@@ -10,6 +10,11 @@ export interface TocHeadingTarget {
 	top: number;
 }
 
+export interface TocNavigationState {
+	activeId: string | null;
+	revealedRootId: string | null;
+}
+
 export const HEADING_ACTIVATION_OFFSET = 140;
 export const BOTTOM_OF_PAGE_THRESHOLD = 8;
 
@@ -49,6 +54,97 @@ export function sectionContainsActiveId(
 	}
 
 	return section.children.some((child) => child.id === activeId);
+}
+
+export function getSectionRootIdForEntryId(
+	sections: TocSection[],
+	entryId: string | null,
+): string | null {
+	if (entryId === null) {
+		return null;
+	}
+
+	for (const section of sections) {
+		if (
+			section.root.id === entryId ||
+			section.children.some((child) => child.id === entryId)
+		) {
+			return section.root.id;
+		}
+	}
+
+	return null;
+}
+
+export function getTocNavigationState(args: {
+	sections: TocSection[];
+	entryId: string | null;
+}): TocNavigationState {
+	const { sections, entryId } = args;
+	return {
+		activeId: entryId,
+		revealedRootId: getSectionRootIdForEntryId(sections, entryId),
+	};
+}
+
+export function updateTocNavigationState(args: {
+	sections: TocSection[];
+	currentState: TocNavigationState;
+	entryId: string | null;
+}): TocNavigationState {
+	const { sections, currentState, entryId } = args;
+	if (entryId === null) {
+		return currentState;
+	}
+
+	const nextState = getTocNavigationState({ sections, entryId });
+	if (
+		nextState.activeId === currentState.activeId &&
+		nextState.revealedRootId === currentState.revealedRootId
+	) {
+		return currentState;
+	}
+
+	return nextState;
+}
+
+export function sectionShouldBeExpanded(args: {
+	section: TocSection;
+	activeId: string | null;
+	revealedRootId: string | null;
+}): boolean {
+	const { section, activeId, revealedRootId } = args;
+	if (section.children.length === 0) {
+		return false;
+	}
+
+	return (
+		section.root.id === revealedRootId ||
+		sectionContainsActiveId(section, activeId)
+	);
+}
+
+export function getTocTargetOrderMismatch(args: {
+	toc: TocEntry[];
+	targetIdsInDomOrder: string[];
+}): {
+	expectedIds: string[];
+	actualIds: string[];
+} | null {
+	const expectedIds = args.toc.map((entry) => entry.id);
+	const { targetIdsInDomOrder } = args;
+
+	if (
+		expectedIds.length !== targetIdsInDomOrder.length ||
+		expectedIds.some((id, index) => id !== targetIdsInDomOrder[index])
+	) {
+		return {
+			expectedIds,
+			actualIds: targetIdsInDomOrder,
+		};
+	}
+
+	return null;
 }
 
 export function getActiveHeadingIdFromTargets(args: {
