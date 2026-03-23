@@ -76,11 +76,6 @@ function createBaseTypeExportDeclaration(): ts.ExportDeclaration {
 				undefined,
 				ts.factory.createIdentifier("NotionConfigType"),
 			),
-			ts.factory.createExportSpecifier(
-				false,
-				undefined,
-				ts.factory.createIdentifier("Query"),
-			),
 		]),
 		ts.factory.createStringLiteral(AST_IMPORT_PATHS.ORM_BASE),
 		undefined,
