@@ -3,9 +3,11 @@ import { join } from "path";
 import { pathToFileURL } from "url";
 import { renderDatabaseModule } from "../../src/ast/database/database-file-writer";
 import {
+	isSupportedPropertyType,
 	SUPPORTED_PROPERTY_TYPES,
 	type SupportedNotionColumnType,
 } from "../../src/client/queryTypes";
+import { objectKeys } from "../../src/typeUtils";
 import {
 	CODEGEN_EMIT_PATHS,
 	CODEGEN_GOLDEN_FILES,
@@ -202,9 +204,9 @@ describe("database module emitter", () => {
 // ---------------------------------------------------------------------------
 
 describe("property type coverage", () => {
-	const supportedTypes = Object.entries(SUPPORTED_PROPERTY_TYPES)
-		.filter(([, supported]) => supported)
-		.map(([type]) => type as SupportedNotionColumnType);
+	const supportedTypes = objectKeys(SUPPORTED_PROPERTY_TYPES).filter(
+		(type): type is SupportedNotionColumnType => isSupportedPropertyType(type),
+	);
 
 	const fixturePropertyTypes = new Set<string>();
 	for (const fixture of Object.values(ALL_DATABASE_FIXTURES)) {

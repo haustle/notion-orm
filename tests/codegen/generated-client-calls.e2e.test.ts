@@ -14,6 +14,7 @@ import {
 	buildMockDataSourceResponse,
 	CUSTOMER_ORDERS_FIXTURE,
 } from "../helpers/datasource-fixture-builder";
+import { queryDataSourceListResponse } from "../helpers/query-data-source-response";
 import { databasePropertyValue } from "../helpers/query-transform-fixtures";
 import {
 	cleanupTempWorkspaces,
@@ -21,11 +22,11 @@ import {
 	writeWorkspaceFile,
 } from "../helpers/temp-workspace";
 
-const dataSourceQueryMock = mock(async (_call: QueryDataSourceParameters) => ({
-	object: "list",
-	results: [
+const dataSourceQueryMock = mock(async (_call: QueryDataSourceParameters) =>
+	queryDataSourceListResponse([
 		{
 			object: "page",
+			id: "page-order-44",
 			properties: {
 				"Order Name": databasePropertyValue.title("Order #44"),
 				Notes: databasePropertyValue.richText("fragile"),
@@ -37,8 +38,8 @@ const dataSourceQueryMock = mock(async (_call: QueryDataSourceParameters) => ({
 				"Receipt URL": databasePropertyValue.url("https://receipt.dev/44"),
 			},
 		},
-	],
-}));
+	]),
+);
 
 const pagesCreateMock = mock(async (_call: CreatePageParameters) => ({
 	id: "created-page-id",
@@ -67,7 +68,7 @@ afterEach(() => {
 });
 
 describe("generated database client e2e calls", () => {
-	test("generated customerOrders factory builds valid add/query call bodies", async () => {
+	test("generated customerOrders factory builds valid create/findMany call bodies", async () => {
 		const rendered = renderDatabaseModule(
 			buildMockDataSourceResponse(CUSTOMER_ORDERS_FIXTURE),
 		);
@@ -102,7 +103,7 @@ describe("generated database client e2e calls", () => {
 		);
 		const dbClient = mod.customerOrders("token-123");
 
-		await dbClient.add({
+		await dbClient.create({
 			properties: {
 				orderName: "Order #44",
 				notes: "fragile",
@@ -114,11 +115,11 @@ describe("generated database client e2e calls", () => {
 				receiptUrl: "https://receipt.dev/44",
 			},
 		});
-		await dbClient.query({
-			filter: {
+		await dbClient.findMany({
+			where: {
 				total: { greater_than: 10 },
 			},
-			sort: [{ property: "Total", direction: "ascending" }],
+			sortBy: [{ property: "total", direction: "ascending" }],
 		});
 
 		expect(pagesCreateMock).toHaveBeenCalledTimes(1);
