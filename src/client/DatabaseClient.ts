@@ -364,7 +364,7 @@ export class DatabaseClient<
 					`${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} update() requires 'where.id' to be a non-empty string.`,
 				);
 			}
-			if (!args.properties || Object.keys(args.properties).length === 0) {
+			if (!args.properties || objectKeys(args.properties).length === 0) {
 				throw new Error(
 					`${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} update() requires 'properties' to contain at least one property.`,
 				);
@@ -494,15 +494,17 @@ export class DatabaseClient<
 		): NormalizedProjection<ProjectionPropertyName<DatabaseSchemaType>> {
 			const select = projectionArgs?.select;
 			const omit = projectionArgs?.omit;
-			if (select && omit) {
+			const hasSelect = select != null && select.length > 0;
+			const hasOmit = omit != null && omit.length > 0;
+			if (hasSelect && hasOmit) {
 				throw new Error(
 					`${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} Cannot use both 'select' and 'omit' at the same time.`,
 				);
 			}
-			if (select) {
+			if (hasSelect) {
 				return { mode: "select", keys: new Set(select) };
 			}
-			if (omit) {
+			if (hasOmit) {
 				return { mode: "omit", keys: new Set(omit) };
 			}
 			return { mode: "none", keys: new Set() };
@@ -689,7 +691,9 @@ export class DatabaseClient<
 			}
 
 			const schemaLabel = this.name ?? this.id;
-			const remoteColumnNames = new Set(Object.keys(result));
+			const remoteColumnNames = new Set<string>(
+				objectKeys(result).map((k) => String(k)),
+			);
 
 			// Check for missing expected properties (schema drift detection)
 			const missingProperties: string[] = [];

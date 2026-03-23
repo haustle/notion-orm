@@ -2,6 +2,8 @@ import NotionORMBase from "./base";
 
 export type { NotionConfigType } from "./base";
 export { AgentClient, DatabaseClient } from "./base";
+export type { ObjectEntry } from "./typeUtils";
+export { objectEntries, objectKeys } from "./typeUtils";
 
 class NotionORM extends NotionORMBase {
 	public databases: Record<string, never>;

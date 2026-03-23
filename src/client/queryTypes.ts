@@ -414,18 +414,27 @@ type ResolvedProjectionArgs<
 		? ProjectionSelection
 		: ProjectionArgs<Schema>;
 
+/** Row shape after projection; tuple-wrapped checks avoid distributing over `ProjectionArgs<Schema>` when inference yields that union (e.g. find with only `where`), which would collapse `keyof` to `never`. */
 export type ProjectedFromArgs<
 	Schema extends Record<string, any>,
 	ProjectionSelection extends ProjectionArgs<Schema> | undefined = undefined,
-> = ProjectionSelection extends {
-	select: infer SelectedPropertyNames extends ProjectionPropertyList<Schema>;
-}
-	? Partial<Pick<Schema, SelectedPropertyNames[number]>>
-	: ProjectionSelection extends {
-				omit: infer OmittedPropertyNames extends ProjectionPropertyList<Schema>;
-			}
-		? Partial<Omit<Schema, OmittedPropertyNames[number]>>
-		: Partial<Schema>;
+> = [ProjectionSelection] extends [undefined]
+	? Partial<Schema>
+	: [ProjectionSelection] extends [
+				{
+					select: infer SelectedPropertyNames extends
+						ProjectionPropertyList<Schema>;
+				},
+			]
+		? Partial<Pick<Schema, SelectedPropertyNames[number]>>
+		: [ProjectionSelection] extends [
+					{
+						omit: infer OmittedPropertyNames extends
+							ProjectionPropertyList<Schema>;
+					},
+				]
+			? Partial<Omit<Schema, OmittedPropertyNames[number]>>
+			: Partial<Schema>;
 
 type ProjectionSelectionFromPropertyLists<
 	Schema extends Record<string, any>,

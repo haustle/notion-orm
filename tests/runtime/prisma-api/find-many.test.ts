@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { z } from "zod";
 import type { NotionPropertyValue } from "../../../src/client/query/types";
+import { objectKeys } from "../../../src/typeUtils";
 import {
 	emptyQueryDataSourceResponse,
 	type QueryDataSourceResultRow,
@@ -113,6 +114,50 @@ describe("findMany", () => {
 		});
 	});
 
+	test("empty select returns all fields like no projection", async () => {
+		dataSourceQueryMock.mockResolvedValueOnce(
+			mockQueryResponse([
+				makePage({
+					"Shop Name": databasePropertyValue.title("Blue Bottle"),
+					Rating: databasePropertyValue.number(5),
+					"Has WiFi": databasePropertyValue.checkbox(true),
+					Notes: databasePropertyValue.richText("Great coffee"),
+				}),
+			]),
+		);
+		const client = createClient();
+		const results = await client.findMany({ select: [] });
+		expect(results).toHaveLength(1);
+		expect(results[0]).toEqual({
+			shopName: "Blue Bottle",
+			rating: 5,
+			hasWifi: true,
+			notes: "Great coffee",
+		});
+	});
+
+	test("empty omit returns all fields like no projection", async () => {
+		dataSourceQueryMock.mockResolvedValueOnce(
+			mockQueryResponse([
+				makePage({
+					"Shop Name": databasePropertyValue.title("Blue Bottle"),
+					Rating: databasePropertyValue.number(5),
+					"Has WiFi": databasePropertyValue.checkbox(true),
+					Notes: databasePropertyValue.richText("Great coffee"),
+				}),
+			]),
+		);
+		const client = createClient();
+		const results = await client.findMany({ omit: [] });
+		expect(results).toHaveLength(1);
+		expect(results[0]).toEqual({
+			shopName: "Blue Bottle",
+			rating: 5,
+			hasWifi: true,
+			notes: "Great coffee",
+		});
+	});
+
 	test("passes where filter to dataSources.query", async () => {
 		dataSourceQueryMock.mockResolvedValueOnce(mockQueryResponse([]));
 		const client = createClient();
@@ -167,7 +212,7 @@ describe("findMany", () => {
 		const results = await client.findMany({
 			select: ["shopName", "rating"] as const,
 		});
-		expect(Object.keys(results[0])).toEqual(["shopName", "rating"]);
+		expect(objectKeys(results[0])).toEqual(["shopName", "rating"]);
 		expect(results[0].shopName).toBe("Blue Bottle");
 		expect(results[0].rating).toBe(5);
 	});
@@ -204,7 +249,7 @@ describe("findMany", () => {
 		const results = await client.findMany({
 			select: ["shopName", "shopName", "rating"] as const,
 		});
-		expect(Object.keys(results[0])).toEqual(["shopName", "rating"]);
+		expect(objectKeys(results[0])).toEqual(["shopName", "rating"]);
 	});
 
 	test("throws when both select and omit are provided", () => {

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { z } from "zod";
+import { objectKeys } from "../../../src/typeUtils";
 import {
 	emptyQueryDataSourceResponse,
 	queryDataSourceListResponse,
@@ -124,6 +125,6 @@ describe("findMany with after (pagination)", () => {
 			after: null,
 			select: ["shopName"] as const,
 		});
-		expect(Object.keys(result.data[0])).toEqual(["shopName"]);
+		expect(objectKeys(result.data[0])).toEqual(["shopName"]);
 	});
 });

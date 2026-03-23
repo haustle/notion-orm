@@ -2,10 +2,12 @@ import type {
 	FindFirstArgs,
 	FindManyArgs,
 	FindUniqueArgs,
+	ProjectedFromArgs,
+	ProjectionArgs,
 	Query,
 	UpdateManyArgs,
 } from "../../src/client/queryTypes";
-import type { Expect } from "./helpers/assert";
+import type { Equal, Expect } from "./helpers/assert";
 
 type BookSchema = {
 	shopName: string;
@@ -23,9 +25,19 @@ type BookColumnTypes = {
 	tags: "multi_select";
 };
 
+/** When `Projection` is inferred as the full `ProjectionArgs` union, row keys must stay the full schema (not `never`). */
+type _projectedFromInferredUnion = Expect<
+	Equal<
+		keyof ProjectedFromArgs<BookSchema, ProjectionArgs<BookSchema>>,
+		keyof Partial<BookSchema>
+	>
+>;
+
 /** Notion `filter` / `sort` payload shape for the query transformer — not `findMany` args (`where` / `sortBy`). */
 type ApiQueryFilterSortShape = Query<BookSchema, BookColumnTypes>;
-type _queryShapeExists = Expect<ApiQueryFilterSortShape extends object ? true : false>;
+type _queryShapeExists = Expect<
+	ApiQueryFilterSortShape extends object ? true : false
+>;
 type FindManyShape = FindManyArgs<BookSchema, BookColumnTypes>;
 type FindFirstShape = FindFirstArgs<BookSchema, BookColumnTypes>;
 type FindUniqueShape = FindUniqueArgs<BookSchema>;
