@@ -2,7 +2,7 @@ import { mkdir, readdir, watch } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
-import { slugify } from "../src/site/slugify";
+import { createHeadingSlugFactory } from "../src/site/slugify";
 import { type SitePath, sitePaths, type TocEntry } from "../src/site/types";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -41,15 +41,23 @@ function extractExportedMetadata(
 	return new Function(`return ${objectLiteral}`)() as Record<string, unknown>;
 }
 
+/** Strip MDX inline-code backticks from heading text for sidebar / TOC display only. */
+function tocDisplayLabel(rawHeadingLine: string): string {
+	return rawHeadingLine.replace(/`/g, "").trim();
+}
+
 function extractToc(content: string): TocEntry[] {
 	const entries: TocEntry[] = [];
-	const headingRe = /^(#{2})\s+(.+)$/gm;
+	const nextId = createHeadingSlugFactory();
+	/** h2–h4 only: matches in-page section titles and subsections (e.g. function names under API sections). */
+	const headingRe = /^(#{2,4})\s+(.+)$/gm;
 	let match = headingRe.exec(content);
 
 	while (match !== null) {
-		const depth = 2;
-		const label = match[2].trim();
-		const id = slugify(label);
+		const depth = match[1].length;
+		const rawLabel = match[2].trim();
+		const id = nextId(rawLabel);
+		const label = tocDisplayLabel(rawLabel);
 		entries.push({ id, label, depth });
 		match = headingRe.exec(content);
 	}

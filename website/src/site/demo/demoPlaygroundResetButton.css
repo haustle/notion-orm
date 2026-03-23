@@ -1,0 +1,29 @@
+/*
+ * Tooltip + Reset `prefers-reduced-motion`. In plain CSS because nested `@media` inside
+ * `EditorView.theme` in `DemoPlayground.tsx` is extracted by Panda and can corrupt `styles.css`.
+ */
+
+@media (prefers-reduced-motion: reduce) {
+	.cm-tooltip.cm-tooltip-motion-enter {
+		animation: none !important;
+		opacity: 1;
+	}
+
+	.cm-tooltip.cm-tooltip-motion-leave {
+		animation: none !important;
+		opacity: 0;
+	}
+
+	.demo-playground-reset-btn {
+		transform: none !important;
+		transition:
+			background-color 0.15s,
+			border-color 0.15s,
+			color 0.15s !important;
+	}
+
+	.demo-playground-reset-btn:hover,
+	.demo-playground-reset-btn:active {
+		transform: none !important;
+	}
+}

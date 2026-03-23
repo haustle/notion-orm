@@ -2,8 +2,21 @@ import Link from "next/link";
 import type { FC, ReactNode } from "react";
 import { css, cx } from "../styled-system/css";
 import { githubUrl, siteTitle } from "./config";
+import { HeadingSlugProvider } from "./HeadingSlugProvider";
 import { PageToc } from "./PageToc";
-import type { SitePage, SitePath, TocEntry } from "./types";
+import {
+	PAGE_LINK_ARROW_ATTR,
+	PAGE_LINK_ARROW_VALUE,
+	pageLinkArrowPandaCssKeys,
+} from "./siteClassNames";
+import {
+	type SitePage,
+	type SitePath,
+	sitePaths,
+	type TocEntry,
+} from "./types";
+
+const narrowMainColumnPaths = new Set<SitePath>(sitePaths);
 
 type SiteNavPage = Pick<SitePage, "path" | "title">;
 
@@ -21,7 +34,7 @@ interface SidebarProps {
 }
 
 const shellClass = css({
-	maxW: "896px",
+	maxW: "1075px",
 	mx: "auto",
 	px: { base: "10", md: "8" },
 	py: { base: "5", md: "8" },
@@ -43,14 +56,14 @@ const mobileTopNavClass = css({
 
 const layoutClass = css({
 	display: "grid",
-	gridTemplateColumns: { base: "1fr", lg: "245px minmax(0, 720px)" },
+	gridTemplateColumns: { base: "1fr", lg: "245px minmax(0, 864px)" },
 	columnGap: { base: "0", lg: "5.6rem" },
 	justifyContent: "center",
 	mt: { base: "0", lg: "100px" },
 });
 
 const narrowLayoutClass = css({
-	gridTemplateColumns: { lg: "245px minmax(0, 540px)" },
+	gridTemplateColumns: { lg: "245px minmax(0, 648px)" },
 });
 
 const sidebarClass = css({
@@ -110,6 +123,10 @@ const articleBaseClass = css({
 	fontSize: "md",
 	lineHeight: "1.75",
 	color: "text",
+});
+
+const articleBottomSpaceClass = css({
+	mb: "100px",
 });
 
 const proseStyles = {
@@ -233,11 +250,11 @@ const pageLinkBaseClass = css({
 	transitionProperty: "opacity",
 	transitionDuration: "220ms",
 	_hover: { opacity: 1 },
-	"&:hover [data-page-link-arrow='true']": {
+	[pageLinkArrowPandaCssKeys.hover]: {
 		opacity: 1,
 		transform: "translateY(0)",
 	},
-	"&:focus-visible [data-page-link-arrow='true']": {
+	[pageLinkArrowPandaCssKeys.focusVisible]: {
 		opacity: 1,
 		transform: "translateY(0)",
 	},
@@ -314,7 +331,7 @@ const Sidebar: FC<SidebarProps> = ({ sitePages, currentPath, toc }) => {
 					<span className={pageLinkAdornmentClass}>
 						<span
 							className={pageLinkArrowClass}
-							data-page-link-arrow="true"
+							{...{ [PAGE_LINK_ARROW_ATTR]: PAGE_LINK_ARROW_VALUE }}
 							aria-hidden>
 							↗
 						</span>
@@ -336,7 +353,8 @@ export const Layout: FC<LayoutProps> = ({
 	toc,
 }) => {
 	const isHome = currentPath === "/";
-	const narrowMainColumn = isHome || currentPath === "/api-reference";
+	const narrowMainColumn =
+		currentPath !== "" && narrowMainColumnPaths.has(currentPath);
 
 	return (
 		<div className={cx(shellClass, !isHome && shellBgClass)}>
@@ -352,8 +370,15 @@ export const Layout: FC<LayoutProps> = ({
 			<div className={cx(layoutClass, narrowMainColumn && narrowLayoutClass)}>
 				<Sidebar sitePages={sitePages} currentPath={currentPath} toc={toc} />
 				<main className={contentClass}>
-					<article className={cx(articleBaseClass, articleProseClass)}>
-						{children}
+					<article
+						className={cx(
+							articleBaseClass,
+							articleProseClass,
+							articleBottomSpaceClass,
+						)}>
+						<HeadingSlugProvider key={currentPath || "/"}>
+							{children}
+						</HeadingSlugProvider>
 					</article>
 				</main>
 			</div>

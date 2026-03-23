@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-export const sitePaths = ["/", "/api-reference"] as const;
+export const sitePaths = ["/", "/api-reference", "/demo"] as const;
 
 export type SitePath = (typeof sitePaths)[number];
 

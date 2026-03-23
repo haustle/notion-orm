@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "../styled-system/styles.css";
+import "../site/demo/demoCursorHint.css";
+import "../site/demo/demoPlaygroundResetButton.css";
 import { AgentationDev } from "../site/AgentationDev";
 import { siteTitle } from "../site/config";
+import {
+	SITE_COLOR_MODE_ATTR,
+	SITE_COLOR_MODE_DARK,
+	SITE_COLOR_MODE_LIGHT,
+} from "../site/siteClassNames";
 import { css } from "../styled-system/css";
 
 const appRootClass = css({
@@ -23,7 +30,7 @@ interface RootLayoutProps {
 	children: ReactNode;
 }
 
-const themeInitScript = `(function(){var d=document.documentElement;var m=window.matchMedia("(prefers-color-scheme: dark)");var apply=function(e){d.setAttribute("data-color-mode",e.matches?"dark":"light")};apply(m);if(typeof m.addEventListener==="function"){m.addEventListener("change",apply)}else if(typeof m.addListener==="function"){m.addListener(apply)}})();`;
+const themeInitScript = `(function(){var d=document.documentElement;var m=window.matchMedia("(prefers-color-scheme: dark)");var apply=function(e){d.setAttribute("${SITE_COLOR_MODE_ATTR}",e.matches?"${SITE_COLOR_MODE_DARK}":"${SITE_COLOR_MODE_LIGHT}")};apply(m);if(typeof m.addEventListener==="function"){m.addEventListener("change",apply)}else if(typeof m.addListener==="function"){m.addListener(apply)}})();`;
 
 export default function RootLayout({ children }: RootLayoutProps) {
 	return (

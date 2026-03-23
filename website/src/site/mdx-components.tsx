@@ -1,14 +1,15 @@
-import {
-	Children,
-	createElement,
-	type FC,
-	isValidElement,
-	type ReactElement,
-	type ReactNode,
-} from "react";
+import { Children, type FC, isValidElement, type ReactNode } from "react";
 import { css, cx } from "../styled-system/css";
+import { DemoEditorShortcutsCallout } from "./demo/DemoEditorShortcutsCallout";
+import { DemoPlaygroundLazy } from "./demo/DemoPlaygroundLazy";
+import {
+	MdxHeading1,
+	MdxHeading2,
+	MdxHeading3,
+	MdxHeading4,
+} from "./mdxHeading";
+import { extractText, isElement } from "./mdxTextUtils";
 import { NotionCubeLogo } from "./NotionCubeLogo";
-import { slugify } from "./slugify";
 
 interface CodeBlockProps {
 	children?: ReactNode;
@@ -20,6 +21,15 @@ interface CodeBlockData {
 	fileLabel: string | null;
 	caption: string | null;
 }
+
+const jsFamilyLanguages = new Set([
+	"ts",
+	"tsx",
+	"js",
+	"jsx",
+	"typescript",
+	"javascript",
+]);
 
 const languageDisplayNames: Record<string, string> = {
 	bash: "Bash",
@@ -67,15 +77,7 @@ function inferCaptionFromCode(
 		return { fileLabel: null, caption: null, code };
 	}
 
-	const isJsFamilyLanguage =
-		language === "ts" ||
-		language === "tsx" ||
-		language === "js" ||
-		language === "jsx" ||
-		language === "typescript" ||
-		language === "javascript";
-
-	if (!isJsFamilyLanguage) {
+	if (!jsFamilyLanguages.has(language.toLowerCase())) {
 		return { fileLabel: null, caption: null, code };
 	}
 
@@ -207,7 +209,7 @@ const codeBlockWrapperWithoutCaptionClass = css({
 const codeBlockContainerClass = css({
 	borderWidth: "1px",
 	borderColor: "border",
-	borderTopRadius: "16px",
+	borderTopRadius: "12px",
 	borderBottomRadius: "16px",
 	overflow: "hidden",
 	bg: "transparent",
@@ -239,11 +241,19 @@ const codeBlockPreClass = css({
 	color: "text",
 });
 
+/** Optional caption: same type scale as stacked table descriptions; bar uses header bg (`inlineCodeBg`). */
 const codeBlockCaptionClass = css({
 	mt: "2.5",
-	px: "1",
+	display: "block",
+	width: "100%",
+	boxSizing: "border-box",
 	fontSize: "sm",
-	color: "muted",
+	lineHeight: "1.6",
+	color: "text",
+	opacity: 0.7,
+	bg: "inlineCodeBg",
+	p: "6px",
+	borderRadius: "2px",
 });
 
 const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
@@ -288,12 +298,6 @@ interface ParsedTableData {
 	rows: ReactNode[][];
 }
 
-function isElement(
-	node: ReactNode,
-): node is ReactElement<{ children?: ReactNode }> {
-	return isValidElement<{ children?: ReactNode }>(node);
-}
-
 function parseTableChildren(children: ReactNode): ParsedTableData {
 	const headers: string[] = [];
 	const rows: ReactNode[][] = [];
@@ -330,25 +334,6 @@ function parseTableChildren(children: ReactNode): ParsedTableData {
 	return { headers, rows };
 }
 
-function extractText(node: ReactNode): string {
-	if (node == null || typeof node === "boolean") {
-		return "";
-	}
-	if (typeof node === "string") {
-		return node;
-	}
-	if (typeof node === "number") {
-		return String(node);
-	}
-	if (Array.isArray(node)) {
-		return node.map(extractText).join("");
-	}
-	if (isElement(node)) {
-		return extractText(node.props.children);
-	}
-	return "";
-}
-
 const stackedTableContainerClass = css({
 	marginY: "5",
 });
@@ -357,6 +342,10 @@ const stackedRowClass = css({
 	py: "3.5",
 	borderBottomWidth: "1px",
 	borderBottomColor: "border",
+});
+
+const stackedRowLastClass = css({
+	borderBottomWidth: "0",
 });
 
 const stackedRowHeaderClass = css({
@@ -394,14 +383,17 @@ const StackedTable: FC<{ children?: ReactNode }> = ({ children }) => {
 
 	return (
 		<div className={stackedTableContainerClass}>
-			{rows.map((cells) => {
+			{rows.map((cells, rowIndex) => {
 				const name = cells[0];
 				const type = colCount >= 3 ? cells[1] : null;
 				const description = colCount >= 3 ? cells[2] : cells[1];
 				const rowKey = extractText(name);
+				const isLastRow = rowIndex === rows.length - 1;
 
 				return (
-					<div key={rowKey} className={stackedRowClass}>
+					<div
+						key={rowKey}
+						className={cx(stackedRowClass, isLastRow && stackedRowLastClass)}>
 						<div className={stackedRowHeaderClass}>
 							<span>{name}</span>
 							{type && <span className={stackedRowTypeClass}>{type}</span>}
@@ -424,25 +416,28 @@ const docsProseClass = css({
 	pt: "40px",
 });
 
-const DocsProse: FC<{ children?: ReactNode }> = ({ children }) => (
-	<div className={docsProseClass}>{children}</div>
+const docsProseFlushTopClass = css({
+	pt: "0",
+});
+
+const DocsProse: FC<{
+	children?: ReactNode;
+	flushTop?: boolean;
+}> = ({ children, flushTop }) => (
+	<div className={cx(docsProseClass, flushTop && docsProseFlushTopClass)}>
+		{children}
+	</div>
 );
 
-function createHeading(tag: string): FC<{ children?: ReactNode }> {
-	const HeadingWithId: FC<{ children?: ReactNode }> = ({ children }) => {
-		const id = slugify(extractText(children));
-		return createElement(tag, { id }, children);
-	};
-	return HeadingWithId;
-}
-
 export const mdxComponents = {
-	h1: createHeading("h1"),
-	h2: createHeading("h2"),
-	h3: createHeading("h3"),
-	h4: createHeading("h4"),
+	h1: MdxHeading1,
+	h2: MdxHeading2,
+	h3: MdxHeading3,
+	h4: MdxHeading4,
 	pre: CodeBlock,
 	table: StackedTable,
 	NotionCubeLogo,
 	DocsProse,
+	DemoEditorShortcutsCallout,
+	DemoPlayground: DemoPlaygroundLazy,
 };

@@ -1,0 +1,66 @@
+/**
+ * Demo playground cursor hint (must stay aligned with `siteClassNames.ts` DEMO_CURSOR_HINT_*).
+ * Uses `@property` so `--demo-cursor-nudge-*` can transition when hover removes the keyframe
+ * animation (transform-only keyframes snap on animation removal).
+ */
+
+@property --demo-cursor-nudge-x {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 0px;
+}
+
+@property --demo-cursor-nudge-y {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 0px;
+}
+
+.demo-cursor-hint-icon {
+	transform: translate(var(--demo-cursor-nudge-x), var(--demo-cursor-nudge-y));
+}
+
+/* Transition only while idle so we don't ease into the keyframes on hover start. */
+.demo-cursor-hint-row:not(:hover) .demo-cursor-hint-icon {
+	transition:
+		--demo-cursor-nudge-x 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+		--demo-cursor-nudge-y 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes demoHoverCursorNudge {
+	0% {
+		--demo-cursor-nudge-x: 0px;
+		--demo-cursor-nudge-y: 0px;
+	}
+	25% {
+		--demo-cursor-nudge-x: 0px;
+		--demo-cursor-nudge-y: -5px;
+	}
+	50% {
+		--demo-cursor-nudge-x: -4px;
+		--demo-cursor-nudge-y: 3px;
+	}
+	75% {
+		--demo-cursor-nudge-x: 4px;
+		--demo-cursor-nudge-y: 3px;
+	}
+	100% {
+		--demo-cursor-nudge-x: 0px;
+		--demo-cursor-nudge-y: 0px;
+	}
+}
+
+.demo-cursor-hint-row:hover .demo-cursor-hint-icon {
+	animation: demoHoverCursorNudge 1.75s ease-in-out infinite;
+	transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.demo-cursor-hint-row:not(:hover) .demo-cursor-hint-icon {
+		transition: none;
+	}
+
+	.demo-cursor-hint-row:hover .demo-cursor-hint-icon {
+		animation: none;
+	}
+}

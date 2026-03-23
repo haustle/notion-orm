@@ -407,17 +407,21 @@ export function buildOrmIndexModuleAst(args: {
 	databases: OrmEntityMetadata[];
 	agents: OrmEntityMetadata[];
 	syncCommand: string;
+	importPaths?: {
+		databaseClass?: (name: string) => string;
+		agentClass?: (name: string) => string;
+	};
 }): ts.Statement[] {
-	const { databases, agents, syncCommand } = args;
+	const { databases, agents, syncCommand, importPaths } = args;
 	const hasAgents = agents.length > 0;
 	const databaseImports = createEntityImportStatements({
 		entities: databases,
-		pathFactory: AST_IMPORT_PATHS.databaseClass,
+		pathFactory: importPaths?.databaseClass ?? AST_IMPORT_PATHS.databaseClass,
 	});
 	const agentImports = hasAgents
 		? createEntityImportStatements({
 				entities: agents,
-				pathFactory: AST_IMPORT_PATHS.agentClass,
+				pathFactory: importPaths?.agentClass ?? AST_IMPORT_PATHS.agentClass,
 			})
 		: [];
 	const classDeclaration = createRuntimeClassDeclaration({

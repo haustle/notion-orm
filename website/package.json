@@ -3,17 +3,18 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
+		"build:demo-playground": "bun scripts/build-demo-playground.ts",
 		"build:mdx-content": "bun scripts/build-mdx-content.ts",
 		"build:content": "bun run build:mdx-content",
 		"build:panda:codegen": "bun x panda codegen --clean",
 		"build:panda:css": "bun x panda --clean",
-		"build:assets": "bun run build:mdx-content && bun run build:panda:codegen && bun run build:panda:css",
+		"build:assets": "bun run build:demo-playground && bun run build:mdx-content && bun run build:panda:codegen && bun run build:panda:css",
 		"prebuild": "bun run build:assets",
 		"build": "next build --webpack",
-		"dev:next": "next dev --webpack --port ${PORT:-8788}",
-		"dev:next:turbopack": "next dev --turbopack --port ${PORT:-8788}",
+		"dev:next": "next dev --webpack --port ${PORT:-3000}",
+		"dev:next:turbopack": "next dev --turbopack --port ${PORT:-3000}",
 		"dev": "bun run build:assets && concurrently -n mdx,panda,next -c blue,magenta,green \"bun scripts/build-mdx-content.ts --watch\" \"bun x panda --watch\" \"bun run dev:next\"",
-		"start": "next start --port ${PORT:-8788}",
+		"start": "next start --port ${PORT:-3000}",
 		"deploy": "bun run build",
 		"typecheck": "bun run build:assets && tsc --noEmit"
 	},
@@ -30,8 +31,19 @@
 		"zod": "^4.3.6"
 	},
 	"dependencies": {
+		"@central-icons-react/round-filled-radius-2-stroke-1.5": "^1.1.173",
+		"@codemirror/autocomplete": "^6.20.1",
+		"@codemirror/commands": "^6.10.3",
+		"@codemirror/lang-javascript": "^6.2.5",
+		"@codemirror/language": "^6.12.2",
+		"@codemirror/lint": "^6.9.5",
+		"@codemirror/state": "^6.6.0",
+		"@codemirror/view": "^6.40.0",
+		"@typescript/vfs": "^1.6.4",
+		"@valtown/codemirror-ts": "^2.3.1",
 		"next": "^16.1.7",
 		"react": "^19.2.4",
-		"react-dom": "^19.2.4"
+		"react-dom": "^19.2.4",
+		"thememirror": "^2.0.1"
 	}
 }

@@ -56,6 +56,88 @@ const tocLinkInactiveClass = css({
 	color: "muted",
 });
 
+const tocSectionBlockClass = css({
+	display: "flex",
+	flexDirection: "column",
+	gap: "1",
+});
+
+/** Grid row animation: 0fr → 1fr interpolates to natural height without fixed max-height. */
+const tocNestedRevealClass = css({
+	display: "grid",
+	gridTemplateRows: "0fr",
+	transitionProperty: "grid-template-rows",
+	transitionDuration: "320ms",
+	transitionTimingFunction: "cubic-bezier(0.33, 1, 0.68, 1)",
+	"@media (prefers-reduced-motion: reduce)": {
+		transitionDuration: "0.01ms",
+	},
+});
+
+const tocNestedRevealExpandedClass = css({
+	gridTemplateRows: "1fr",
+});
+
+const tocNestedRevealInnerClass = css({
+	minHeight: "0",
+	overflow: "hidden",
+});
+
+const tocNestedListClass = css({
+	display: "flex",
+	flexDirection: "column",
+	gap: "0.5",
+	borderLeftWidth: "2px",
+	borderLeftStyle: "solid",
+	borderLeftColor: "border",
+	marginLeft: "1",
+	paddingLeft: "3",
+	marginTop: "0.5",
+});
+
+const tocNestedLinkH4IndentClass = css({
+	pl: "2",
+});
+
+function groupTocIntoSections(toc: TocEntry[]): Array<{
+	root: TocEntry;
+	children: TocEntry[];
+}> {
+	const sections: Array<{ root: TocEntry; children: TocEntry[] }> = [];
+	let current: { root: TocEntry; children: TocEntry[] } | null = null;
+
+	for (const entry of toc) {
+		if (entry.depth === 2) {
+			current = { root: entry, children: [] };
+			sections.push(current);
+		} else if (entry.depth > 2 && current) {
+			current.children.push(entry);
+		}
+	}
+
+	if (sections.length === 0 && toc.length > 0) {
+		return toc.map((entry): { root: TocEntry; children: TocEntry[] } => ({
+			root: entry,
+			children: [],
+		}));
+	}
+
+	return sections;
+}
+
+function sectionContainsActiveId(
+	section: { root: TocEntry; children: TocEntry[] },
+	activeId: string | null,
+): boolean {
+	if (activeId === null) {
+		return false;
+	}
+	if (section.root.id === activeId) {
+		return true;
+	}
+	return section.children.some((c) => c.id === activeId);
+}
+
 const HEADING_ACTIVATION_OFFSET = 140;
 const BOTTOM_OF_PAGE_THRESHOLD = 8;
 
@@ -170,40 +252,84 @@ export const PageToc: FC<PageTocProps> = ({ toc, className }) => {
 		return null;
 	}
 
+	const sections = groupTocIntoSections(toc);
+
+	const scrollToTocTarget = (id: string) => {
+		const el = document.getElementById(id);
+		if (el) {
+			el.scrollIntoView({
+				behavior: "auto",
+				block: "start",
+			});
+		}
+		window.history.replaceState(null, "", `#${id}`);
+		setActiveId(id);
+	};
+
 	return (
 		<div className={cx(tocRootClass, className)}>
 			<span className={tocHeadingLabelClass}>On page</span>
 			<nav className={tocLinksCardClass} aria-label="Table of contents">
-				{toc.map((entry) => {
-					const active = entry.id === activeId;
+				{sections.map((section) => {
+					const showNested =
+						section.children.length > 0 &&
+						sectionContainsActiveId(section, activeId);
+					const rootActive = section.root.id === activeId;
+
 					return (
-						<a
-							key={entry.id}
-							href={`#${entry.id}`}
-							className={cx(
-								tocLinkBaseClass,
-								active ? tocLinkActiveClass : tocLinkInactiveClass,
+						<div key={section.root.id} className={tocSectionBlockClass}>
+							<a
+								href={`#${section.root.id}`}
+								className={cx(
+									tocLinkBaseClass,
+									rootActive ? tocLinkActiveClass : tocLinkInactiveClass,
+								)}
+								aria-current={rootActive ? "location" : undefined}
+								onClick={(e) => {
+									e.preventDefault();
+									scrollToTocTarget(section.root.id);
+								}}>
+								{section.root.label}
+							</a>
+							{section.children.length > 0 && (
+								<div
+									className={cx(
+										tocNestedRevealClass,
+										showNested && tocNestedRevealExpandedClass,
+									)}
+									inert={showNested ? undefined : true}>
+									<div className={tocNestedRevealInnerClass}>
+										<div className={tocNestedListClass}>
+											{section.children.map((child) => {
+												const childActive = child.id === activeId;
+												return (
+													<a
+														key={child.id}
+														href={`#${child.id}`}
+														className={cx(
+															tocLinkBaseClass,
+															childActive
+																? tocLinkActiveClass
+																: tocLinkInactiveClass,
+															child.depth >= 4 && tocNestedLinkH4IndentClass,
+														)}
+														aria-current={childActive ? "location" : undefined}
+														onClick={(e) => {
+															e.preventDefault();
+															scrollToTocTarget(child.id);
+														}}>
+														{child.label}
+													</a>
+												);
+											})}
+										</div>
+									</div>
+								</div>
 							)}
-							aria-current={active ? "location" : undefined}
-							onClick={(e) => {
-								e.preventDefault();
-								const el = document.getElementById(entry.id);
-								if (el) {
-									el.scrollIntoView({
-										behavior: "auto",
-										block: "start",
-									});
-								}
-								window.history.replaceState(null, "", `#${entry.id}`);
-								setActiveId(entry.id);
-							}}>
-							{entry.label}
-						</a>
+						</div>
 					);
 				})}
 			</nav>
 		</div>
 	);
 };
-
-export { PageToc as TocNav };

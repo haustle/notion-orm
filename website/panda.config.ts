@@ -1,4 +1,5 @@
 import { defineConfig } from "@pandacss/dev";
+import { siteColorModePandaConditions } from "./src/site/siteClassNames";
 
 // biome-ignore lint/style/noDefaultExport: we need to export the default config
 export default defineConfig({
@@ -13,8 +14,8 @@ export default defineConfig({
 	],
 	conditions: {
 		extend: {
-			dark: "[data-color-mode=dark] &",
-			light: "[data-color-mode=light] &",
+			dark: siteColorModePandaConditions.dark,
+			light: siteColorModePandaConditions.light,
 		},
 	},
 	theme: {
@@ -51,8 +52,9 @@ export default defineConfig({
 						value:
 							'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
 					},
+					/** Berkeley Mono — `@font-face` is in `globalCss` below. */
 					mono: {
-						value: '"SFMono-Regular", ui-monospace, Menlo, monospace',
+						value: '"Berkeley Mono", ui-monospace, monospace',
 					},
 				},
 				shadows: {
@@ -121,6 +123,13 @@ export default defineConfig({
 		},
 	},
 	globalCss: {
+		"@font-face": {
+			fontFamily: '"Berkeley Mono"',
+			fontStyle: "normal",
+			fontWeight: "400",
+			fontDisplay: "swap",
+			src: "url('/fonts/BerkeleyMono-Regular.woff2') format('woff2')",
+		},
 		"html, body": {
 			minHeight: "100%",
 		},

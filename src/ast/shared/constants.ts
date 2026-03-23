@@ -121,3 +121,35 @@ export const AST_TYPE_NAMES = {
 	QUERY_SCHEMA_TYPE: "QuerySchemaType",
 	PROPERTY_VALUES_SUFFIX: "PropertyValues",
 } as const;
+
+/**
+ * Relative virtual-filesystem paths used by the demo playground builder.
+ * Matches the directory layout of a real consuming project so the
+ * browser-based TypeScript environment resolves imports correctly.
+ *
+ * Kept here alongside the production path constants so both stay in sync
+ * when the build layout changes.
+ */
+export const PLAYGROUND_PATHS = {
+	BUILD_INDEX: "build/src/index.ts",
+
+	databaseModule(name: string): string {
+		return `build/db/${name}.ts`;
+	},
+	agentModule(name: string): string {
+		return `build/agents/${name}.ts`;
+	},
+
+	databaseImport(name: string): string {
+		return `../db/${name}.ts`;
+	},
+	agentImport(name: string): string {
+		return `../agents/${name}.ts`;
+	},
+
+	MOCK_PACKAGE_INDEX: "playground_modules/haustle-notion-orm/index.ts",
+	MOCK_PACKAGE_BASE: "playground_modules/haustle-notion-orm/build/src/base.ts",
+	MOCK_PACKAGE_PREFIX: "playground_modules/",
+
+	DEMO_AUTH_PLACEHOLDER: "my-notion-api-key",
+} as const;
