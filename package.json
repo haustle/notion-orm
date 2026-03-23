@@ -21,7 +21,7 @@
 		"site:deploy": "bun run --cwd website  deploy",
 		"site:typecheck": "bun run --cwd website  typecheck",
 		"unpack-size": "npm pack --dry-run 2>&1 | grep 'unpacked size'",
-		"loop": "bun run build && cd ../orm-testing && bun link @haustle/notion-orm && bun notion sync && bun run index.ts",
+		"loop": "bun run build && cd ../orm-testing && bun link @haustle/notion-orm && bun notion sync && bun run smoke/coffee-shop/run.ts",
 		"refresh": "rm -rf ./node_modules ./bun.lockb && bun install"
 	},
 	"author": "",
