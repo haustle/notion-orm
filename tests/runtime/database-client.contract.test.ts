@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { z } from "zod";
+import {
+	emptyQueryDataSourceResponse,
+	queryDataSourceListResponse,
+} from "../helpers/query-data-source-response";
 import { databasePropertyValue } from "../helpers/query-transform-fixtures";
 
-const dataSourceQueryMock = mock(async () => ({
-	object: "list",
-	results: [],
-}));
+const dataSourceQueryMock = mock(async () => emptyQueryDataSourceResponse());
 
 const pagesCreateMock = mock(async () => ({
 	id: "created-page-id",
@@ -65,55 +66,52 @@ describe("DatabaseClient contract", () => {
 		pagesCreateMock.mockReset();
 	});
 
-	test("query includeRawResponse returns raw payload and transformed results", async () => {
-		dataSourceQueryMock.mockResolvedValueOnce({
-			object: "list",
-			results: [
+	test("findMany maps typed filters and returns transformed results", async () => {
+		dataSourceQueryMock.mockResolvedValueOnce(
+			queryDataSourceListResponse([
 				{
 					object: "page",
+					id: "page-1",
 					properties: {
 						"Shop Name": databasePropertyValue.title("Blue Bottle"),
 						Rating: databasePropertyValue.number(5),
 						"Has WiFi": databasePropertyValue.checkbox(true),
 					},
 				},
-			],
-		});
+			]),
+		);
 
 		const client = createClient();
-		const output = await client.query({
-			filter: {
+		const output = await client.findMany({
+			where: {
 				rating: { greater_than: 3 },
 			},
-			includeRawResponse: true,
 		});
 
 		expect(dataSourceQueryMock).toHaveBeenCalledTimes(1);
 		expect(dataSourceQueryMock).toHaveBeenCalledWith({
 			data_source_id: "db-1",
-			sorts: [],
 			filter: {
 				property: "Rating",
 				number: { greater_than: 3 },
 			},
 		});
-		expect(output.results).toEqual([
+		expect(output).toEqual([
 			{
 				shopName: "Blue Bottle",
 				rating: 5,
 				hasWifi: true,
 			},
 		]);
-		expect(output.rawResponse.object).toBe("list");
 	});
 
-	test("add maps typed properties to Notion create payload", async () => {
+	test("create maps typed properties to Notion create payload", async () => {
 		pagesCreateMock.mockResolvedValueOnce({
 			id: "new-page",
 		});
 
 		const client = createClient();
-		await client.add({
+		await client.create({
 			properties: {
 				shopName: "Cafe Nervosa",
 				rating: 4,
@@ -145,18 +143,18 @@ describe("DatabaseClient contract", () => {
 	});
 
 	test("schema drift logs missing properties once per unique issue", async () => {
-		dataSourceQueryMock.mockResolvedValue({
-			object: "list",
-			results: [
+		dataSourceQueryMock.mockResolvedValue(
+			queryDataSourceListResponse([
 				{
 					object: "page",
+					id: "page-1",
 					properties: {
 						"Shop Name": databasePropertyValue.title("Blue Bottle"),
 						Rating: databasePropertyValue.number(5),
 					},
 				},
-			],
-		});
+			]),
+		);
 
 		const errorSpy = mock((..._args: unknown[]) => undefined);
 		const originalError = console.error;
@@ -164,8 +162,8 @@ describe("DatabaseClient contract", () => {
 
 		try {
 			const client = createClient();
-			await client.query({});
-			await client.query({});
+			await client.findMany();
+			await client.findMany();
 		} finally {
 			console.error = originalError;
 		}

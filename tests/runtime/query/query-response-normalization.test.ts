@@ -1,26 +1,37 @@
 import { describe, expect, test } from "bun:test";
+import type {
+	PartialDataSourceObjectResponse,
+	QueryDataSourceResponse,
+} from "@notionhq/client/build/src/api-endpoints";
 import { buildQueryResponse } from "../../../src/client/query";
-import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
+import {
+	databasePropertyValue,
+	page,
+} from "../../helpers/query-transform-fixtures";
 
 describe("query response pipeline", () => {
 	test("skips non-page objects and validates the first page with properties", () => {
 		let validateCalls = 0;
 
+		const notionResponse: QueryDataSourceResponse = {
+			object: "list",
+			type: "page_or_data_source",
+			page_or_data_source: {},
+			results: [
+				{
+					object: "data_source",
+					id: "ds-1",
+				} as QueryDataSourceResponse["results"][number],
+				page({
+					"Shop Name": databasePropertyValue.title("Blue Bottle"),
+				}) as QueryDataSourceResponse["results"][number],
+			],
+			next_cursor: null,
+			has_more: false,
+		};
+
 		const response = buildQueryResponse<{ shopName: string }>({
-			response: {
-				object: "list",
-				results: [
-					{
-						object: "database",
-					},
-					{
-						object: "page",
-						properties: {
-							"Shop Name": databasePropertyValue.title("Blue Bottle"),
-						},
-					},
-				],
-			},
+			response: notionResponse,
 			columnNameToColumnProperties: {
 				shopName: {
 					columnName: "Shop Name",
@@ -41,16 +52,17 @@ describe("query response pipeline", () => {
 	});
 
 	test("returns rawResponse when includeRawResponse is true", () => {
-		const rawResponse = {
+		const rawResponse: QueryDataSourceResponse = {
 			object: "list",
+			type: "page_or_data_source",
+			page_or_data_source: {},
 			results: [
-				{
-					object: "page",
-					properties: {
-						"Shop Name": databasePropertyValue.title("Blue Bottle"),
-					},
-				},
+				page({
+					"Shop Name": databasePropertyValue.title("Blue Bottle"),
+				}),
 			],
+			next_cursor: null,
+			has_more: false,
 		};
 
 		const response = buildQueryResponse<{ shopName: string }>({

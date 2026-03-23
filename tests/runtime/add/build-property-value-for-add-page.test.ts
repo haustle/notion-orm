@@ -161,7 +161,7 @@ describe("buildPropertyValueForAddPage transformed property shape validation", (
 				type: "created_time",
 				value: "2026-03-01T00:00:00.000Z",
 			}),
-		).toThrow("add() does not support property type 'created_time'");
+		).toThrow("create() does not support property type 'created_time'");
 	});
 
 	test("throws descriptive error for invalid value shape on supported type", () => {
@@ -170,7 +170,7 @@ describe("buildPropertyValueForAddPage transformed property shape validation", (
 				type: "number",
 				value: "not-a-number",
 			}),
-		).toThrow("add() received invalid value for property type 'number'");
+		).toThrow("create() received invalid value for property type 'number'");
 	});
 
 	test("throws descriptive error for invalid multi_select item types", () => {
@@ -179,7 +179,9 @@ describe("buildPropertyValueForAddPage transformed property shape validation", (
 				type: "multi_select",
 				value: [{ name: "brief.pdf", url: "https://files.dev/brief.pdf" }],
 			}),
-		).toThrow("add() received invalid value for property type 'multi_select'");
+		).toThrow(
+			"create() received invalid value for property type 'multi_select'",
+		);
 	});
 
 	test("throws descriptive error for invalid files value shape", () => {
@@ -188,6 +190,6 @@ describe("buildPropertyValueForAddPage transformed property shape validation", (
 				type: "files",
 				value: ["https://files.dev/menu.pdf"],
 			}),
-		).toThrow("add() received invalid value for property type 'files'");
+		).toThrow("create() received invalid value for property type 'files'");
 	});
 });

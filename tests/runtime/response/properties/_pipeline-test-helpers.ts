@@ -3,51 +3,45 @@ import type { QueryDataSourceResponse } from "@notionhq/client/build/src/api-end
 import { buildQueryResponse } from "../../../../src/client/query";
 import type { NotionPropertyValue } from "../../../../src/client/query/types";
 import type { SupportedNotionColumnType } from "../../../../src/client/queryTypes";
+import { queryDataSourceListResponse } from "../../../helpers/query-data-source-response";
 
 const PRIMARY_COLUMN_NAME = "Primary Value";
 const PRIMARY_CAMEL_COLUMN_NAME = "primaryValue";
 const UNMAPPED_COLUMN_NAME = "Unmapped Value";
 
 export interface PropertyPipelineCase {
-	propertyType: SupportedNotionColumnType;
-	validPropertyValue: NotionPropertyValue;
-	expectedValidValue: unknown;
-	mismatchedPropertyValue: NotionPropertyValue;
-	malformedPropertyValue: NotionPropertyValue;
-	expectedMalformedValue: unknown;
-}
-
-export function rawPropertyValue(
-	value: Record<string, unknown>,
-): NotionPropertyValue {
-	return value as unknown as NotionPropertyValue;
-}
+		propertyType: SupportedNotionColumnType;
+		validPropertyValue: NotionPropertyValue;
+		expectedValidValue: unknown;
+		mismatchedPropertyValue: NotionPropertyValue;
+		malformedPropertyValue: unknown;
+		expectedMalformedValue: unknown;
+	}
 
 function buildSinglePageResponse(args: {
-	primaryValue: NotionPropertyValue;
+	primaryValue: unknown;
 	includeUnmapped?: NotionPropertyValue;
 }): QueryDataSourceResponse {
-	const properties: Record<string, NotionPropertyValue> = {
+	const properties: Record<string, unknown> = {
 		[PRIMARY_COLUMN_NAME]: args.primaryValue,
 	};
 	if (args.includeUnmapped) {
 		properties[UNMAPPED_COLUMN_NAME] = args.includeUnmapped;
 	}
 
-	return {
-		object: "list",
-		results: [
-			{
-				object: "page",
-				properties,
-			},
-		],
-	} as QueryDataSourceResponse;
+	return queryDataSourceListResponse([
+		// @ts-expect-error malformed fixture
+		{
+			object: "page",
+			id: "pipeline-page-1",
+			properties,
+		},
+	]);
 }
 
 function transformPrimaryValue(args: {
 	propertyType: SupportedNotionColumnType;
-	propertyValue: NotionPropertyValue;
+	propertyValue: unknown;
 	includeRawResponse?: boolean;
 	includeUnmapped?: NotionPropertyValue;
 	validateSchema?: (result: Record<string, unknown>) => void;

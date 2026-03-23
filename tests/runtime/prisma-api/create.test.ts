@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { z } from "zod";
+import { emptyQueryDataSourceResponse } from "../../helpers/query-data-source-response";
+import { isRecord } from "../../helpers/type-guards";
 
-const pagesCreateMock = mock(async () => ({ id: "created-page-id" }));
+const pagesCreateMock = mock(async (_args: unknown) => ({
+	id: "created-page-id",
+}));
 
 mock.module("@notionhq/client", () => ({
 	Client: class {
@@ -11,14 +15,7 @@ mock.module("@notionhq/client", () => ({
 			retrieve: mock(async () => ({})),
 		};
 		public dataSources = {
-			query: mock(async () => ({
-				object: "list",
-				results: [],
-				next_cursor: null,
-				has_more: false,
-				type: "page_or_data_source",
-				page_or_data_source: {},
-			})),
+			query: mock(async () => emptyQueryDataSourceResponse()),
 		};
 		constructor(_args: unknown) {}
 	},
@@ -114,8 +111,14 @@ describe("create", () => {
 		await client.create({
 			properties: { shopName: "No MD", rating: 3, hasWifi: false },
 		});
-		const callArg = pagesCreateMock.mock.calls[0][0];
-		expect(callArg.markdown).toBeUndefined();
+		expect(pagesCreateMock).toHaveBeenCalled();
+		const firstCall = pagesCreateMock.mock.calls[0];
+		expect(firstCall).toBeDefined();
+		const firstArg = firstCall?.[0];
+		expect(isRecord(firstArg)).toBe(true);
+		if (isRecord(firstArg)) {
+			expect(firstArg.markdown).toBeUndefined();
+		}
 	});
 
 	test("propagates API errors", async () => {

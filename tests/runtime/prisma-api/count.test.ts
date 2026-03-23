@@ -1,14 +1,12 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { z } from "zod";
+import {
+	emptyQueryDataSourceResponse,
+	queryDataSourceListResponse,
+	stubQueryPageResult,
+} from "../../helpers/query-data-source-response";
 
-const dataSourceQueryMock = mock(async () => ({
-	object: "list" as const,
-	results: [] as any[],
-	next_cursor: null,
-	has_more: false,
-	type: "page_or_data_source" as const,
-	page_or_data_source: {},
-}));
+const dataSourceQueryMock = mock(async () => emptyQueryDataSourceResponse());
 
 mock.module("@notionhq/client", () => ({
 	Client: class {
@@ -50,22 +48,18 @@ describe("count", () => {
 
 	test("counts all rows across pages", async () => {
 		dataSourceQueryMock
-			.mockResolvedValueOnce({
-				object: "list",
-				results: new Array(100).fill({ object: "page", id: "p", properties: {} }),
-				next_cursor: "c1",
-				has_more: true,
-				type: "page_or_data_source",
-				page_or_data_source: {},
-			})
-			.mockResolvedValueOnce({
-				object: "list",
-				results: new Array(42).fill({ object: "page", id: "p", properties: {} }),
-				next_cursor: null,
-				has_more: false,
-				type: "page_or_data_source",
-				page_or_data_source: {},
-			});
+			.mockResolvedValueOnce(
+				queryDataSourceListResponse(
+					Array.from({ length: 100 }, () => stubQueryPageResult("p")),
+					{ next_cursor: "c1", has_more: true },
+				),
+			)
+			.mockResolvedValueOnce(
+				queryDataSourceListResponse(
+					Array.from({ length: 42 }, () => stubQueryPageResult("p")),
+					{ next_cursor: null, has_more: false },
+				),
+			);
 
 		const client = createClient();
 		const total = await client.count();
@@ -74,14 +68,9 @@ describe("count", () => {
 	});
 
 	test("counts with filter", async () => {
-		dataSourceQueryMock.mockResolvedValueOnce({
-			object: "list",
-			results: [{ object: "page", id: "p1", properties: {} }],
-			next_cursor: null,
-			has_more: false,
-			type: "page_or_data_source",
-			page_or_data_source: {},
-		});
+		dataSourceQueryMock.mockResolvedValueOnce(
+			queryDataSourceListResponse([stubQueryPageResult("p1")]),
+		);
 
 		const client = createClient();
 		const total = await client.count({
@@ -96,14 +85,7 @@ describe("count", () => {
 	});
 
 	test("returns zero when no results", async () => {
-		dataSourceQueryMock.mockResolvedValueOnce({
-			object: "list",
-			results: [],
-			next_cursor: null,
-			has_more: false,
-			type: "page_or_data_source",
-			page_or_data_source: {},
-		});
+		dataSourceQueryMock.mockResolvedValueOnce(emptyQueryDataSourceResponse());
 
 		const client = createClient();
 		const total = await client.count();

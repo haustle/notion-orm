@@ -1,15 +1,12 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { z } from "zod";
+import {
+	emptyQueryDataSourceResponse,
+	queryDataSourceListResponse,
+} from "../../helpers/query-data-source-response";
 import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
 
-const dataSourceQueryMock = mock(async () => ({
-	object: "list" as const,
-	results: [] as any[],
-	next_cursor: null,
-	has_more: false,
-	type: "page_or_data_source" as const,
-	page_or_data_source: {},
-}));
+const dataSourceQueryMock = mock(async () => emptyQueryDataSourceResponse());
 
 mock.module("@notionhq/client", () => ({
 	Client: class {
@@ -50,9 +47,8 @@ describe("findFirst", () => {
 	});
 
 	test("returns first result", async () => {
-		dataSourceQueryMock.mockResolvedValueOnce({
-			object: "list",
-			results: [
+		dataSourceQueryMock.mockResolvedValueOnce(
+			queryDataSourceListResponse([
 				{
 					object: "page",
 					id: "p1",
@@ -61,12 +57,8 @@ describe("findFirst", () => {
 						Rating: databasePropertyValue.number(5),
 					},
 				},
-			],
-			next_cursor: null,
-			has_more: false,
-			type: "page_or_data_source",
-			page_or_data_source: {},
-		});
+			]),
+		);
 
 		const client = createClient();
 		const result = await client.findFirst();
@@ -74,14 +66,7 @@ describe("findFirst", () => {
 	});
 
 	test("returns null when no results", async () => {
-		dataSourceQueryMock.mockResolvedValueOnce({
-			object: "list",
-			results: [],
-			next_cursor: null,
-			has_more: false,
-			type: "page_or_data_source",
-			page_or_data_source: {},
-		});
+		dataSourceQueryMock.mockResolvedValueOnce(emptyQueryDataSourceResponse());
 
 		const client = createClient();
 		const result = await client.findFirst();
@@ -89,14 +74,7 @@ describe("findFirst", () => {
 	});
 
 	test("sets page_size to 1", async () => {
-		dataSourceQueryMock.mockResolvedValueOnce({
-			object: "list",
-			results: [],
-			next_cursor: null,
-			has_more: false,
-			type: "page_or_data_source",
-			page_or_data_source: {},
-		});
+		dataSourceQueryMock.mockResolvedValueOnce(emptyQueryDataSourceResponse());
 
 		const client = createClient();
 		await client.findFirst({ where: { shopName: { equals: "Test" } } });
@@ -106,9 +84,8 @@ describe("findFirst", () => {
 	});
 
 	test("applies select projection", async () => {
-		dataSourceQueryMock.mockResolvedValueOnce({
-			object: "list",
-			results: [
+		dataSourceQueryMock.mockResolvedValueOnce(
+			queryDataSourceListResponse([
 				{
 					object: "page",
 					id: "p1",
@@ -117,15 +94,11 @@ describe("findFirst", () => {
 						Rating: databasePropertyValue.number(5),
 					},
 				},
-			],
-			next_cursor: null,
-			has_more: false,
-			type: "page_or_data_source",
-			page_or_data_source: {},
-		});
+			]),
+		);
 
 		const client = createClient();
-		const result = await client.findFirst({ select: { shopName: true } });
+		const result = await client.findFirst({ select: ["shopName"] as const });
 		expect(result).toEqual({ shopName: "Test" });
 		expect(result).not.toHaveProperty("rating");
 	});

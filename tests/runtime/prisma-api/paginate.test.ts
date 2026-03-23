@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { z } from "zod";
-import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
+import {
+	emptyQueryDataSourceResponse,
+	queryDataSourceListResponse,
+} from "../../helpers/query-data-source-response";
+import {
+	databasePropertyValue,
+	page,
+} from "../../helpers/query-transform-fixtures";
 
-const dataSourceQueryMock = mock(async () => ({
-	object: "list" as const,
-	results: [] as any[],
-	next_cursor: null,
-	has_more: false,
-	type: "page_or_data_source" as const,
-	page_or_data_source: {},
-}));
+const dataSourceQueryMock = mock(async () => emptyQueryDataSourceResponse());
 
 mock.module("@notionhq/client", () => ({
 	Client: class {
@@ -50,41 +50,31 @@ describe("findMany with after (pagination)", () => {
 	});
 
 	test("after: null returns first page with data, nextCursor, hasMore", async () => {
-		dataSourceQueryMock.mockResolvedValueOnce({
-			object: "list",
-			results: [
-				{
-					object: "page",
-					id: "p1",
-					properties: {
-						"Shop Name": databasePropertyValue.title("Shop A"),
-						Rating: databasePropertyValue.number(5),
-					},
-				},
-			],
-			next_cursor: "cursor-123",
-			has_more: true,
-			type: "page_or_data_source",
-			page_or_data_source: {},
-		});
+		dataSourceQueryMock.mockResolvedValueOnce(
+			queryDataSourceListResponse(
+				[
+					page(
+						{
+							"Shop Name": databasePropertyValue.title("Shop A"),
+							Rating: databasePropertyValue.number(5),
+						},
+						"p1",
+					),
+				],
+				{ next_cursor: "cursor-123", has_more: true },
+			),
+		);
 
 		const client = createClient();
 		const result = await client.findMany({ size: 1, after: null });
 		expect(result.data).toHaveLength(1);
-		expect(result.data[0].shopName).toBe("Shop A");
+		expect(result.data[0]).toMatchObject({ shopName: "Shop A" });
 		expect(result.nextCursor).toBe("cursor-123");
 		expect(result.hasMore).toBe(true);
 	});
 
 	test("after: string passes start_cursor to API", async () => {
-		dataSourceQueryMock.mockResolvedValueOnce({
-			object: "list",
-			results: [],
-			next_cursor: null,
-			has_more: false,
-			type: "page_or_data_source",
-			page_or_data_source: {},
-		});
+		dataSourceQueryMock.mockResolvedValueOnce(emptyQueryDataSourceResponse());
 
 		const client = createClient();
 		await client.findMany({ after: "cursor-xyz" });
@@ -94,54 +84,45 @@ describe("findMany with after (pagination)", () => {
 	});
 
 	test("without after returns plain array", async () => {
-		dataSourceQueryMock.mockResolvedValueOnce({
-			object: "list",
-			results: [
-				{
-					object: "page",
-					id: "p1",
-					properties: {
-						"Shop Name": databasePropertyValue.title("Test"),
-						Rating: databasePropertyValue.number(3),
-					},
-				},
-			],
-			next_cursor: "cursor-abc",
-			has_more: true,
-			type: "page_or_data_source",
-			page_or_data_source: {},
-		});
+		dataSourceQueryMock.mockResolvedValueOnce(
+			queryDataSourceListResponse(
+				[
+					page(
+						{
+							"Shop Name": databasePropertyValue.title("Test"),
+							Rating: databasePropertyValue.number(3),
+						},
+						"p1",
+					),
+				],
+				{ next_cursor: "cursor-abc", has_more: true },
+			),
+		);
 
 		const client = createClient();
 		const result = await client.findMany({ size: 1 });
 		expect(Array.isArray(result)).toBe(true);
-		expect(result[0].shopName).toBe("Test");
+		expect(result[0]).toMatchObject({ shopName: "Test" });
 		expect(result).not.toHaveProperty("nextCursor");
 	});
 
 	test("paginated result applies select projection", async () => {
-		dataSourceQueryMock.mockResolvedValueOnce({
-			object: "list",
-			results: [
-				{
-					object: "page",
-					id: "p1",
-					properties: {
+		dataSourceQueryMock.mockResolvedValueOnce(
+			queryDataSourceListResponse([
+				page(
+					{
 						"Shop Name": databasePropertyValue.title("Test"),
 						Rating: databasePropertyValue.number(5),
 					},
-				},
-			],
-			next_cursor: null,
-			has_more: false,
-			type: "page_or_data_source",
-			page_or_data_source: {},
-		});
+					"p1",
+				),
+			]),
+		);
 
 		const client = createClient();
 		const result = await client.findMany({
 			after: null,
-			select: { shopName: true },
+			select: ["shopName"] as const,
 		});
 		expect(Object.keys(result.data[0])).toEqual(["shopName"]);
 	});

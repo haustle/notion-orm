@@ -1,16 +1,13 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { z } from "zod";
+import {
+	emptyQueryDataSourceResponse,
+	queryDataSourceListResponse,
+} from "../../helpers/query-data-source-response";
 import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
 
 const pagesUpdateMock = mock(async () => ({ id: "archived" }));
-const dataSourceQueryMock = mock(async () => ({
-	object: "list" as const,
-	results: [] as any[],
-	next_cursor: null,
-	has_more: false,
-	type: "page_or_data_source" as const,
-	page_or_data_source: {},
-}));
+const dataSourceQueryMock = mock(async () => emptyQueryDataSourceResponse());
 
 mock.module("@notionhq/client", () => ({
 	Client: class {
@@ -85,17 +82,26 @@ describe("deleteMany", () => {
 	});
 
 	test("queries matching pages then archives each", async () => {
-		dataSourceQueryMock.mockResolvedValueOnce({
-			object: "list",
-			results: [
-				{ object: "page", id: "p1", properties: { "Shop Name": databasePropertyValue.title("A"), Rating: databasePropertyValue.number(1) } },
-				{ object: "page", id: "p2", properties: { "Shop Name": databasePropertyValue.title("B"), Rating: databasePropertyValue.number(2) } },
-			],
-			next_cursor: null,
-			has_more: false,
-			type: "page_or_data_source",
-			page_or_data_source: {},
-		});
+		dataSourceQueryMock.mockResolvedValueOnce(
+			queryDataSourceListResponse([
+				{
+					object: "page",
+					id: "p1",
+					properties: {
+						"Shop Name": databasePropertyValue.title("A"),
+						Rating: databasePropertyValue.number(1),
+					},
+				},
+				{
+					object: "page",
+					id: "p2",
+					properties: {
+						"Shop Name": databasePropertyValue.title("B"),
+						Rating: databasePropertyValue.number(2),
+					},
+				},
+			]),
+		);
 
 		const client = createClient();
 		await client.deleteMany({

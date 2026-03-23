@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { z } from "zod";
+import { emptyQueryDataSourceResponse } from "../../helpers/query-data-source-response";
 import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
 
 const pagesRetrieveMock = mock(async () => ({}));
@@ -12,14 +13,7 @@ mock.module("@notionhq/client", () => ({
 			retrieve: pagesRetrieveMock,
 		};
 		public dataSources = {
-			query: mock(async () => ({
-				object: "list",
-				results: [],
-				next_cursor: null,
-				has_more: false,
-				type: "page_or_data_source",
-				page_or_data_source: {},
-			})),
+			query: mock(async () => emptyQueryDataSourceResponse()),
 		};
 		constructor(_args: unknown) {}
 	},
@@ -76,8 +70,39 @@ describe("findUnique", () => {
 		expect(result).toBeNull();
 	});
 
+	test("applies projection to findUnique results", async () => {
+		pagesRetrieveMock.mockResolvedValueOnce({
+			object: "page",
+			id: "page-abc",
+			properties: {
+				"Shop Name": databasePropertyValue.title("Blue Bottle"),
+				Rating: databasePropertyValue.number(5),
+			},
+		});
+		const client = createClient();
+		const result = await client.findUnique({
+			where: { id: "page-abc" },
+			select: ["shopName"] as const,
+		});
+		expect(result).toEqual({ shopName: "Blue Bottle" });
+	});
+
+	test("throws when both select and omit are provided", async () => {
+		const client = createClient();
+		await expect(
+			// @ts-expect-error invalid args
+			client.findUnique({
+				where: { id: "page-abc" },
+				select: ["shopName"] as const,
+				omit: ["rating"] as const,
+			}),
+		).rejects.toThrow("Cannot use both 'select' and 'omit'");
+	});
+
 	test("returns null on 404", async () => {
-		const notFoundError = Object.assign(new Error("Not Found"), { status: 404 });
+		const notFoundError = Object.assign(new Error("Not Found"), {
+			status: 404,
+		});
 		pagesRetrieveMock.mockRejectedValueOnce(notFoundError);
 		const client = createClient();
 		const result = await client.findUnique({ where: { id: "nonexistent" } });
@@ -85,7 +110,9 @@ describe("findUnique", () => {
 	});
 
 	test("rethrows non-404 errors", async () => {
-		const serverError = Object.assign(new Error("Server Error"), { status: 500 });
+		const serverError = Object.assign(new Error("Server Error"), {
+			status: 500,
+		});
 		pagesRetrieveMock.mockRejectedValueOnce(serverError);
 		const client = createClient();
 		await expect(
@@ -95,8 +122,8 @@ describe("findUnique", () => {
 
 	test("throws when id is missing", async () => {
 		const client = createClient();
-		await expect(
-			client.findUnique({ where: { id: "" } }),
-		).rejects.toThrow("findUnique() requires 'where.id'");
+		await expect(client.findUnique({ where: { id: "" } })).rejects.toThrow(
+			"findUnique() requires 'where.id'",
+		);
 	});
 });

@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { z } from "zod";
+import {
+	emptyQueryDataSourceResponse,
+	queryDataSourceListResponse,
+} from "../../helpers/query-data-source-response";
 import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
 
-const pagesCreateMock = mock(async () => ({ id: "new-page" }));
-const pagesUpdateMock = mock(async () => ({ id: "updated-page" }));
-const dataSourceQueryMock = mock(async () => ({
-	object: "list" as const,
-	results: [] as any[],
-	next_cursor: null,
-	has_more: false,
-	type: "page_or_data_source" as const,
-	page_or_data_source: {},
+const pagesCreateMock = mock(async () => ({
+	object: "page" as const,
+	id: "new-page",
 }));
+const pagesUpdateMock = mock(async () => ({ id: "updated-page" }));
+const dataSourceQueryMock = mock(async () => emptyQueryDataSourceResponse());
 
 mock.module("@notionhq/client", () => ({
 	Client: class {
@@ -49,21 +49,14 @@ function createClient() {
 describe("upsert", () => {
 	beforeEach(() => {
 		pagesCreateMock.mockReset();
-		pagesCreateMock.mockResolvedValue({ id: "new-page" });
+		pagesCreateMock.mockResolvedValue({ object: "page", id: "new-page" });
 		pagesUpdateMock.mockReset();
 		pagesUpdateMock.mockResolvedValue({ id: "updated-page" });
 		dataSourceQueryMock.mockReset();
 	});
 
 	test("creates when no match found", async () => {
-		dataSourceQueryMock.mockResolvedValueOnce({
-			object: "list",
-			results: [],
-			next_cursor: null,
-			has_more: false,
-			type: "page_or_data_source",
-			page_or_data_source: {},
-		});
+		dataSourceQueryMock.mockResolvedValueOnce(emptyQueryDataSourceResponse());
 
 		const client = createClient();
 		const result = await client.upsert({
@@ -74,13 +67,12 @@ describe("upsert", () => {
 
 		expect(pagesCreateMock).toHaveBeenCalledTimes(1);
 		expect(pagesUpdateMock).not.toHaveBeenCalled();
-		expect(result).toEqual({ id: "new-page" });
+		expect(result).toEqual({ object: "page", id: "new-page" });
 	});
 
 	test("updates when match found", async () => {
-		dataSourceQueryMock.mockResolvedValueOnce({
-			object: "list",
-			results: [
+		dataSourceQueryMock.mockResolvedValueOnce(
+			queryDataSourceListResponse([
 				{
 					object: "page",
 					id: "existing-page",
@@ -89,12 +81,8 @@ describe("upsert", () => {
 						Rating: databasePropertyValue.number(3),
 					},
 				},
-			],
-			next_cursor: null,
-			has_more: false,
-			type: "page_or_data_source",
-			page_or_data_source: {},
-		});
+			]),
+		);
 
 		const client = createClient();
 		await client.upsert({

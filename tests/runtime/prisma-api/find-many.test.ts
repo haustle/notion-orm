@@ -1,15 +1,17 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { z } from "zod";
-import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
+import type { NotionPropertyValue } from "../../../src/client/query/types";
+import {
+	emptyQueryDataSourceResponse,
+	type QueryDataSourceResultRow,
+	queryDataSourceListResponse,
+} from "../../helpers/query-data-source-response";
+import {
+	databasePropertyValue,
+	page,
+} from "../../helpers/query-transform-fixtures";
 
-const dataSourceQueryMock = mock(async () => ({
-	object: "list" as const,
-	results: [] as any[],
-	next_cursor: null,
-	has_more: false,
-	type: "page_or_data_source" as const,
-	page_or_data_source: {},
-}));
+const dataSourceQueryMock = mock(async () => emptyQueryDataSourceResponse());
 
 const pagesCreateMock = mock(async () => ({ id: "created-page-id" }));
 const pagesUpdateMock = mock(async () => ({ id: "updated-page-id" }));
@@ -64,26 +66,21 @@ function createClient() {
 }
 
 function mockQueryResponse(
-	pages: any[],
+	pages: QueryDataSourceResultRow[],
 	hasMore = false,
 	nextCursor: string | null = null,
 ) {
-	return {
-		object: "list" as const,
-		results: pages,
-		next_cursor: nextCursor,
+	return queryDataSourceListResponse(pages, {
 		has_more: hasMore,
-		type: "page_or_data_source" as const,
-		page_or_data_source: {},
-	};
+		next_cursor: nextCursor,
+	});
 }
 
-function makePage(properties: Record<string, any>, id = "page-1") {
-	return {
-		object: "page" as const,
-		id,
-		properties,
-	};
+function makePage(
+	properties: Record<string, NotionPropertyValue>,
+	id = "page-1",
+): QueryDataSourceResultRow {
+	return page(properties, id);
 }
 
 describe("findMany", () => {
@@ -136,10 +133,13 @@ describe("findMany", () => {
 	test("passes sortBy as sorts", async () => {
 		dataSourceQueryMock.mockResolvedValueOnce(mockQueryResponse([]));
 		const client = createClient();
-		const sorts = [{ property: "Rating", direction: "descending" as const }];
-		await client.findMany({ sortBy: sorts });
+		await client.findMany({
+			sortBy: [{ property: "rating", direction: "descending" }],
+		});
 		expect(dataSourceQueryMock).toHaveBeenCalledWith(
-			expect.objectContaining({ sorts }),
+			expect.objectContaining({
+				sorts: [{ property: "Rating", direction: "descending" }],
+			}),
 		);
 	});
 
@@ -165,7 +165,7 @@ describe("findMany", () => {
 		);
 		const client = createClient();
 		const results = await client.findMany({
-			select: { shopName: true, rating: true },
+			select: ["shopName", "rating"] as const,
 		});
 		expect(Object.keys(results[0])).toEqual(["shopName", "rating"]);
 		expect(results[0].shopName).toBe("Blue Bottle");
@@ -184,19 +184,37 @@ describe("findMany", () => {
 			]),
 		);
 		const client = createClient();
-		const results = await client.findMany({ omit: { notes: true } });
+		const results = await client.findMany({ omit: ["notes"] as const });
 		expect(results[0]).not.toHaveProperty("notes");
 		expect(results[0]).toHaveProperty("shopName");
 		expect(results[0]).toHaveProperty("rating");
 	});
 
+	test("select de-dupes duplicate property names at runtime", async () => {
+		dataSourceQueryMock.mockResolvedValueOnce(
+			mockQueryResponse([
+				makePage({
+					"Shop Name": databasePropertyValue.title("Blue Bottle"),
+					Rating: databasePropertyValue.number(5),
+					"Has WiFi": databasePropertyValue.checkbox(true),
+				}),
+			]),
+		);
+		const client = createClient();
+		const results = await client.findMany({
+			select: ["shopName", "shopName", "rating"] as const,
+		});
+		expect(Object.keys(results[0])).toEqual(["shopName", "rating"]);
+	});
+
 	test("throws when both select and omit are provided", () => {
 		const client = createClient();
 		expect(() =>
+			// @ts-expect-error invalid args
 			client.findMany({
-				select: { shopName: true },
-				omit: { notes: true },
-			} as any),
+				select: ["shopName"] as const,
+				omit: ["notes"] as const,
+			}),
 		).toThrow("Cannot use both 'select' and 'omit'");
 	});
 
@@ -228,7 +246,7 @@ describe("findMany", () => {
 			);
 
 		const client = createClient();
-		const items: any[] = [];
+		const items: Partial<TestSchema>[] = [];
 		for await (const item of client.findMany({ stream: 1 })) {
 			items.push(item);
 		}

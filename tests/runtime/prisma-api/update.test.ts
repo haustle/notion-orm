@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { z } from "zod";
+import {
+	emptyQueryDataSourceResponse,
+	queryDataSourceListResponse,
+} from "../../helpers/query-data-source-response";
 import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
+import { isRecord } from "../../helpers/type-guards";
 
-const pagesUpdateMock = mock(async () => ({ id: "updated-page-id" }));
-const dataSourceQueryMock = mock(async () => ({
-	object: "list" as const,
-	results: [] as any[],
-	next_cursor: null,
-	has_more: false,
-	type: "page_or_data_source" as const,
-	page_or_data_source: {},
+const pagesUpdateMock = mock(async (_args: unknown) => ({
+	id: "updated-page-id",
 }));
+const dataSourceQueryMock = mock(async () => emptyQueryDataSourceResponse());
 
 mock.module("@notionhq/client", () => ({
 	Client: class {
@@ -70,11 +70,17 @@ describe("update", () => {
 			where: { id: "page-1" },
 			properties: { shopName: "New Name" },
 		});
-		const callArgs = pagesUpdateMock.mock.calls[0][0] as any;
-		expect(callArgs.properties).toEqual({
-			"Shop Name": { title: [{ text: { content: "New Name" } }] },
-		});
-		expect(callArgs.properties).not.toHaveProperty("Rating");
+		expect(pagesUpdateMock).toHaveBeenCalled();
+		const firstCall = pagesUpdateMock.mock.calls[0];
+		expect(firstCall).toBeDefined();
+		const firstArg = firstCall?.[0];
+		expect(isRecord(firstArg)).toBe(true);
+		if (isRecord(firstArg)) {
+			expect(firstArg.properties).toEqual({
+				"Shop Name": { title: [{ text: { content: "New Name" } }] },
+			});
+			expect(firstArg.properties).not.toHaveProperty("Rating");
+		}
 	});
 
 	test("throws when id is missing", async () => {
@@ -108,17 +114,26 @@ describe("updateMany", () => {
 	});
 
 	test("queries matching pages then updates each", async () => {
-		dataSourceQueryMock.mockResolvedValueOnce({
-			object: "list",
-			results: [
-				{ object: "page", id: "p1", properties: { "Shop Name": databasePropertyValue.title("A"), Rating: databasePropertyValue.number(3) } },
-				{ object: "page", id: "p2", properties: { "Shop Name": databasePropertyValue.title("B"), Rating: databasePropertyValue.number(2) } },
-			],
-			next_cursor: null,
-			has_more: false,
-			type: "page_or_data_source",
-			page_or_data_source: {},
-		});
+		dataSourceQueryMock.mockResolvedValueOnce(
+			queryDataSourceListResponse([
+				{
+					object: "page",
+					id: "p1",
+					properties: {
+						"Shop Name": databasePropertyValue.title("A"),
+						Rating: databasePropertyValue.number(3),
+					},
+				},
+				{
+					object: "page",
+					id: "p2",
+					properties: {
+						"Shop Name": databasePropertyValue.title("B"),
+						Rating: databasePropertyValue.number(2),
+					},
+				},
+			]),
+		);
 
 		const client = createClient();
 		await client.updateMany({
