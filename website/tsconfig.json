@@ -23,6 +23,7 @@
 		"next-env.d.ts",
 		"src/**/*.ts",
 		"src/**/*.tsx",
+		"testing/**/*.ts",
 		"panda.config.ts",
 		".next/types/**/*.ts",
 		".next/dev/types/**/*.ts"

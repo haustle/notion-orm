@@ -1,82 +1,23 @@
+/// <reference types="bun-types" />
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { toString as mdastToString } from "mdast-util-to-string";
-import remarkMdx from "remark-mdx";
-import remarkParse from "remark-parse";
-import { unified } from "unified";
-import { visit } from "unist-util-visit";
+import { collectHeadingsFromMdast } from "../src/site/headings.js";
+import { extractTocFromSiteMdx } from "../src/site/mdx-pipeline.js";
 import {
-	collectHeadingsFromMdast,
-	MAX_TOC_HEADING_DEPTH,
-	MIN_TOC_HEADING_DEPTH,
-} from "../src/site/headings.js";
-import {
-	extractTocFromSiteMdx,
-	parseSiteMdx,
-	siteMdxRemarkPlugins,
-} from "../src/site/mdx-pipeline.js";
-import type { TocEntry } from "../src/site/types";
+	getHeadingIds,
+	getRenderedToc,
+	parseRuntimeMdx,
+	parseSiteMdxRoot,
+} from "./mdx-test-utils";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const contentDir = join(__dirname, "..", "content");
 
-function parseRuntimeMdx(source: string) {
-	const processor = unified().use(remarkParse).use(remarkMdx);
-	for (const plugin of siteMdxRemarkPlugins) {
-		processor.use(plugin);
-	}
-
-	const tree = processor.parse(source);
-	return processor.runSync(tree);
-}
-
-function getHeadingIds(tree: ReturnType<typeof parseSiteMdx>): string[] {
-	const headingIds: string[] = [];
-
-	visit(
-		tree,
-		"heading",
-		(node: { data?: { hProperties?: { id?: unknown } } }) => {
-			const id = node.data?.hProperties?.id;
-			if (typeof id === "string") {
-				headingIds.push(id);
-			}
-		},
-	);
-
-	return headingIds;
-}
-
-function getRenderedToc(tree: ReturnType<typeof parseRuntimeMdx>): TocEntry[] {
-	const toc: TocEntry[] = [];
-
-	visit(
-		tree,
-		"heading",
-		(node: { depth: number; data?: { hProperties?: { id?: unknown } } }) => {
-			const id = node.data?.hProperties?.id;
-			if (
-				typeof id === "string" &&
-				node.depth >= MIN_TOC_HEADING_DEPTH &&
-				node.depth <= MAX_TOC_HEADING_DEPTH
-			) {
-				toc.push({
-					id,
-					label: mdastToString(node).trim(),
-					depth: node.depth,
-				});
-			}
-		},
-	);
-
-	return toc;
-}
-
 describe("collectHeadingsFromMdast", () => {
 	test("assigns rendered heading ids and TOC entries from one pass", () => {
-		const tree = parseSiteMdx(`
+		const tree = parseSiteMdxRoot(`
 # Overview
 
 ## Intro
@@ -106,7 +47,7 @@ describe("collectHeadingsFromMdast", () => {
 	});
 
 	test("ignores heading-like lines inside fenced code blocks", () => {
-		const tree = parseSiteMdx(`
+		const tree = parseSiteMdxRoot(`
 ## Real section
 
 \`\`\`md

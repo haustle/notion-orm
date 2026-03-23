@@ -1,3 +1,4 @@
+/// <reference types="bun-types" />
 import { describe, expect, test } from "bun:test";
 import {
 	getActiveHeadingIdFromTargets,
@@ -8,20 +9,16 @@ import {
 	groupTocIntoSections,
 	sectionContainsActiveId,
 	sectionShouldBeExpanded,
+	type TocHeadingTarget,
+	type TocNavigationState,
 	updateTocNavigationState,
 } from "../src/site/toc";
 import type { TocEntry } from "../src/site/types";
-
-const toc: TocEntry[] = [
-	{ id: "intro", label: "Intro", depth: 2 },
-	{ id: "overview", label: "Overview", depth: 3 },
-	{ id: "details", label: "Details", depth: 4 },
-	{ id: "api", label: "API", depth: 2 },
-];
+import { sampleTocNested } from "./fixtures/toc";
 
 describe("groupTocIntoSections", () => {
 	test("nests subheadings under the preceding h2 section", () => {
-		expect(groupTocIntoSections(toc)).toEqual([
+		expect(groupTocIntoSections(sampleTocNested)).toEqual([
 			{
 				root: { id: "intro", label: "Intro", depth: 2 },
 				children: [
@@ -37,12 +34,11 @@ describe("groupTocIntoSections", () => {
 	});
 
 	test("falls back to flat sections when no h2 headings exist", () => {
-		expect(
-			groupTocIntoSections([
-				{ id: "child-a", label: "Child A", depth: 3 },
-				{ id: "child-b", label: "Child B", depth: 4 },
-			]),
-		).toEqual([
+		const flat: TocEntry[] = [
+			{ id: "child-a", label: "Child A", depth: 3 },
+			{ id: "child-b", label: "Child B", depth: 4 },
+		];
+		expect(groupTocIntoSections(flat)).toEqual([
 			{
 				root: { id: "child-a", label: "Child A", depth: 3 },
 				children: [],
@@ -57,9 +53,9 @@ describe("groupTocIntoSections", () => {
 
 describe("sectionContainsActiveId", () => {
 	test("expands a section when either the root or a child is active", () => {
-		const [section] = groupTocIntoSections(toc);
+		const [section] = groupTocIntoSections(sampleTocNested);
 		expect(section).toBeDefined();
-		if (!section) {
+		if (section === undefined) {
 			throw new Error("expected a grouped TOC section");
 		}
 
@@ -71,7 +67,7 @@ describe("sectionContainsActiveId", () => {
 
 describe("getSectionRootIdForEntryId", () => {
 	test("maps both roots and nested entries back to the section root", () => {
-		const sections = groupTocIntoSections(toc);
+		const sections = groupTocIntoSections(sampleTocNested);
 		expect(getSectionRootIdForEntryId(sections, "intro")).toBe("intro");
 		expect(getSectionRootIdForEntryId(sections, "details")).toBe("intro");
 		expect(getSectionRootIdForEntryId(sections, "missing")).toBeNull();
@@ -81,9 +77,9 @@ describe("getSectionRootIdForEntryId", () => {
 
 describe("sectionShouldBeExpanded", () => {
 	test("keeps nested links open for the active section", () => {
-		const [section] = groupTocIntoSections(toc);
+		const [section] = groupTocIntoSections(sampleTocNested);
 		expect(section).toBeDefined();
-		if (!section) {
+		if (section === undefined) {
 			throw new Error("expected a grouped TOC section");
 		}
 
@@ -97,9 +93,9 @@ describe("sectionShouldBeExpanded", () => {
 	});
 
 	test("keeps a manually revealed section open even before scroll state catches up", () => {
-		const [section] = groupTocIntoSections(toc);
+		const [section] = groupTocIntoSections(sampleTocNested);
 		expect(section).toBeDefined();
-		if (!section) {
+		if (section === undefined) {
 			throw new Error("expected a grouped TOC section");
 		}
 
@@ -113,9 +109,9 @@ describe("sectionShouldBeExpanded", () => {
 	});
 
 	test("does not expand sections without nested headings", () => {
-		const [, secondSection] = groupTocIntoSections(toc);
+		const [, secondSection] = groupTocIntoSections(sampleTocNested);
 		expect(secondSection).toBeDefined();
-		if (!secondSection) {
+		if (secondSection === undefined) {
 			throw new Error("expected a second grouped TOC section");
 		}
 
@@ -131,7 +127,7 @@ describe("sectionShouldBeExpanded", () => {
 
 describe("getTocNavigationState", () => {
 	test("derives both the active heading and revealed root from a child entry", () => {
-		const sections = groupTocIntoSections(toc);
+		const sections = groupTocIntoSections(sampleTocNested);
 		expect(
 			getTocNavigationState({
 				sections,
@@ -140,13 +136,13 @@ describe("getTocNavigationState", () => {
 		).toEqual({
 			activeId: "details",
 			revealedRootId: "intro",
-		});
+		} satisfies TocNavigationState);
 	});
 });
 
 describe("updateTocNavigationState", () => {
 	test("keeps a manual reveal until the active section changes", () => {
-		const sections = groupTocIntoSections(toc);
+		const sections = groupTocIntoSections(sampleTocNested);
 		expect(
 			updateTocNavigationState({
 				sections,
@@ -159,11 +155,11 @@ describe("updateTocNavigationState", () => {
 		).toEqual({
 			activeId: "overview",
 			revealedRootId: "intro",
-		});
+		} satisfies TocNavigationState);
 	});
 
 	test("closes the old reveal when navigation advances to another section", () => {
-		const sections = groupTocIntoSections(toc);
+		const sections = groupTocIntoSections(sampleTocNested);
 		expect(
 			updateTocNavigationState({
 				sections,
@@ -176,15 +172,15 @@ describe("updateTocNavigationState", () => {
 		).toEqual({
 			activeId: "api",
 			revealedRootId: "api",
-		});
+		} satisfies TocNavigationState);
 	});
 
 	test("ignores null targets and preserves the current state", () => {
-		const sections = groupTocIntoSections(toc);
+		const sections = groupTocIntoSections(sampleTocNested);
 		const currentState = {
 			activeId: "overview",
 			revealedRootId: "intro",
-		};
+		} satisfies TocNavigationState;
 		expect(
 			updateTocNavigationState({
 				sections,
@@ -199,7 +195,7 @@ describe("getTocTargetOrderMismatch", () => {
 	test("reports when DOM heading order no longer matches TOC order", () => {
 		expect(
 			getTocTargetOrderMismatch({
-				toc,
+				toc: sampleTocNested,
 				targetIdsInDomOrder: ["overview", "intro", "details", "api"],
 			}),
 		).toEqual({
@@ -211,7 +207,7 @@ describe("getTocTargetOrderMismatch", () => {
 	test("returns null when TOC order matches the DOM order", () => {
 		expect(
 			getTocTargetOrderMismatch({
-				toc,
+				toc: sampleTocNested,
 				targetIdsInDomOrder: ["intro", "overview", "details", "api"],
 			}),
 		).toBeNull();
@@ -220,13 +216,14 @@ describe("getTocTargetOrderMismatch", () => {
 
 describe("getActiveHeadingIdFromTargets", () => {
 	test("chooses the last heading above the activation threshold", () => {
+		const headings = [
+			{ id: "intro", top: -20 },
+			{ id: "overview", top: 60 },
+			{ id: "details", top: 220 },
+		] satisfies TocHeadingTarget[];
 		expect(
 			getActiveHeadingIdFromTargets({
-				headings: [
-					{ id: "intro", top: -20 },
-					{ id: "overview", top: 60 },
-					{ id: "details", top: 220 },
-				],
+				headings,
 				isAtBottom: false,
 				activationOffset: 140,
 			}),
@@ -234,13 +231,14 @@ describe("getActiveHeadingIdFromTargets", () => {
 	});
 
 	test("pins to the final heading at the bottom of the page", () => {
+		const headings = [
+			{ id: "intro", top: -20 },
+			{ id: "overview", top: 120 },
+			{ id: "details", top: 380 },
+		] satisfies TocHeadingTarget[];
 		expect(
 			getActiveHeadingIdFromTargets({
-				headings: [
-					{ id: "intro", top: -20 },
-					{ id: "overview", top: 120 },
-					{ id: "details", top: 380 },
-				],
+				headings,
 				isAtBottom: true,
 			}),
 		).toBe("details");
@@ -251,7 +249,7 @@ describe("getMissingTocTargetIds", () => {
 	test("reports TOC entries that do not resolve to DOM headings", () => {
 		expect(
 			getMissingTocTargetIds({
-				toc,
+				toc: sampleTocNested,
 				getElementById: (id) =>
 					id === "intro" || id === "overview" ? {} : null,
 			}),
