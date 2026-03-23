@@ -1,7 +1,8 @@
 export const metadata = {
   path: "/",
   title: "Overview",
-  description: "A Notion API TypeScript wrapper that aims to improve interactions with databases and agents by building local static schemas.",
+  description:
+    "A Notion API TypeScript wrapper that aims to improve interactions with databases and agents by building local static schemas.",
 };
 
 <NotionCubeLogo fixedHero />
@@ -159,7 +160,7 @@ const books = await notion.databases.books.findMany({
     ],
   },
   sortBy: [{ property: "bookName", direction: "ascending" }],
-  select: { bookName: true, genre: true },
+  select: ["bookName", "genre"],
 });
 ```
 
@@ -315,9 +316,5 @@ Runtime dependencies:
     ├── db
     └── agents
 ```
-
-## Disclaimer
-
-This is an unofficial Notion API SDK.
 
 </DocsProse>
