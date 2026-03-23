@@ -158,7 +158,7 @@ const books = await notion.databases.books.findMany({
       { publishDate: { on_or_after: "2024-01-01" } },
     ],
   },
-  sortBy: [{ property: "Book Name", direction: "ascending" }],
+  sortBy: [{ property: "bookName", direction: "ascending" }],
   select: { bookName: true, genre: true },
 });
 ```

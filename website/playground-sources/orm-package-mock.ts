@@ -91,39 +91,49 @@ export type QueryFilter<Schema> =
 	| CompoundFilter<Schema>;
 
 type SortDirection = "ascending" | "descending";
-type SortBy = Array<{ property: string; direction: SortDirection }>;
+type TimestampSort = {
+	timestamp: "created_time" | "last_edited_time";
+	direction: SortDirection;
+};
+type PropertySort<ColumnTypes extends Record<string, string>> = {
+	property: Extract<keyof ColumnTypes, string>;
+	direction: SortDirection;
+};
+type SortBy<ColumnTypes extends Record<string, string>> = Array<
+	PropertySort<ColumnTypes> | TimestampSort
+>;
 
 export type Query<
-	Schema extends object,
-	_ColumnTypes extends Record<string, string>,
-> = {
-	filter?: QueryFilter<Schema>;
-	sort?: SortBy;
-	includeRawResponse?: boolean;
-};
+		Schema extends object,
+		ColumnTypes extends Record<string, string>,
+	> = {
+		filter?: QueryFilter<Schema>;
+		sort?: SortBy<ColumnTypes>;
+		includeRawResponse?: boolean;
+	};
 
 export type FindManyArgs<
-	Schema extends object,
-	_ColumnTypes extends Record<string, string>,
-> = {
-	where?: QueryFilter<Schema>;
-	sortBy?: SortBy;
-	size?: number;
-	select?: { [K in keyof Schema]?: true };
-	omit?: { [K in keyof Schema]?: true };
-	stream?: number;
-	after?: string | null;
-};
+		Schema extends object,
+		ColumnTypes extends Record<string, string>,
+	> = {
+		where?: QueryFilter<Schema>;
+		sortBy?: SortBy<ColumnTypes>;
+		size?: number;
+		select?: { [K in keyof Schema]?: true };
+		omit?: { [K in keyof Schema]?: true };
+		stream?: number;
+		after?: string | null;
+	};
 
 export type FindFirstArgs<
-	Schema extends object,
-	_ColumnTypes extends Record<string, string>,
-> = {
-	where?: QueryFilter<Schema>;
-	sortBy?: SortBy;
-	select?: { [K in keyof Schema]?: true };
-	omit?: { [K in keyof Schema]?: true };
-};
+		Schema extends object,
+		ColumnTypes extends Record<string, string>,
+	> = {
+		where?: QueryFilter<Schema>;
+		sortBy?: SortBy<ColumnTypes>;
+		select?: { [K in keyof Schema]?: true };
+		omit?: { [K in keyof Schema]?: true };
+	};
 
 export type FindUniqueArgs = {
 	where: { id: string };

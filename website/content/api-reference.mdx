@@ -74,7 +74,7 @@ Queries the database with optional filtering, sorting, projection, pagination, a
 | Property | Type | Required | Description |
 | -------- | ---- | -------- | ----------- |
 | `where` | `QueryFilter` | no | Typed filter object (single or compound `and`/`or`) |
-| `sortBy` | `QueryDataSourceParameters["sorts"]` | no | Array of sort descriptors |
+| `sortBy` | `QuerySort<ColumnTypes>` | no | Array of schema-key sort descriptors (or timestamp sorts) |
 | `size` | `number` | no | Page size limit |
 | `select` | `{ [key]: true }` | no | Include only specified fields |
 | `omit` | `{ [key]: true }` | no | Exclude specified fields |
@@ -90,7 +90,7 @@ const allBooks = await db.findMany();
 // Filtered + sorted + projected
 const recent = await db.findMany({
   where: { publishDate: { on_or_after: "2025-01-01" } },
-  sortBy: [{ property: "Publish Date", direction: "descending" }],
+  sortBy: [{ property: "publishDate", direction: "descending" }],
   select: { bookName: true, publishDate: true },
   size: 20,
 });
