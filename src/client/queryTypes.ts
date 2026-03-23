@@ -67,6 +67,9 @@ export type SupportedNotionColumnType = {
 
 type NotionApiFilter = NonNullable<QueryDataSourceParameters["filter"]>;
 type ApiSingleFilter = Extract<NotionApiFilter, { property: string }>;
+type NotionApiSort = NonNullable<QueryDataSourceParameters["sorts"]>[number];
+type NotionTimestampSort = Extract<NotionApiSort, { timestamp: string }>;
+type NotionPropertySort = Extract<NotionApiSort, { property: string }>;
 type ApiSingleFilterByColumnType = {
 	[K in SupportedNotionColumnType]: Extract<
 		ApiSingleFilter,
@@ -210,40 +213,127 @@ export type FilterOptions<T = []> = {
  * Types to build query object user types out
  */
 
-type ColumnNameToNotionColumnType<T> = Record<
-	keyof T,
-	SupportedNotionColumnType
+type ColumnNameToNotionColumnType<Schema extends Record<string, unknown>> =
+	Record<keyof Schema, SupportedNotionColumnType>;
+
+type FilterValueForColumnType<
+	PropertyValue,
+	ColumnType extends SupportedNotionColumnType,
+> = ColumnType extends "rich_text"
+	? Partial<TextPropertyFilters>
+	: ColumnType extends "title"
+		? Partial<TextPropertyFilters>
+		: ColumnType extends "number"
+			? Partial<NumberPropertyFilters>
+			: ColumnType extends "checkbox"
+				? Partial<CheckBoxPropertyFilters>
+				: ColumnType extends "select"
+					? Partial<SelectPropertyFilters<NonNullable<PropertyValue>>>
+					: ColumnType extends "multi_select"
+						? Partial<MultiSelectPropertyFilters<NonNullable<PropertyValue>>>
+						: ColumnType extends "url"
+							? Partial<TextPropertyFilters>
+							: ColumnType extends "date"
+								? Partial<DatePropertyFilters>
+								: ColumnType extends "status"
+									? Partial<StatusPropertyFilters<NonNullable<PropertyValue>>>
+									: ColumnType extends "email"
+										? Partial<TextPropertyFilters>
+										: ColumnType extends "phone_number"
+											? Partial<TextPropertyFilters>
+											: ColumnType extends "files"
+												? Partial<FilesPropertyFilters>
+												: ColumnType extends "people"
+													? Partial<PeoplePropertyFilters>
+													: ColumnType extends "relation"
+														? Partial<RelationPropertyFilters>
+														: ColumnType extends "created_by"
+															? Partial<CreatedByPropertyFilters>
+															: ColumnType extends "last_edited_by"
+																? Partial<LastEditedByPropertyFilters>
+																: ColumnType extends "created_time"
+																	? Partial<CreatedTimePropertyFilters>
+																	: ColumnType extends "last_edited_time"
+																		? Partial<LastEditedTimePropertyFilters>
+																		: ColumnType extends "unique_id"
+																			? Partial<UniqueIdPropertyFilters>
+																			: never;
+
+type FilterValueForProperty<
+	Schema extends Record<string, unknown>,
+	ColumnNameToColumnType extends ColumnNameToNotionColumnType<Schema>,
+	PropertyName extends keyof Schema,
+> = FilterValueForColumnType<
+	Schema[PropertyName],
+	ColumnNameToColumnType[PropertyName]
 >;
-// T is a column name to column type
-// Y is the collection type
+
 export type SingleFilter<
-	Y extends Record<string, any>,
-	T extends ColumnNameToNotionColumnType<Y>,
-> = {
-	// Passing the type from collection
-	[Property in keyof Y]?: T[Property] extends keyof FilterOptions<Y[Property]>
-		? Partial<FilterOptions<Y[Property]>[T[Property]]>
-		: never;
-};
+		Schema extends Record<string, unknown>,
+		ColumnNameToColumnType extends ColumnNameToNotionColumnType<Schema>,
+	> = {
+		[PropertyName in keyof Schema]?: FilterValueForProperty<
+			Schema,
+			ColumnNameToColumnType,
+			PropertyName
+		>;
+	};
 
 export type CompoundFilters<
-	Y extends Record<string, any>,
-	T extends Record<keyof Y, SupportedNotionColumnType>,
-> =
-	| { and: Array<SingleFilter<Y, T> | CompoundFilters<Y, T>> }
-	| { or: Array<SingleFilter<Y, T> | CompoundFilters<Y, T>> };
+		Schema extends Record<string, unknown>,
+		ColumnNameToColumnType extends Record<
+			keyof Schema,
+			SupportedNotionColumnType
+		>,
+	> =
+		| {
+				and: Array<
+					| SingleFilter<Schema, ColumnNameToColumnType>
+					| CompoundFilters<Schema, ColumnNameToColumnType>
+				>;
+		  }
+		| {
+				or: Array<
+					| SingleFilter<Schema, ColumnNameToColumnType>
+					| CompoundFilters<Schema, ColumnNameToColumnType>
+				>;
+		  };
 
 export type QueryFilter<
-	Y extends Record<string, any>,
-	T extends Record<keyof Y, SupportedNotionColumnType>,
-> = SingleFilter<Y, T> | CompoundFilters<Y, T>;
+	Schema extends Record<string, unknown>,
+	ColumnNameToColumnType extends Record<
+		keyof Schema,
+		SupportedNotionColumnType
+	>,
+> =
+	| SingleFilter<Schema, ColumnNameToColumnType>
+	| CompoundFilters<Schema, ColumnNameToColumnType>;
+
+export type QuerySortDirection = NotionPropertySort["direction"];
+
+export type QuerySortPropertyName<
+	ColumnNameToColumnType extends Record<string, SupportedNotionColumnType>,
+> = Extract<keyof ColumnNameToColumnType, string>;
+
+export type QueryPropertySort<
+	ColumnNameToColumnType extends Record<string, SupportedNotionColumnType>,
+> = {
+	property: QuerySortPropertyName<ColumnNameToColumnType>;
+	direction: QuerySortDirection;
+};
+
+export type QueryTimestampSort = NotionTimestampSort;
+
+export type QuerySort<
+	ColumnNameToColumnType extends Record<string, SupportedNotionColumnType>,
+> = Array<QueryPropertySort<ColumnNameToColumnType> | QueryTimestampSort>;
 
 type QueryBase<
 	Y extends Record<string, any>,
 	T extends Record<keyof Y, SupportedNotionColumnType>,
 > = {
 	filter?: QueryFilter<Y, T>;
-	sort?: QueryDataSourceParameters["sorts"];
+	sort?: QuerySort<T>;
 };
 
 export type QueryWithoutRawResponse<
@@ -295,35 +385,111 @@ export type SimpleQueryResponse<DatabaseSchema> =
 	| QueryResponseWithoutRawResponse<DatabaseSchema>
 	| QueryResponseWithRawResponse<DatabaseSchema>;
 
+export type ProjectionPropertyName<Schema extends Record<string, any>> =
+	Extract<keyof Schema, string | number>;
+
+export type ProjectionPropertyList<Schema extends Record<string, any>> =
+	readonly ProjectionPropertyName<Schema>[];
+
+export type ProjectionArgs<Schema extends Record<string, any>> =
+	| {
+			select: ProjectionPropertyList<Schema>;
+			omit?: never;
+	  }
+	| {
+			omit: ProjectionPropertyList<Schema>;
+			select?: never;
+	  }
+	| {
+			select?: undefined;
+			omit?: undefined;
+	  };
+
+type ResolvedProjectionArgs<
+	Schema extends Record<string, any>,
+	ProjectionSelection extends ProjectionArgs<Schema> | undefined,
+> = [ProjectionSelection] extends [undefined]
+	? ProjectionArgs<Schema>
+	: ProjectionSelection extends ProjectionArgs<Schema>
+		? ProjectionSelection
+		: ProjectionArgs<Schema>;
+
+export type ProjectedFromArgs<
+	Schema extends Record<string, any>,
+	ProjectionSelection extends ProjectionArgs<Schema> | undefined = undefined,
+> = ProjectionSelection extends {
+	select: infer SelectedPropertyNames extends ProjectionPropertyList<Schema>;
+}
+	? Partial<Pick<Schema, SelectedPropertyNames[number]>>
+	: ProjectionSelection extends {
+				omit: infer OmittedPropertyNames extends ProjectionPropertyList<Schema>;
+			}
+		? Partial<Omit<Schema, OmittedPropertyNames[number]>>
+		: Partial<Schema>;
+
+type ProjectionSelectionFromPropertyLists<
+	Schema extends Record<string, any>,
+	SelectedPropertyNames extends ProjectionPropertyList<Schema> | undefined,
+	OmittedPropertyNames extends ProjectionPropertyList<Schema> | undefined,
+> = SelectedPropertyNames extends ProjectionPropertyList<Schema>
+	? { select: SelectedPropertyNames }
+	: OmittedPropertyNames extends ProjectionPropertyList<Schema>
+		? { omit: OmittedPropertyNames }
+		: undefined;
+
+export type ProjectedRow<
+	Schema extends Record<string, any>,
+	SelectedPropertyNames extends
+		| ProjectionPropertyList<Schema>
+		| undefined = undefined,
+	OmittedPropertyNames extends
+		| ProjectionPropertyList<Schema>
+		| undefined = undefined,
+> = ProjectedFromArgs<
+	Schema,
+	ProjectionSelectionFromPropertyLists<
+		Schema,
+		SelectedPropertyNames,
+		OmittedPropertyNames
+	>
+>;
+
 export type FindManyArgs<
-		Y extends Record<string, any>,
-		T extends Record<keyof Y, SupportedNotionColumnType>,
+		Schema extends Record<string, any>,
+		ColumnNameToColumnType extends Record<
+			keyof Schema,
+			SupportedNotionColumnType
+		>,
+		ProjectionSelection extends ProjectionArgs<Schema> | undefined = undefined,
 	> = {
-		where?: QueryFilter<Y, T>;
-		sortBy?: QueryDataSourceParameters["sorts"];
+		where?: QueryFilter<Schema, ColumnNameToColumnType>;
+		sortBy?: QuerySort<ColumnNameToColumnType>;
 		size?: number;
-		select?: { [K in keyof Y]?: true };
-		omit?: { [K in keyof Y]?: true };
 		stream?: number;
 		after?: string | null;
-	};
+	} & ResolvedProjectionArgs<Schema, ProjectionSelection>;
 
 export type FindFirstArgs<
-	Y extends Record<string, any>,
-	T extends Record<keyof Y, SupportedNotionColumnType>,
+		Schema extends Record<string, any>,
+		ColumnNameToColumnType extends Record<
+			keyof Schema,
+			SupportedNotionColumnType
+		>,
+		ProjectionSelection extends ProjectionArgs<Schema> | undefined = undefined,
+	> = {
+		where?: QueryFilter<Schema, ColumnNameToColumnType>;
+		sortBy?: QuerySort<ColumnNameToColumnType>;
+	} & ResolvedProjectionArgs<Schema, ProjectionSelection>;
+
+export type FindUniqueArgs<
+	Schema extends Record<string, any>,
+	ProjectionSelection extends ProjectionArgs<Schema> | undefined = undefined,
 > = {
-	where?: QueryFilter<Y, T>;
-	sortBy?: QueryDataSourceParameters["sorts"];
-	select?: { [K in keyof Y]?: true };
-	omit?: { [K in keyof Y]?: true };
-};
-
-export type FindUniqueArgs = {
 	where: { id: string };
-};
+} & ResolvedProjectionArgs<Schema, ProjectionSelection>;
 
-export type PaginateResult<DatabaseSchema> = {
-	data: Partial<DatabaseSchema>[];
+export type PaginateResult<Row extends object> = {
+	data: Row[];
 	nextCursor: string | null;
 	hasMore: boolean;
 };

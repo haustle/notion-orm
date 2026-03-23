@@ -6,6 +6,7 @@ import type {
 import type {
 	FilterableNotionColumnType,
 	QueryFilter,
+	QuerySort,
 	SupportedNotionColumnType,
 } from "../queryTypes";
 
@@ -75,4 +76,6 @@ export type QueryFilterInput<
 	>,
 > = QueryFilter<DatabaseSchemaType, ColumnNameToColumnType>;
 
-export type QuerySortInput = QueryDataSourceParameters["sorts"];
+export type QuerySortInput<
+	ColumnNameToColumnType extends Record<string, SupportedNotionColumnType>,
+> = QuerySort<ColumnNameToColumnType>;

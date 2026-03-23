@@ -1,13 +1,17 @@
 import type {
 	GetPageResponse,
 	PageObjectResponse,
+	QueryDataSourceParameters,
 	QueryDataSourceResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 import { camelize } from "../../helpers";
+import { objectEntries } from "../../typeUtils";
 import type { camelPropertyNameToNameAndTypeMapType } from "../DatabaseClient";
 import type {
 	QueryResponseWithoutRawResponse,
 	QueryResponseWithRawResponse,
+	QuerySort,
+	SupportedNotionColumnType,
 } from "../queryTypes";
 import { getSimplifiedResult } from "./response";
 import type {
@@ -35,13 +39,15 @@ export function normalizePageResult<
 		camelPropertyNameToNameAndTypeMap: camelPropertyNameToNameAndTypeMapType;
 	}) {
 		const normalizedResult: Partial<DatabaseSchemaType> = {};
-		for (const [columnName, propertyValue] of Object.entries(
+		for (const [columnName, propertyValue] of objectEntries(
 			args.result.properties,
 		)) {
 			const camelizedColumnName = camelize(columnName);
 			const columnType =
 				args.camelPropertyNameToNameAndTypeMap[camelizedColumnName]?.type;
-			if (!columnType) continue;
+			if (!columnType) {
+				continue;
+			}
 
 			Object.assign(normalizedResult, {
 				[camelizedColumnName]: getSimplifiedResult({
@@ -53,6 +59,30 @@ export function normalizePageResult<
 
 		return normalizedResult;
 	}
+
+type QueryApiSorts = NonNullable<QueryDataSourceParameters["sorts"]>;
+
+export function transformQuerySortToApiSorts<
+	DatabaseSchemaType extends Record<string, unknown>,
+	ColumnNameToColumnType extends Record<
+		keyof DatabaseSchemaType,
+		SupportedNotionColumnType
+	>,
+>(
+	querySort: QuerySort<ColumnNameToColumnType>,
+	camelPropertyNameToNameAndTypeMap: camelPropertyNameToNameAndTypeMapType,
+): QueryApiSorts {
+	return querySort.map((sort) => {
+		if ("timestamp" in sort) {
+			return sort;
+		}
+		const mappedColumn = camelPropertyNameToNameAndTypeMap[sort.property];
+		return {
+			property: mappedColumn?.columnName ?? sort.property,
+			direction: sort.direction,
+		};
+	});
+}
 
 /**
  * Normalizes every query result and validates the first row against the local

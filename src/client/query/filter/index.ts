@@ -1,3 +1,4 @@
+import { objectEntries } from "../../../typeUtils";
 import type { camelPropertyNameToNameAndTypeMapType } from "../../DatabaseClient";
 import type {
 	apiFilterType,
@@ -82,7 +83,7 @@ function buildLeafFilterObject(
 	queryFilter: Record<string, unknown>,
 	camelPropertyNameToNameAndTypeMap: camelPropertyNameToNameAndTypeMapType,
 ): apiFilterType {
-	const entries = Object.entries(queryFilter);
+	const entries = objectEntries(queryFilter);
 	if (entries.length === 0) {
 		return undefined;
 	}
