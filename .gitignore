@@ -11,6 +11,9 @@ website/.styled-system/
 website/src/styled-system/
 website/src/generated/
 website/next-env.d.ts
+# Licensed font binaries (not committed)
+website/public/fonts/*
+!website/public/fonts/.gitkeep
 *.tsbuildinfo
 .cursor/mcp.json
 .cursor/commands/agentation.md
