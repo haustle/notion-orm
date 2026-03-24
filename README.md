@@ -15,6 +15,8 @@ A lightweight TypeScript [Notion API](https://developers.notion.com/) wrapper th
 bun add @haustle/notion-orm
 ```
 
+After upgrading the package, run **`bun notion sync`** so generated `build/src/index.*` stays in sync with the version you installed (stale codegen can break at runtime when imports from the ORM package change).
+
 # Quick start
 
 Initialize config from your project root (recommended):
