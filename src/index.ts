@@ -1,7 +1,7 @@
-import NotionORMBase from "./base";
+import { NotionORMBase } from "./base";
 
 export type { NotionConfigType } from "./base";
-export { AgentClient, DatabaseClient } from "./base";
+export { AgentClient, DatabaseClient, NotionORMBase } from "./base";
 export type { ObjectEntry } from "./typeUtils";
 export { objectEntries, objectKeys } from "./typeUtils";
 

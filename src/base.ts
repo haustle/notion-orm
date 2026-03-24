@@ -7,6 +7,7 @@
 export { AgentClient } from "./client/AgentClient";
 export { DatabaseClient } from "./client/DatabaseClient";
 export type {
+	ColumnTypeMap,
 	CountArgs,
 	CreateArgs,
 	CreateManyArgs,
@@ -21,13 +22,14 @@ export type {
 	ProjectedRow,
 	ProjectionArgs,
 	ProjectionPropertyList,
+	SchemaRecord,
 	UpdateArgs,
 	UpdateManyArgs,
 	UpsertArgs,
 } from "./client/queryTypes";
 export type { NotionConfigType } from "./config/helpers";
 
-export default class NotionORMBase {
+export class NotionORMBase {
 	constructor(config: { auth: string }) {
 		// Database and agent properties are added by the generated NotionORM class
 	}

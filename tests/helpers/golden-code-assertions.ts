@@ -7,8 +7,16 @@ import {
 	CODEGEN_TEST_PATHS,
 } from "./codegen-file-names";
 
+/** Collapses whitespace; strips trailing commas before `}` / `]` for golden compares. */
 export function normalizeCode(content: string): string {
-	return content.trim().replace(/\s+/g, " ");
+	let normalized = content.trim().replace(/\s+/g, " ");
+	let previous: string;
+	do {
+		previous = normalized;
+		normalized = normalized.replace(/,(\s*)\}/g, "$1}");
+		normalized = normalized.replace(/,(\s*)\]/g, "$1]");
+	} while (normalized !== previous);
+	return normalized;
 }
 
 export function readGolden(relativePath: string): string {

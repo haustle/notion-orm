@@ -8,7 +8,7 @@ import { PLAYGROUND_PATHS } from "../../src/ast/shared/constants";
 import { camelize } from "../../src/helpers";
 
 const MOCK_PACKAGE_SOURCE = "export class DatabaseClient {}";
-const MOCK_BASE_SOURCE = "export default class NotionORMBase {}";
+const MOCK_BASE_SOURCE = "export class NotionORMBase {}";
 
 function buildWorkspace(): DemoPlaygroundWorkspaceResult {
 	return buildDemoPlaygroundWorkspace({

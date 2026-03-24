@@ -39,23 +39,28 @@ function createBaseImportDeclaration(args: {
 		ts.factory.createImportSpecifier(
 			false,
 			undefined,
+			ts.factory.createIdentifier("NotionORMBase"),
+		),
+		...(args.includeAgentClient
+			? [
+					ts.factory.createImportSpecifier(
+						false,
+						undefined,
+						ts.factory.createIdentifier("AgentClient"),
+					),
+				]
+			: []),
+		ts.factory.createImportSpecifier(
+			false,
+			undefined,
 			ts.factory.createIdentifier("DatabaseClient"),
 		),
 	];
-	if (args.includeAgentClient) {
-		namedImports.unshift(
-			ts.factory.createImportSpecifier(
-				false,
-				undefined,
-				ts.factory.createIdentifier("AgentClient"),
-			),
-		);
-	}
 	return ts.factory.createImportDeclaration(
 		undefined,
 		ts.factory.createImportClause(
 			false,
-			ts.factory.createIdentifier("NotionORMBase"),
+			undefined,
 			ts.factory.createNamedImports(namedImports),
 		),
 		ts.factory.createStringLiteral(AST_IMPORT_PATHS.ORM_BASE),

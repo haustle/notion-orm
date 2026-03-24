@@ -55,7 +55,6 @@ afterEach(() => {
 });
 
 describe("orm index emitter", () => {
-	// Checks generated index declaration source matches the expected public types.
 	test("emits declaration source that matches the orm-index golden file", () => {
 		const nodes = buildOrmIndexDeclarationAst(metadata);
 		const renderedCode = printTsNodes({
@@ -66,7 +65,6 @@ describe("orm index emitter", () => {
 		expectNormalizedCodeToMatch({ actual: renderedCode, expected: goldenCode });
 	});
 
-	// Checks runtime AST includes a class declaration for NotionORM.
 	test("builds runtime AST containing a NotionORM class declaration", () => {
 		const nodes = buildOrmIndexModuleAst({
 			...metadata,
@@ -77,7 +75,6 @@ describe("orm index emitter", () => {
 		expect(classDeclaration?.kind).toBe(ts.SyntaxKind.ClassDeclaration);
 	});
 
-	// Checks emitted runtime index wires database/agent modules and executes.
 	test("emits runtime index that executes and wires databases/agents", async () => {
 		const tempDirectory = createTempWorkspace("orm-index-");
 		const srcDirectory = join(tempDirectory, CODEGEN_EMIT_PATHS.srcDir);
@@ -87,19 +84,26 @@ describe("orm index emitter", () => {
 		mkdirSync(dbDirectory, { recursive: true });
 		mkdirSync(agentsDirectory, { recursive: true });
 
+		const baseStub = [
+			"export class AgentClient {}",
+			"export class DatabaseClient {}",
+			"export class NotionORMBase {",
+			"  constructor(config) {",
+			"    this.auth = config.auth;",
+			"  }",
+			"}",
+			"",
+		].join("\n");
 		writeFileSync(
 			join(srcDirectory, CODEGEN_EMIT_PATHS.baseModuleJs),
-			[
-				"export class AgentClient {}",
-				"export class DatabaseClient {}",
-				"export default class NotionORMBase {",
-				"  constructor(config) {",
-				"    this.auth = config.auth;",
-				"  }",
-				"}",
-				"",
-			].join("\n"),
+			baseStub,
 		);
+		const packageBaseDir = join(
+			tempDirectory,
+			"node_modules/@haustle/notion-orm/build/src",
+		);
+		mkdirSync(packageBaseDir, { recursive: true });
+		writeFileSync(join(packageBaseDir, "base.js"), baseStub);
 		writeFileSync(
 			join(dbDirectory, CODEGEN_EMIT_PATHS.taskDbModuleJs),
 			'export const taskDb = (auth) => ({ kind: "db", auth });\n',

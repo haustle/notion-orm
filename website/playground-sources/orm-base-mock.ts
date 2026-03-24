@@ -17,6 +17,6 @@ export type {
 } from "../../index.ts";
 export { AgentClient, DatabaseClient } from "../../index.ts";
 
-export default class NotionORMBase {
+export class NotionORMBase {
 	constructor(_config: { auth: string }) {}
 }
