@@ -22,7 +22,7 @@ import { TS_EMIT_INTEROP, TS_EMIT_OPTIONS_DEFAULT } from "./ts-emit-options";
  * (for example: `coffeeShopDirectory`, `foodManager`).
  * It is used as both:
  * - the imported factory symbol name
- * - the generated module filename in import paths (`../databases/<name>`, `../agents/<name>`)
+ * - the generated module filename in import paths (`./databases/<name>`, `./agents/<name>`)
  */
 export interface OrmEntityMetadata {
 	name: string;
@@ -121,7 +121,7 @@ function createBaseValueExportDeclaration(args: {
 
 /**
  * Creates imports for generated entity factory functions.
- * Example: `import { coffeeShopDirectory } from "../databases/coffeeShopDirectory";`
+ * Example: `import { coffeeShopDirectory } from "./databases/coffeeShopDirectory";`
  */
 function createEntityImportStatements(args: {
 	entities: OrmEntityMetadata[];
@@ -317,7 +317,7 @@ function createRuntimeClassDeclaration(args: {
 	);
 
 	return ts.factory.createClassDeclaration(
-		undefined,
+		[ts.factory.createModifier(ts.SyntaxKind.ExportKeyword)],
 		ts.factory.createIdentifier("NotionORM"),
 		undefined,
 		[
@@ -382,10 +382,7 @@ function createDeclarationClass(args: {
 	);
 
 	return ts.factory.createClassDeclaration(
-		[
-			ts.factory.createModifier(ts.SyntaxKind.ExportKeyword),
-			ts.factory.createModifier(ts.SyntaxKind.DefaultKeyword),
-		],
+		[ts.factory.createModifier(ts.SyntaxKind.ExportKeyword)],
 		ts.factory.createIdentifier("NotionORM"),
 		undefined,
 		[
@@ -401,7 +398,7 @@ function createDeclarationClass(args: {
 }
 
 /**
- * Produces runtime module statements for `notion/src/index.ts`.
+ * Produces runtime module statements for `notion/index.ts` (import as `./notion/` from app code).
  */
 export function buildOrmIndexModuleAst(args: {
 	databases: OrmEntityMetadata[];
@@ -436,16 +433,11 @@ export function buildOrmIndexModuleAst(args: {
 		createBaseTypeExportDeclaration(),
 		createBaseValueExportDeclaration({ includeAgentClient: hasAgents }),
 		classDeclaration,
-		ts.factory.createExportAssignment(
-			undefined,
-			false,
-			ts.factory.createIdentifier("NotionORM"),
-		),
 	];
 }
 
 /**
- * Produces declaration module statements for `notion/src/index.d.ts`.
+ * Produces declaration module statements for `notion/index.d.ts`.
  */
 export function buildOrmIndexDeclarationAst(args: {
 	databases: OrmEntityMetadata[];
@@ -533,7 +525,7 @@ export function emitOrmIndexArtifacts(args: {
 }
 
 /**
- * Rebuilds the generated root `notion/src/index` artifacts that wire all
+ * Rebuilds the generated root `notion/index` artifacts that wire all
  * database/agent factories into the exported NotionORM class.
  * Use this from both database and agent CLI entry points.
  */
@@ -541,8 +533,8 @@ export function updateSourceIndexFile(
 	databasesMetadata: CachedEntityMetadata[],
 	agentsMetadata: CachedEntityMetadata[],
 ): void {
-	if (!fs.existsSync(AST_FS_PATHS.BUILD_SRC_DIR)) {
-		fs.mkdirSync(AST_FS_PATHS.BUILD_SRC_DIR, { recursive: true });
+	if (!fs.existsSync(AST_FS_PATHS.CODEGEN_ROOT_DIR)) {
+		fs.mkdirSync(AST_FS_PATHS.CODEGEN_ROOT_DIR, { recursive: true });
 	}
 
 	emitOrmIndexBuildArtifacts({

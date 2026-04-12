@@ -98,7 +98,7 @@ export function buildDemoDatabaseEntry(args: {
 		? `\ticon: { type: "emoji", emoji: "${scenario.create.icon.emoji}" },\n`
 		: "";
 
-	return `import NotionORM from "./${PLAYGROUND_PATHS.BUILD_INDEX}";
+	return `import { NotionORM } from "./${PLAYGROUND_PATHS.BUILD_INDEX_DIR}";
 
 import {
 ${namedImports}
@@ -155,7 +155,7 @@ export function buildDemoAgentEntry(args: {
 		);
 	}
 
-	return `import NotionORM from "./${PLAYGROUND_PATHS.BUILD_INDEX}";
+	return `import { NotionORM } from "./${PLAYGROUND_PATHS.BUILD_INDEX_DIR}";
 
 const notion = new NotionORM({ auth: "${PLAYGROUND_PATHS.DEMO_AUTH_PLACEHOLDER}" });
 

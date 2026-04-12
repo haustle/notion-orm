@@ -15,7 +15,7 @@ A lightweight TypeScript [Notion API](https://developers.notion.com/) wrapper th
 bun add @haustle/notion-orm
 ```
 
-After upgrading the package, run **`bun notion sync`** so generated `notion/src/index.*` stays in sync with the version you installed (stale codegen can break at runtime when imports from the ORM package change).
+After upgrading the package, run **`bun notion sync`** so generated files under **`notion/`** stay in sync with the version you installed (stale codegen can break at runtime when imports from the ORM package change). In app code, prefer **`import { NotionORM } from "./notion/"`** — the directory import resolves to `index.ts`, so you do not need to spell **`index`**.
 
 # Quick start
 
@@ -158,10 +158,10 @@ const thread = await notion.agents.helpBot.chatStream({
 
 ### Client setup
 
-Create a single ORM instance with your Notion integration key:
+Create a single ORM instance with your Notion integration key. Import from the generated **`notion/`** folder (directory specifier → `index`):
 
 ```ts
-import NotionORM from "@haustle/notion-orm";
+import { NotionORM } from "./notion/";
 
 const notion = new NotionORM({
   auth: process.env.NOTION_KEY!,
@@ -378,6 +378,7 @@ See [API Reference](#api-reference) for full method signatures, `ThreadInfo` sha
 
 | import path                                    | what you get                                                                                                                                                                 | when to use                                                  |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `./notion/` (relative)                         | `NotionORM` class (generated entry; same as `./notion/index` but shorter)                                                                                                    | Typical app code after **`notion sync`**                     |
 | `@haustle/notion-orm/notion/databases/<databaseName>`  | `<databaseName>(auth)` factory, `DatabaseSchemaType`, `QuerySchemaType`, generated Zod schema, generated option tuples (for select/status/multi-select), schema/type aliases | Script-level direct DB usage without the `NotionORM` wrapper |
 | `@haustle/notion-orm/notion/agents/<agentName>` | `<agentName>(auth)` factory that returns an `AgentClient`                                                                                                                    | Script-level direct agent usage                              |
 | `@haustle/notion-orm/notion/databases`                 | `databases` barrel object (all database factories)                                                                                                                           | Dynamic database selection or custom registry wiring         |
@@ -451,7 +452,7 @@ All supported properties can be used in typed filters. Formula properties are no
 │   └── types            # local type bridges
 ├── plugins              # lint/tooling helpers
 └── notion               # generated output (after notion sync)
-    ├── src
+    ├── index.*          # import as ./notion/
     ├── databases
     └── agents
 ```

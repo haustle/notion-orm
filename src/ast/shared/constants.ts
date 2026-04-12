@@ -7,7 +7,8 @@ import path from "path";
 
 /**
  * Top-level directory name for CLI-generated artifacts in consuming projects
- * (`notion/src`, `notion/databases`, `notion/agents`). Distinct from this package's
+ * (`notion/` entry + `databases/`, `agents/`). Prefer **`import { NotionORM } from "./notion/"`**
+ * in apps (directory import resolves to `index` — no need to spell `index`). Distinct from this package's
  * npm `outDir` (`build/`), which remains `@haustle/notion-orm/build/...`.
  */
 export const PROJECT_CODEGEN_DIR_NAME = "notion" as const;
@@ -39,8 +40,9 @@ export const AGENTS_DIR = getAgentsDir();
 
 /** Filesystem targets used by emitters. Getters stay lazy for testability. */
 export const AST_FS_PATHS = {
-	get BUILD_SRC_DIR(): string {
-		return path.join(getProjectBuildDir(), "src");
+	/** Codegen root (`notion/`): index entrypoint lives here alongside `databases/` and `agents/`. */
+	get CODEGEN_ROOT_DIR(): string {
+		return getProjectBuildDir();
 	},
 
 	get DATABASES_DIR(): string {
@@ -56,20 +58,20 @@ export const AST_FS_PATHS = {
 	},
 
 	get buildIndexTs(): string {
-		return path.resolve(AST_FS_PATHS.BUILD_SRC_DIR, AST_FS_FILENAMES.INDEX_TS);
+		return path.resolve(AST_FS_PATHS.CODEGEN_ROOT_DIR, AST_FS_FILENAMES.INDEX_TS);
 	},
 
 	get buildIndexJs(): string {
-		return path.resolve(AST_FS_PATHS.BUILD_SRC_DIR, AST_FS_FILENAMES.INDEX_JS);
+		return path.resolve(AST_FS_PATHS.CODEGEN_ROOT_DIR, AST_FS_FILENAMES.INDEX_JS);
 	},
 
 	get buildIndexDts(): string {
-		return path.resolve(AST_FS_PATHS.BUILD_SRC_DIR, AST_FS_FILENAMES.INDEX_DTS);
+		return path.resolve(AST_FS_PATHS.CODEGEN_ROOT_DIR, AST_FS_FILENAMES.INDEX_DTS);
 	},
 
 	get buildIndexDtsMap(): string {
 		return path.resolve(
-			AST_FS_PATHS.BUILD_SRC_DIR,
+			AST_FS_PATHS.CODEGEN_ROOT_DIR,
 			AST_FS_FILENAMES.INDEX_DTS_MAP,
 		);
 	},
@@ -102,11 +104,11 @@ export const AST_IMPORT_PATHS = {
 	ZOD: "zod",
 
 	databaseClass(name: string): string {
-		return `../${PROJECT_DATABASES_DIR_NAME}/${name}`;
+		return `./${PROJECT_DATABASES_DIR_NAME}/${name}`;
 	},
 
 	agentClass(name: string): string {
-		return `../agents/${name}`;
+		return `./agents/${name}`;
 	},
 } as const;
 
@@ -141,7 +143,14 @@ export const AST_TYPE_NAMES = {
  * when the build layout changes.
  */
 export const PLAYGROUND_PATHS = {
-	BUILD_INDEX: `${PROJECT_CODEGEN_DIR_NAME}/src/index.ts`,
+	/** Virtual file path for the generated index module. */
+	BUILD_INDEX: `${PROJECT_CODEGEN_DIR_NAME}/index.ts`,
+
+	/**
+	 * Recommended import path segment for consumer code (`./notion/` → `index.ts`).
+	 * Keeps demo snippets aligned with the same pattern we document in README.
+	 */
+	BUILD_INDEX_DIR: `${PROJECT_CODEGEN_DIR_NAME}/`,
 
 	databaseModule(name: string): string {
 		return `${PROJECT_CODEGEN_DIR_NAME}/${PROJECT_DATABASES_DIR_NAME}/${name}.ts`;
@@ -151,10 +160,10 @@ export const PLAYGROUND_PATHS = {
 	},
 
 	databaseImport(name: string): string {
-		return `../${PROJECT_DATABASES_DIR_NAME}/${name}.ts`;
+		return `./${PROJECT_DATABASES_DIR_NAME}/${name}.ts`;
 	},
 	agentImport(name: string): string {
-		return `../agents/${name}.ts`;
+		return `./agents/${name}.ts`;
 	},
 
 	MOCK_PACKAGE_INDEX: "playground_modules/haustle-notion-orm/index.ts",

@@ -58,6 +58,8 @@ export const createDatabaseTypes = async (
 
 	if (isFullGenerate) {
 		// Start from a clean generated directory so removed databases do not linger.
+		// (When called via `notion sync`, the parent codegen root is already wiped,
+		// but this is still needed for direct callers and tests.)
 		fs.rmSync(AST_FS_PATHS.DATABASES_DIR, { recursive: true, force: true });
 		metadataMap = new Map();
 	} else {

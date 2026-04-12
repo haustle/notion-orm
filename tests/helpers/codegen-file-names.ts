@@ -17,7 +17,6 @@ export const CODEGEN_EMIT_PATHS = {
 	indexDts: "index.d.ts",
 	notionConfigTs: "notion.config.ts",
 	notionConfigMjs: "notion.config.mjs",
-	srcDir: "src",
 	databasesDir: "databases",
 	agentsDir: "agents",
 	baseModuleJs: "base.js",

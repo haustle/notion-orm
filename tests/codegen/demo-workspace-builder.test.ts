@@ -80,6 +80,9 @@ describe("demo workspace builder", () => {
 
 	test("database entry references the spec scenario target", () => {
 		const entry = result.files[result.databaseEntryFile]!;
+		expect(entry).toContain(
+			`from "./${PLAYGROUND_PATHS.BUILD_INDEX_DIR}"`,
+		);
 		const targetModuleName = camelize(
 			DEMO_PLAYGROUND_SPEC.databaseScenario.targetDatabase,
 		);
@@ -93,6 +96,9 @@ describe("demo workspace builder", () => {
 
 	test("agent entry references all scenario agents", () => {
 		const entry = result.files[result.agentEntryFile]!;
+		expect(entry).toContain(
+			`from "./${PLAYGROUND_PATHS.BUILD_INDEX_DIR}"`,
+		);
 		const chatModuleName = camelize(
 			DEMO_PLAYGROUND_SPEC.agentScenario.chatAgent,
 		);

@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import * as readline from "node:readline";
+import fs from "fs";
 import { Client } from "@notionhq/client";
 import {
 	findConfigFile,
@@ -17,7 +18,7 @@ import {
 	readAgentMetadataFromDisk,
 	readDatabaseMetadata,
 } from "../ast/shared/cached-metadata";
-import { AST_RUNTIME_CONSTANTS } from "../ast/shared/constants";
+import { AST_FS_PATHS, AST_RUNTIME_CONSTANTS } from "../ast/shared/constants";
 import { updateSourceIndexFile } from "../ast/shared/emit/orm-index-emitter";
 import { clearConfigCache, loadConfig } from "../config/loadConfig";
 import { toDashedNotionId, toUndashedNotionId } from "../helpers";
@@ -164,6 +165,9 @@ async function runSync(): Promise<void> {
 		await validateConfig();
 		renderer.start();
 		rendererStarted = true;
+		// Full sync replaces the entire generated tree so removed DBs/agents and stray
+		// files under `notion/` cannot linger (incremental `notion add` does not run this).
+		fs.rmSync(AST_FS_PATHS.CODEGEN_ROOT_DIR, { recursive: true, force: true });
 
 		const agentsPromise: Promise<CreateAgentTypesResult> = createAgentTypes({
 			skipSourceIndexUpdate: true,
@@ -180,32 +184,60 @@ async function runSync(): Promise<void> {
 			},
 		});
 
-		const [agentsResult] = await Promise.all([
+		const [agentsResult, databasesResult] = await Promise.all([
 			agentsPromise,
 			databasesPromise,
 		]);
 		renderer.complete("agents");
 		renderer.complete("databases");
+		// Tear down the spinner before file writes and summary logs so TTY output
+		// is not interleaved with the progress interval.
+		renderer.stop();
+		rendererStarted = false;
 
 		const agentsMetadata = agentsResult.skipped
 			? []
 			: readAgentMetadataFromDisk();
 		updateSourceIndexFile(readDatabaseMetadata(), agentsMetadata);
 
-		console.log("💡 Databases: use `notion.databases.*`");
-		if (!agentsResult.skipped) {
-			console.log("💡 Agents: use `notion.agents.*`");
+		const { databaseNames, databaseKeys } = databasesResult;
+		if (databaseNames.length === 0) {
+			console.log("📂 Databases: none in config (nothing generated under notion/databases).");
+		} else if (databaseNames.length === 1) {
+			console.log(
+				`📂 Databases (1): ${databaseNames[0]} → notion.databases.${databaseKeys[0]}`,
+			);
+		} else {
+			const lines = databaseNames
+				.map(
+					(title, i) =>
+						`   • ${title} → notion.databases.${databaseKeys[i]}`,
+				)
+				.join("\n");
+			console.log(`📂 Databases (${databaseNames.length}):\n${lines}`);
 		}
-		console.log("");
 
 		if (agentsResult.skipped) {
 			console.log(
-				`⚠️  Agent generation skipped: Notion Agents SDK not installed.`,
+				`⚠️  Agents: skipped — Notion Agents SDK not installed. Run \`${AGENTS_SDK_SETUP_COMMAND}\` to generate clients (\`chat\`, \`getMessages\`, \`chatStream\`, thread helpers).`,
 			);
+		} else if (agentsResult.agentNames.length === 0) {
+			console.log("🤖 Agents: none returned for this integration.");
+		} else if (agentsResult.agentNames.length === 1) {
+			console.log(`🤖 Agents (1): ${agentsResult.agentNames[0]}`);
+		} else {
+			const lines = agentsResult.agentNames.map((n) => `   • ${n}`).join("\n");
+			console.log(`🤖 Agents (${agentsResult.agentNames.length}):\n${lines}`);
+		}
+
+		console.log("");
+		console.log("💡 Databases: use `notion.databases.*`");
+		if (!agentsResult.skipped) {
 			console.log(
-				`   Run \`${AGENTS_SDK_SETUP_COMMAND}\` to enable agent support.\n`,
+				"💡 Agents: use `notion.agents.*` (typed `chat`, `getMessages`, `chatStream`, …)",
 			);
 		}
+		console.log("");
 
 		const configFile = findConfigFile();
 		if (configFile) {
