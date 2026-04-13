@@ -1,5 +1,5 @@
-import type { DatabaseClient } from "../../src/client/DatabaseClient";
-import type { PaginateResult } from "../../src/client/queryTypes";
+import type { DatabaseClient } from "../../src/client/database/DatabaseClient";
+import type { PaginateResult } from "../../src/client/database/types";
 import type { Equal, Expect } from "./helpers/assert";
 
 type Schema = {

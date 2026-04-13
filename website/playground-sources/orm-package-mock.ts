@@ -135,21 +135,21 @@ export type ProjectionPropertyName<Schema extends object> = Extract<
 >;
 export type ProjectionPropertyList<Schema extends object> =
 	readonly ProjectionPropertyName<Schema>[];
-export type ProjectionArgs<Schema extends object> =
+export type Projection<Schema extends object> =
 	| { select: ProjectionPropertyList<Schema>; omit?: never }
 	| { omit: ProjectionPropertyList<Schema>; select?: never }
 	| { select?: undefined; omit?: undefined };
 
-type ResolvedProjectionArgs<
+type ResolvedProjection<
 	Schema extends object,
-	ProjectionSelection extends ProjectionArgs<Schema> | undefined,
-> = ProjectionSelection extends ProjectionArgs<Schema>
+	ProjectionSelection extends Projection<Schema> | undefined,
+> = ProjectionSelection extends Projection<Schema>
 	? ProjectionSelection
-	: ProjectionArgs<Schema>;
+	: Projection<Schema>;
 
-export type ProjectedFromArgs<
+export type ResultProjection<
 		Schema extends object,
-		ProjectionSelection extends ProjectionArgs<Schema> | undefined = undefined,
+		ProjectionSelection extends Projection<Schema> | undefined = undefined,
 	> = [ProjectionSelection] extends [undefined]
 		? Partial<Schema>
 		: [ProjectionSelection] extends [
@@ -168,33 +168,33 @@ export type ProjectedFromArgs<
 				? Partial<Omit<Schema, OmittedPropertyNames[number]>>
 				: Partial<Schema>;
 
-export type FindManyArgs<
+export type FindMany<
 		Schema extends object,
 		ColumnTypes extends Record<keyof Schema, string>,
-		ProjectionSelection extends ProjectionArgs<Schema> | undefined = undefined,
+		ProjectionSelection extends Projection<Schema> | undefined = undefined,
 	> = {
 		where?: QueryFilter<Schema, ColumnTypes>;
 		sortBy?: SortBy<ColumnTypes>;
 		size?: number;
 		stream?: number;
 		after?: string | null;
-	} & ResolvedProjectionArgs<Schema, ProjectionSelection>;
+	} & ResolvedProjection<Schema, ProjectionSelection>;
 
-export type FindFirstArgs<
+export type FindFirst<
 		Schema extends object,
 		ColumnTypes extends Record<keyof Schema, string>,
-		ProjectionSelection extends ProjectionArgs<Schema> | undefined = undefined,
+		ProjectionSelection extends Projection<Schema> | undefined = undefined,
 	> = {
 		where?: QueryFilter<Schema, ColumnTypes>;
 		sortBy?: SortBy<ColumnTypes>;
-	} & ResolvedProjectionArgs<Schema, ProjectionSelection>;
+	} & ResolvedProjection<Schema, ProjectionSelection>;
 
-export type FindUniqueArgs<
+export type FindUnique<
 		Schema extends object,
-		ProjectionSelection extends ProjectionArgs<Schema> | undefined = undefined,
+		ProjectionSelection extends Projection<Schema> | undefined = undefined,
 	> = {
 		where: { id: string };
-	} & ResolvedProjectionArgs<Schema, ProjectionSelection>;
+	} & ResolvedProjection<Schema, ProjectionSelection>;
 
 export type PaginateResult<Row extends object> = {
 	data: Row[];
@@ -202,14 +202,14 @@ export type PaginateResult<Row extends object> = {
 	hasMore: boolean;
 };
 
-export type CountArgs<
+export type Count<
 		Schema extends object,
 		ColumnTypes extends Record<keyof Schema, string>,
 	> = {
 		where?: QueryFilter<Schema, ColumnTypes>;
 	};
 
-export type CreateArgs<Schema extends object> = {
+export type Create<Schema extends object> = {
 	properties: Schema;
 	icon?:
 		| { type: "emoji"; emoji: string }
@@ -218,16 +218,16 @@ export type CreateArgs<Schema extends object> = {
 	markdown?: string;
 };
 
-export type CreateManyArgs<Schema extends object> = {
+export type CreateMany<Schema extends object> = {
 	properties: Schema[];
 };
 
-export type UpdateArgs<Schema extends object> = {
+export type Update<Schema extends object> = {
 	where: { id: string };
 	properties: Partial<Schema>;
 };
 
-export type UpdateManyArgs<
+export type UpdateMany<
 		Schema extends object,
 		ColumnTypes extends Record<keyof Schema, string>,
 	> = {
@@ -235,7 +235,7 @@ export type UpdateManyArgs<
 		properties: Partial<Schema>;
 	};
 
-export type UpsertArgs<
+export type Upsert<
 		Schema extends object,
 		ColumnTypes extends Record<keyof Schema, string>,
 	> = {
@@ -244,11 +244,11 @@ export type UpsertArgs<
 		update: Partial<Schema>;
 	};
 
-export type DeleteArgs = {
+export type Delete = {
 	where: { id: string };
 };
 
-export type DeleteManyArgs<
+export type DeleteMany<
 		Schema extends object,
 		ColumnTypes extends Record<keyof Schema, string>,
 	> = {
@@ -272,83 +272,83 @@ export class DatabaseClient<
 
 		findMany<
 			ProjectionSelection extends
-				| ProjectionArgs<Schema>
+				| Projection<Schema>
 				| undefined = undefined,
 		>(
-			_args: FindManyArgs<Schema, ColumnTypes, ProjectionSelection> & {
+			_args: FindMany<Schema, ColumnTypes, ProjectionSelection> & {
 				stream: number;
 			},
-		): AsyncIterable<ProjectedFromArgs<Schema, ProjectionSelection>>;
+		): AsyncIterable<ResultProjection<Schema, ProjectionSelection>>;
 		findMany<
 			ProjectionSelection extends
-				| ProjectionArgs<Schema>
+				| Projection<Schema>
 				| undefined = undefined,
 		>(
-			_args: FindManyArgs<Schema, ColumnTypes, ProjectionSelection> & {
+			_args: FindMany<Schema, ColumnTypes, ProjectionSelection> & {
 				after: string | null;
 			},
-		): Promise<PaginateResult<ProjectedFromArgs<Schema, ProjectionSelection>>>;
+		): Promise<PaginateResult<ResultProjection<Schema, ProjectionSelection>>>;
 		findMany<
 			ProjectionSelection extends
-				| ProjectionArgs<Schema>
+				| Projection<Schema>
 				| undefined = undefined,
 		>(
-			_args?: FindManyArgs<Schema, ColumnTypes, ProjectionSelection>,
-		): Promise<Array<ProjectedFromArgs<Schema, ProjectionSelection>>>;
-		findMany(): Promise<Array<ProjectedFromArgs<Schema>>> {
+			_args?: FindMany<Schema, ColumnTypes, ProjectionSelection>,
+		): Promise<Array<ResultProjection<Schema, ProjectionSelection>>>;
+		findMany(): Promise<Array<ResultProjection<Schema>>> {
 			return Promise.resolve([]);
 		}
 
 		async findFirst<
 			ProjectionSelection extends
-				| ProjectionArgs<Schema>
+				| Projection<Schema>
 				| undefined = undefined,
 		>(
-			_args?: FindFirstArgs<Schema, ColumnTypes, ProjectionSelection>,
-		): Promise<ProjectedFromArgs<Schema, ProjectionSelection> | null> {
+			_args?: FindFirst<Schema, ColumnTypes, ProjectionSelection>,
+		): Promise<ResultProjection<Schema, ProjectionSelection> | null> {
 			return null;
 		}
 
 		async findUnique<
 			ProjectionSelection extends
-				| ProjectionArgs<Schema>
+				| Projection<Schema>
 				| undefined = undefined,
 		>(
-			_args: FindUniqueArgs<Schema, ProjectionSelection>,
-		): Promise<ProjectedFromArgs<Schema, ProjectionSelection> | null> {
+			_args: FindUnique<Schema, ProjectionSelection>,
+		): Promise<ResultProjection<Schema, ProjectionSelection> | null> {
 			return null;
 		}
 
-		async count(_args?: CountArgs<Schema, ColumnTypes>): Promise<number> {
+		async count(_args?: Count<Schema, ColumnTypes>): Promise<number> {
 			return 0;
 		}
 
-		async create(_args: CreateArgs<Schema>): Promise<{ id: string }> {
+		async create(_args: Create<Schema>): Promise<{ id: string }> {
 			return { id: "mock-page-id" };
 		}
 
 		async createMany(
-			_args: CreateManyArgs<Schema>,
+			_args: CreateMany<Schema>,
 		): Promise<Array<{ id: string }>> {
 			return [];
 		}
 
-		async update(_args: UpdateArgs<Schema>): Promise<void> {}
+		async update(_args: Update<Schema>): Promise<void> {}
 
 		async updateMany(
-			_args: UpdateManyArgs<Schema, ColumnTypes>,
+			_args: UpdateMany<Schema, ColumnTypes>,
 		): Promise<void> {}
 
 		async upsert(
-			_args: UpsertArgs<Schema, ColumnTypes>,
+			_args: Upsert<Schema, ColumnTypes>,
 		): Promise<{ id: string } | undefined> {
 			return { id: "mock-page-id" };
 		}
 
-		async delete(_args: DeleteArgs): Promise<void> {}
+		async delete(_args: Delete): Promise<void> {}
 
 		async deleteMany(
-			_args: DeleteManyArgs<Schema, ColumnTypes>,
+			_args: DeleteMany<Schema, ColumnTypes>,
 		): Promise<void> {}
 	}
 

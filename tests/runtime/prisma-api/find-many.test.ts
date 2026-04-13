@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { z } from "zod";
-import type { NotionPropertyValue } from "../../../src/client/query/types";
+import type { NotionPropertyValue } from "../../../src/client/database/query/types";
 import { objectKeys } from "../../../src/typeUtils";
 import {
 	emptyQueryDataSourceResponse,
@@ -30,7 +30,7 @@ mock.module("@notionhq/client", () => ({
 	},
 }));
 
-const { DatabaseClient } = await import("../../../src/client/DatabaseClient");
+const { DatabaseClient } = await import("../../../src/client/database/DatabaseClient");
 
 type TestSchema = {
 	shopName: string;

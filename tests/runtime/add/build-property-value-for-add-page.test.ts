@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildPropertyValueForAddPage } from "../../../src/client/add";
+import { buildPropertyValueForAddPage } from "../../../src/client/database/create";
 
 describe("buildPropertyValueForAddPage transformed property shape validation", () => {
 	test("validates transformed property shape: select", () => {

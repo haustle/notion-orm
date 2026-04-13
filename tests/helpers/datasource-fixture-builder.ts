@@ -3,7 +3,7 @@ import type {
 	PartialDataSourceObjectResponse,
 	RichTextItemResponse,
 } from "@notionhq/client/build/src/api-endpoints";
-import type { DatabasePropertyType } from "../../src/client/queryTypes";
+import type { DatabasePropertyType } from "../../src/client/database/types";
 
 export interface DataSourcePropertyFixtureSpec {
 	type: DatabasePropertyType;

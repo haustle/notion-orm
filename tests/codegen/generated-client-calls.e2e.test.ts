@@ -76,7 +76,7 @@ describe("generated database client e2e calls", () => {
 		const workspacePath = createTempWorkspace("generated-client-calls-");
 		const databaseClientSourcePath = join(
 			process.cwd(),
-			"src/client/DatabaseClient.ts",
+			"src/client/database/DatabaseClient.ts",
 		);
 		const zodSourcePath = join(process.cwd(), "node_modules/zod");
 

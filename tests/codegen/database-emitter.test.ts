@@ -6,7 +6,7 @@ import {
 	isSupportedPropertyType,
 	SUPPORTED_PROPERTY_TYPES,
 	type SupportedNotionColumnType,
-} from "../../src/client/queryTypes";
+} from "../../src/client/database/types";
 import { objectKeys } from "../../src/typeUtils";
 import {
 	CODEGEN_EMIT_PATHS,

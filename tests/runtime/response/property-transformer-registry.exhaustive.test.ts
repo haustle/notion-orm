@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { simplifiedPropertyValueTransformers } from "../../../src/client/query/response";
-import { SUPPORTED_PROPERTY_TYPES } from "../../../src/client/queryTypes";
+import { simplifiedPropertyValueTransformers } from "../../../src/client/database/query/response";
+import { SUPPORTED_PROPERTY_TYPES } from "../../../src/client/database/types";
 import { objectEntries } from "../../../src/typeUtils";
 
 describe("response transformer registry coverage", () => {

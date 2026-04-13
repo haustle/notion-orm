@@ -1,5 +1,5 @@
-import type { AgentClient } from "../../src/client/AgentClient";
-import type { Query } from "../../src/client/queryTypes";
+import type { AgentClient } from "../../src/client/agent/AgentClient";
+import type { Query } from "../../src/client/database/types";
 import type { Expect } from "./helpers/assert";
 
 type _queryExportContract = Expect<

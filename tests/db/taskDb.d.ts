@@ -1,4 +1,4 @@
-import type { SupportedNotionColumnType } from "../../src/client/queryTypes";
+import type { SupportedNotionColumnType } from "../../src/client/database/types";
 import type { DatabaseClient } from "../golden/base";
 
 type AddPropertyValue = Parameters<

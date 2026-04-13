@@ -6,14 +6,14 @@ import type {
 	RichTextItemResponse,
 	UserObjectResponse,
 } from "@notionhq/client/build/src/api-endpoints";
-import type { PropertyNameToColumnMetadataMap } from "../../src/client/DatabaseClient";
-import { buildQueryResponse } from "../../src/client/query";
-import type { NotionPropertyValue } from "../../src/client/query/types";
+import type { PropertyNameToColumnMetadataMap } from "../../src/client/database/DatabaseClient";
+import { buildQueryResponse } from "../../src/client/database/query";
+import type { NotionPropertyValue } from "../../src/client/database/query/types";
 import type {
 	QueryResponseWithoutRawResponse,
 	QueryResponseWithRawResponse,
 	SupportedNotionColumnType,
-} from "../../src/client/queryTypes";
+} from "../../src/client/database/types";
 
 // Narrows the Notion property union by the top-level `type` discriminator.
 type NotionPropertyValueByType<Type extends NotionPropertyValue["type"]> =

@@ -28,7 +28,7 @@ mock.module("@notionhq/client", () => {
 	};
 });
 
-const { DatabaseClient } = await import("../../src/client/DatabaseClient");
+const { DatabaseClient } = await import("../../src/client/database/DatabaseClient");
 
 type TestSchema = {
 	shopName: string;

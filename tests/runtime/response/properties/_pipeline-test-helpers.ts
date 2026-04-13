@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { QueryDataSourceResponse } from "@notionhq/client/build/src/api-endpoints";
-import { buildQueryResponse } from "../../../../src/client/query";
-import type { NotionPropertyValue } from "../../../../src/client/query/types";
-import type { SupportedNotionColumnType } from "../../../../src/client/queryTypes";
+import { buildQueryResponse } from "../../../../src/client/database/query";
+import type { NotionPropertyValue } from "../../../../src/client/database/query/types";
+import type { SupportedNotionColumnType } from "../../../../src/client/database/types";
 import { queryDataSourceListResponse } from "../../../helpers/query-data-source-response";
 
 const PRIMARY_COLUMN_NAME = "Primary Value";

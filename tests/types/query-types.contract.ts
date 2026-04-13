@@ -1,12 +1,12 @@
 import type {
-	FindFirstArgs,
-	FindManyArgs,
-	FindUniqueArgs,
-	ProjectedFromArgs,
-	ProjectionArgs,
+	FindFirst,
+	FindMany,
+	FindUnique,
+	Projection,
 	Query,
-	UpdateManyArgs,
-} from "../../src/client/queryTypes";
+	ResultProjection,
+	UpdateMany,
+} from "../../src/client/database/types";
 import type { Equal, Expect } from "./helpers/assert";
 
 type BookSchema = {
@@ -25,10 +25,10 @@ type BookColumnTypes = {
 	tags: "multi_select";
 };
 
-/** When `Projection` is inferred as the full `ProjectionArgs` union, row keys must stay the full schema (not `never`). */
-type _projectedFromInferredUnion = Expect<
+/** When `Projection` is inferred as the full projection union, row keys must stay the full schema (not `never`). */
+type _resultProjectionInferredUnion = Expect<
 	Equal<
-		keyof ProjectedFromArgs<BookSchema, ProjectionArgs<BookSchema>>,
+		keyof ResultProjection<BookSchema, Projection<BookSchema>>,
 		keyof Partial<BookSchema>
 	>
 >;
@@ -38,10 +38,10 @@ type ApiQueryFilterSortShape = Query<BookSchema, BookColumnTypes>;
 type _queryShapeExists = Expect<
 	ApiQueryFilterSortShape extends object ? true : false
 >;
-type FindManyShape = FindManyArgs<BookSchema, BookColumnTypes>;
-type FindFirstShape = FindFirstArgs<BookSchema, BookColumnTypes>;
-type FindUniqueShape = FindUniqueArgs<BookSchema>;
-type UpdateManyShape = UpdateManyArgs<BookSchema, BookColumnTypes>;
+type FindManyShape = FindMany<BookSchema, BookColumnTypes>;
+type FindFirstShape = FindFirst<BookSchema, BookColumnTypes>;
+type FindUniqueShape = FindUnique<BookSchema>;
+type UpdateManyShape = UpdateMany<BookSchema, BookColumnTypes>;
 
 const validQuery: ApiQueryFilterSortShape = {
 	filter: {

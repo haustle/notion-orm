@@ -1,19 +1,21 @@
 // @ts-nocheck — mock module template served to the website playground editor
 export type {
-	CountArgs,
-	CreateArgs,
-	CreateManyArgs,
+	Count,
+	Create,
+	CreateMany,
 	DatabasePropertyValue,
-	DeleteArgs,
-	DeleteManyArgs,
-	FindFirstArgs,
-	FindManyArgs,
-	FindUniqueArgs,
+	Delete,
+	DeleteMany,
+	FindFirst,
+	FindMany,
+	FindUnique,
 	NotionConfigType,
 	PaginateResult,
-	UpdateArgs,
-	UpdateManyArgs,
-	UpsertArgs,
+	Projection,
+	ResultProjection,
+	Update,
+	UpdateMany,
+	Upsert,
 } from "../../index.ts";
 export { AgentClient, DatabaseClient } from "../../index.ts";
 

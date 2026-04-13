@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import type { camelPropertyNameToNameAndTypeMapType } from "../../../src/client/DatabaseClient";
-import { transformQueryFilterToApiFilter } from "../../../src/client/query/filter";
-import type { QueryFilter } from "../../../src/client/queryTypes";
+import type { camelPropertyNameToNameAndTypeMapType } from "../../../src/client/database/DatabaseClient";
+import { transformQueryFilterToApiFilter } from "../../../src/client/database/query/filter";
+import type { QueryFilter } from "../../../src/client/database/types";
 
 type QuerySchema = {
 	shopName: string;

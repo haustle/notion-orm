@@ -3,7 +3,7 @@ import type {
 	PartialDataSourceObjectResponse,
 	QueryDataSourceResponse,
 } from "@notionhq/client/build/src/api-endpoints";
-import { buildQueryResponse } from "../../../src/client/query";
+import { buildQueryResponse } from "../../../src/client/database/query";
 import {
 	databasePropertyValue,
 	page,
