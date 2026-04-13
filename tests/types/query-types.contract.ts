@@ -11,6 +11,7 @@ import type {
 	UpdateMany,
 } from "../../src/client/database/types";
 import type { Equal, Expect } from "./helpers/assert";
+import { MOCK_PAGE_ID } from "../helpers/test-mock-ids";
 
 const NeighborhoodOptions = ["Downtown", "Midtown"] as const;
 const TagOptions = ["quiet", "outdoor", "study"] as const;
@@ -119,7 +120,7 @@ const validFindFirstProjection: FindFirstShape = {
 void validFindFirstProjection;
 
 const validFindUniqueProjection: FindUniqueShape = {
-	where: { id: "page-1" },
+	where: { id: MOCK_PAGE_ID },
 	select: ["shopName"] as const,
 };
 void validFindUniqueProjection;

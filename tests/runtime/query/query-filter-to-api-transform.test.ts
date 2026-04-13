@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { describe, expect, test } from "bun:test";
 import type {
 	DatabaseColumns,
@@ -6,6 +7,15 @@ import type {
 	QueryFilter,
 } from "../../../src/client/database/types";
 import { transformQueryFilterToApiFilter } from "../../../src/client/database/query/filter";
+import { toNotionDatabaseId } from "../../../src/client/database/types/notion-database-id";
+import {
+	MOCK_PAGE_ID,
+	MOCK_USER_ID,
+	MOCK_USER_ID_2,
+	MOCK_USER_ID_3,
+} from "../../helpers/test-mock-ids";
+
+const RELATION_RELATED_DATABASE_ID = toNotionDatabaseId(randomUUID());
 
 const visitStatusOptions = ["Open", "Closed"] as const;
 const tagOptions = ["quiet", "brunch", "study"] as const;
@@ -35,7 +45,7 @@ const map = {
 	relatedPages: {
 		columnName: "Related Pages",
 		type: "relation",
-		relatedDatabaseId: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4",
+		relatedDatabaseId: RELATION_RELATED_DATABASE_ID,
 	},
 	owners: { columnName: "Owners", type: "people" },
 	createdByUser: { columnName: "Created By User", type: "created_by" },
@@ -132,10 +142,10 @@ describe("query filter transform", () => {
 				{ neighborhood: { equals: "Downtown" } },
 				{ notes: { contains: "espresso" } },
 				{ attachments: { is_not_empty: true } },
-				{ relatedPages: { contains: "page-1" } },
-				{ owners: { contains: "user-1" } },
-				{ createdByUser: { contains: "user-2" } },
-				{ lastEditedByUser: { does_not_contain: "user-3" } },
+				{ relatedPages: { contains: MOCK_PAGE_ID } },
+				{ owners: { contains: MOCK_USER_ID } },
+				{ createdByUser: { contains: MOCK_USER_ID_2 } },
+				{ lastEditedByUser: { does_not_contain: MOCK_USER_ID_3 } },
 				{ createdAt: { on_or_after: "2026-02-01" } },
 				{ updatedAt: { before: "2026-03-01" } },
 			],
@@ -181,19 +191,19 @@ describe("query filter transform", () => {
 				},
 				{
 					property: "Related Pages",
-					relation: { contains: "page-1" },
+					relation: { contains: MOCK_PAGE_ID },
 				},
 				{
 					property: "Owners",
-					people: { contains: "user-1" },
+					people: { contains: MOCK_USER_ID },
 				},
 				{
 					property: "Created By User",
-					created_by: { contains: "user-2" },
+					created_by: { contains: MOCK_USER_ID_2 },
 				},
 				{
 					property: "Last Edited By User",
-					last_edited_by: { does_not_contain: "user-3" },
+					last_edited_by: { does_not_contain: MOCK_USER_ID_3 },
 				},
 				{
 					property: "Created At",

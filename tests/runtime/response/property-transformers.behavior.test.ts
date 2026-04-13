@@ -18,6 +18,8 @@ import { resolveStatus } from "../../../src/client/database/query/response/statu
 import { resolveTitle } from "../../../src/client/database/query/response/title";
 import { resolveUniqueId } from "../../../src/client/database/query/response/unique_id";
 import { resolveUrl } from "../../../src/client/database/query/response/url";
+import { randomUUID } from "node:crypto";
+import { toUndashedNotionId } from "../../../src/helpers";
 import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
 
 describe("individual property transformers", () => {
@@ -53,9 +55,11 @@ describe("individual property transformers", () => {
 	});
 
 	test("relation", () => {
+		const a = randomUUID();
+		const b = randomUUID();
 		expect(
-			resolveRelation(databasePropertyValue.relation(["p1", "p2"])),
-		).toEqual(["p1", "p2"]);
+			resolveRelation(databasePropertyValue.relation([a, b])),
+		).toEqual([toUndashedNotionId(a), toUndashedNotionId(b)]);
 		expect(resolveRelation(databasePropertyValue.number(1))).toBeNull();
 	});
 

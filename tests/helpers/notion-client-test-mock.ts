@@ -51,7 +51,9 @@ export type PrismaApiPagesRetrieveFn = (
 ) => Promise<GetPageResponse>;
 
 /** Default prisma-api fixture database id (matches most runtime tests). */
-export const PRISMA_API_TEST_DATABASE_ID = "db-1";
+import { MOCK_DATA_SOURCE_ID } from "./test-mock-ids";
+
+export const PRISMA_API_TEST_DATABASE_ID = MOCK_DATA_SOURCE_ID;
 
 /** Default auth token string for prisma-api tests. */
 export const PRISMA_API_TEST_AUTH = "token";

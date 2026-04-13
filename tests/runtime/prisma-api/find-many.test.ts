@@ -15,6 +15,10 @@ import {
 	databasePropertyValue,
 	page,
 } from "../../helpers/query-transform-fixtures";
+import {
+	MOCK_DATA_SOURCE_ID,
+	MOCK_PAGE_ID,
+} from "../../helpers/test-mock-ids";
 
 const { dataSourceQueryMock, pagesCreateMock, pagesUpdateMock, pagesRetrieveMock } =
 	installPrismaApiNotionClientMock();
@@ -52,7 +56,7 @@ function mockQueryResponse(
 
 function makePage(
 	properties: Record<string, NotionPropertyValue>,
-	id = "page-1",
+	id = MOCK_PAGE_ID,
 ): QueryDataSourceResultRow {
 	return page(properties, id);
 }
@@ -139,7 +143,7 @@ describe("findMany", () => {
 		});
 		expect(dataSourceQueryMock).toHaveBeenCalledWith(
 			expect.objectContaining({
-				data_source_id: "db-1",
+				data_source_id: MOCK_DATA_SOURCE_ID,
 				filter: {
 					property: "Rating",
 					number: { greater_than: 3 },

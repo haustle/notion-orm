@@ -7,6 +7,10 @@ import {
 } from "../helpers/notion-client-test-mock";
 import { queryDataSourceListResponse } from "../helpers/query-data-source-response";
 import { databasePropertyValue } from "../helpers/query-transform-fixtures";
+import {
+	MOCK_DATA_SOURCE_ID,
+	MOCK_PAGE_ID,
+} from "../helpers/test-mock-ids";
 
 const { dataSourceQueryMock, pagesCreateMock } = installPrismaApiNotionClientMock();
 
@@ -39,7 +43,7 @@ describe("DatabaseClient contract", () => {
 			queryDataSourceListResponse([
 				{
 					object: "page",
-					id: "page-1",
+					id: MOCK_PAGE_ID,
 					properties: {
 						"Shop Name": databasePropertyValue.title("Blue Bottle"),
 						Rating: databasePropertyValue.number(5),
@@ -58,7 +62,7 @@ describe("DatabaseClient contract", () => {
 
 		expect(dataSourceQueryMock).toHaveBeenCalledTimes(1);
 		expect(dataSourceQueryMock).toHaveBeenCalledWith({
-			data_source_id: "db-1",
+			data_source_id: MOCK_DATA_SOURCE_ID,
 			filter: {
 				property: "Rating",
 				number: { greater_than: 3 },
@@ -88,7 +92,7 @@ describe("DatabaseClient contract", () => {
 		expect(pagesCreateMock).toHaveBeenCalledTimes(1);
 		expect(pagesCreateMock).toHaveBeenCalledWith({
 			parent: {
-				data_source_id: "db-1",
+				data_source_id: MOCK_DATA_SOURCE_ID,
 				type: "data_source_id",
 			},
 			properties: {
@@ -113,7 +117,7 @@ describe("DatabaseClient contract", () => {
 			queryDataSourceListResponse([
 				{
 					object: "page",
-					id: "page-1",
+					id: MOCK_PAGE_ID,
 					properties: {
 						"Shop Name": databasePropertyValue.title("Blue Bottle"),
 						Rating: databasePropertyValue.number(5),

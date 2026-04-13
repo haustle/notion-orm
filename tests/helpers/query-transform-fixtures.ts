@@ -6,6 +6,7 @@ import type {
 	RichTextItemResponse,
 	UserObjectResponse,
 } from "@notionhq/client/build/src/api-endpoints";
+import { randomUUID } from "node:crypto";
 import { buildQueryResponse } from "../../src/client/database/query";
 import type { NotionPropertyValue } from "../../src/client/database/query/types";
 import type {
@@ -123,11 +124,11 @@ export function buildColumnNameToColumnProperties<
 const DEFAULT_TIMESTAMP = "2026-03-01T00:00:00.000Z";
 
 export function createMockUuid(): string {
-	return crypto.randomUUID();
+	return randomUUID();
 }
 
 export function createMockShortId(length = 4): string {
-	return crypto.randomUUID().replace(/-/g, "").slice(0, length);
+	return randomUUID().replace(/-/g, "").slice(0, length);
 }
 
 function createRichText(content: string): RichTextItemResponse {

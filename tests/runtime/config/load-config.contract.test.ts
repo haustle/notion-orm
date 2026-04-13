@@ -6,6 +6,10 @@ import {
 } from "../../../src/config/loadConfig";
 import { CODEGEN_EMIT_PATHS } from "../../helpers/codegen-file-names";
 import {
+	MOCK_DATA_SOURCE_ID,
+	MOCK_DATA_SOURCE_ID_B,
+} from "../../helpers/test-mock-ids";
+import {
 	cleanupTempWorkspaces,
 	createTempWorkspace,
 	writeWorkspaceFile,
@@ -34,7 +38,7 @@ describe("config loading contracts", () => {
 			content: [
 				"export default {",
 				"  auth: 'token-123',",
-				"  databases: ['db-1'],",
+				`  databases: ['${MOCK_DATA_SOURCE_ID}'],`,
 				"  agents: ['agent-1'],",
 				"};",
 			].join("\n"),
@@ -43,7 +47,7 @@ describe("config loading contracts", () => {
 		const config = await loadConfig(configPath);
 		expect(config).toEqual({
 			auth: "token-123",
-			databases: ["db-1"],
+			databases: [MOCK_DATA_SOURCE_ID],
 			agents: ["agent-1"],
 		});
 	});
@@ -107,7 +111,7 @@ describe("config loading contracts", () => {
 			content: [
 				"export default {",
 				"  auth: 'config-auth-token',",
-				"  databases: ['db-1', 'db-2'],",
+				`  databases: ['${MOCK_DATA_SOURCE_ID}', '${MOCK_DATA_SOURCE_ID_B}'],`,
 				"  agents: ['agent-1'],",
 				"};",
 			].join("\n"),
@@ -117,7 +121,10 @@ describe("config loading contracts", () => {
 
 		const config = await getNotionConfig();
 		expect(config.auth).toBe("config-auth-token");
-		expect(config.databases).toEqual(["db-1", "db-2"]);
+		expect(config.databases).toEqual([
+			MOCK_DATA_SOURCE_ID,
+			MOCK_DATA_SOURCE_ID_B,
+		]);
 		expect(config.agents).toEqual(["agent-1"]);
 	});
 });

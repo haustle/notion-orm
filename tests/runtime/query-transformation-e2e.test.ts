@@ -1,4 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { randomUUID } from "node:crypto";
+import { toNotionDatabaseId } from "../../src/client/database/types/notion-database-id";
+import { toUndashedNotionId } from "../../src/helpers";
+import {
+	MOCK_USER_ID,
+} from "../helpers/test-mock-ids";
 import {
 	buildQueryScenario,
 	databasePropertyValue,
@@ -34,13 +40,21 @@ const e2eCategoryOptions = ["Cafe", "Bakery"] as const;
 
 describe("runtime database capability", () => {
 	test("build schema + mock API results + transform normalized response", () => {
+		const relatedPageA = randomUUID();
+		const relatedPageB = randomUUID();
+		const relatedPagesExpected = [
+			toUndashedNotionId(relatedPageA),
+			toUndashedNotionId(relatedPageB),
+		];
+		const relatedDatabaseId = toNotionDatabaseId(randomUUID());
+
 		const schema = defineDatabaseSchema({
 			attachments: { type: "files", columnName: "Attachments" },
 			owners: { type: "people", columnName: "Owners" },
 					relatedPages: {
 						type: "relation",
 						columnName: "Related Pages",
-						relatedDatabaseId: "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5",
+						relatedDatabaseId,
 					},
 			createdByUser: { type: "created_by", columnName: "Created By User" },
 			lastEditedByUser: {
@@ -83,9 +97,12 @@ describe("runtime database capability", () => {
 						{ name: "menu.pdf", url: "https://files.dev/menu.pdf" },
 					]),
 					Owners: databasePropertyValue.people([
-						{ id: "user-1", name: "Tyrus" },
+						{ id: MOCK_USER_ID, name: "Tyrus" },
 					]),
-					"Related Pages": databasePropertyValue.relation(["page-1", "page-2"]),
+					"Related Pages": databasePropertyValue.relation([
+						relatedPageA,
+						relatedPageB,
+					]),
 					"Created By User": databasePropertyValue.createdBy(
 						"created-1",
 						"Admin",
@@ -132,7 +149,7 @@ describe("runtime database capability", () => {
 		expect(validatedResult).toEqual({
 			attachments: [{ name: "menu.pdf", url: "https://files.dev/menu.pdf" }],
 			owners: ["Tyrus"],
-			relatedPages: ["page-1", "page-2"],
+			relatedPages: relatedPagesExpected,
 			createdByUser: "Admin",
 			lastEditedByUser: "Reviewer",
 			createdAt: "2026-03-01T10:00:00.000Z",
@@ -155,7 +172,7 @@ describe("runtime database capability", () => {
 			{
 				attachments: [{ name: "menu.pdf", url: "https://files.dev/menu.pdf" }],
 				owners: ["Tyrus"],
-				relatedPages: ["page-1", "page-2"],
+				relatedPages: relatedPagesExpected,
 				createdByUser: "Admin",
 				lastEditedByUser: "Reviewer",
 				createdAt: "2026-03-01T10:00:00.000Z",

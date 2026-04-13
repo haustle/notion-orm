@@ -1,8 +1,17 @@
+import { randomUUID } from "node:crypto";
 import { databasePropertyValue } from "../../../helpers/query-transform-fixtures";
+import { toUndashedNotionId } from "../../../../src/helpers";
 import {
 	describePropertyPipelineCases,
 	type PropertyPipelineCase,
 } from "./_pipeline-test-helpers";
+
+const relationPipelineDashedA = randomUUID();
+const relationPipelineDashedB = randomUUID();
+const relationPipelineExpectedUndashed = [
+	toUndashedNotionId(relationPipelineDashedA),
+	toUndashedNotionId(relationPipelineDashedB),
+] as const;
 
 const propertyPipelineCases: Array<{
 	name: string;
@@ -219,8 +228,11 @@ const propertyPipelineCases: Array<{
 		name: "relation",
 		testCase: {
 			propertyType: "relation",
-			validPropertyValue: databasePropertyValue.relation(["page-1", "page-2"]),
-			expectedValidValue: ["page-1", "page-2"],
+			validPropertyValue: databasePropertyValue.relation([
+				relationPipelineDashedA,
+				relationPipelineDashedB,
+			]),
+			expectedValidValue: [...relationPipelineExpectedUndashed],
 			mismatchedPropertyValue: databasePropertyValue.number(1),
 			malformedPropertyValue: {
 				id: "relation",

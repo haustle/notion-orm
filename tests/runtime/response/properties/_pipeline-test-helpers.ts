@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { QueryDataSourceResponse } from "@notionhq/client/build/src/api-endpoints";
+import { randomUUID } from "node:crypto";
 import { buildQueryResponse } from "../../../../src/client/database/query";
 import type { NotionPropertyValue } from "../../../../src/client/database/query/types";
+import { toNotionDatabaseId } from "../../../../src/client/database/types/notion-database-id";
 import {
 	isColumnTypesWithOptions,
 	type ColumnDefinition,
@@ -14,8 +16,8 @@ const PRIMARY_COLUMN_NAME = "Primary Value";
 const PRIMARY_CAMEL_COLUMN_NAME = "primaryValue";
 const UNMAPPED_COLUMN_NAME = "Unmapped Value";
 
-const PIPELINE_RELATION_RELATED_DATABASE_ID =
-	"a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4";
+const PIPELINE_PAGE_ID = randomUUID();
+const PIPELINE_RELATION_RELATED_DATABASE_ID = toNotionDatabaseId(randomUUID());
 
 function columnDefinitionForPipeline(
 	columnName: string,
@@ -58,7 +60,7 @@ function buildSinglePageResponse(args: {
 		// @ts-expect-error malformed fixture
 		{
 			object: "page",
-			id: "pipeline-page-1",
+			id: PIPELINE_PAGE_ID,
 			properties,
 		},
 	]);

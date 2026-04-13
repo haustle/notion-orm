@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { randomUUID } from "node:crypto";
+import { toUndashedNotionId } from "../../../src/helpers";
 import { buildPropertyValueForAddPage } from "../../../src/client/database/create";
 
 describe("buildPropertyValueForAddPage transformed property shape validation", () => {
@@ -106,24 +108,34 @@ describe("buildPropertyValueForAddPage transformed property shape validation", (
 	});
 
 	test("validates transformed property shape: people", () => {
+		const u1 = randomUUID();
+		const u2 = randomUUID();
 		expect(
 			buildPropertyValueForAddPage({
 				type: "people",
-				value: ["user-1", "user-2"],
+				value: [u1, u2],
 			}),
 		).toEqual({
-			people: [{ id: "user-1" }, { id: "user-2" }],
+			people: [
+				{ id: toUndashedNotionId(u1) },
+				{ id: toUndashedNotionId(u2) },
+			],
 		});
 	});
 
 	test("validates transformed property shape: relation", () => {
+		const p1 = randomUUID();
+		const p2 = randomUUID();
 		expect(
 			buildPropertyValueForAddPage({
 				type: "relation",
-				value: ["page-1", "page-2"],
+				value: [p1, p2],
 			}),
 		).toEqual({
-			relation: [{ id: "page-1" }, { id: "page-2" }],
+			relation: [
+				{ id: toUndashedNotionId(p1) },
+				{ id: toUndashedNotionId(p2) },
+			],
 		});
 	});
 

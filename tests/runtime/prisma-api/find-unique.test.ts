@@ -5,6 +5,7 @@ import {
 	prismaApiDataSourceParent,
 } from "../../helpers/notion-client-test-mock";
 import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
+import { MOCK_DATA_SOURCE_ID } from "../../helpers/test-mock-ids";
 
 const { pagesRetrieveMock } = installPrismaApiNotionClientMock();
 
@@ -26,7 +27,7 @@ describe("findUnique", () => {
 		pagesRetrieveMock.mockResolvedValueOnce({
 			object: "page",
 			id: "page-abc",
-			parent: prismaApiDataSourceParent({ dataSourceId: "db-1" }),
+			parent: prismaApiDataSourceParent({ dataSourceId: MOCK_DATA_SOURCE_ID }),
 			properties: {
 				"Shop Name": databasePropertyValue.title("Blue Bottle"),
 				Rating: databasePropertyValue.number(5),
@@ -52,7 +53,7 @@ describe("findUnique", () => {
 		pagesRetrieveMock.mockResolvedValueOnce({
 			object: "page",
 			id: "page-abc",
-			parent: prismaApiDataSourceParent({ dataSourceId: "db-1" }),
+			parent: prismaApiDataSourceParent({ dataSourceId: MOCK_DATA_SOURCE_ID }),
 			properties: {
 				"Shop Name": databasePropertyValue.title("Blue Bottle"),
 				Rating: databasePropertyValue.number(5),

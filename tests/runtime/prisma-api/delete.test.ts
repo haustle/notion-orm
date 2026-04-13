@@ -7,14 +7,18 @@ import {
 } from "../../helpers/notion-client-test-mock";
 import { queryDataSourceListResponse } from "../../helpers/query-data-source-response";
 import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
+import {
+	MOCK_DATA_SOURCE_ID,
+	MOCK_PAGE_ID,
+} from "../../helpers/test-mock-ids";
 
 const { dataSourceQueryMock, pagesUpdateMock, pagesRetrieveMock } =
 	installPrismaApiNotionClientMock({
 		pagesUpdateMock: mock(async () => prismaApiStubPartialPage("archived")),
 		pagesRetrieveMock: mock(async () => ({
 			object: "page" as const,
-			id: "page-1",
-			parent: prismaApiDataSourceParent({ dataSourceId: "db-1" }),
+			id: MOCK_PAGE_ID,
+			parent: prismaApiDataSourceParent({ dataSourceId: MOCK_DATA_SOURCE_ID }),
 			properties: {
 				"Shop Name": databasePropertyValue.title("A"),
 				Rating: databasePropertyValue.number(1),
@@ -38,8 +42,8 @@ describe("delete", () => {
 		pagesRetrieveMock.mockReset();
 		pagesRetrieveMock.mockResolvedValue({
 			object: "page",
-			id: "page-1",
-			parent: prismaApiDataSourceParent({ dataSourceId: "db-1" }),
+			id: MOCK_PAGE_ID,
+			parent: prismaApiDataSourceParent({ dataSourceId: MOCK_DATA_SOURCE_ID }),
 			properties: {
 				"Shop Name": databasePropertyValue.title("A"),
 				Rating: databasePropertyValue.number(1),
@@ -50,12 +54,12 @@ describe("delete", () => {
 
 	test("calls pages.update with in_trash: true", async () => {
 		const client = createClient();
-		await client.delete({ where: { id: "page-1" } });
+		await client.delete({ where: { id: MOCK_PAGE_ID } });
 		expect(pagesUpdateMock).toHaveBeenCalledWith({
-			page_id: "page-1",
+			page_id: MOCK_PAGE_ID,
 			in_trash: true,
 		});
-		expect(pagesRetrieveMock).toHaveBeenCalledWith({ page_id: "page-1" });
+		expect(pagesRetrieveMock).toHaveBeenCalledWith({ page_id: MOCK_PAGE_ID });
 	});
 
 	test("throws when id is missing", async () => {
@@ -69,14 +73,14 @@ describe("delete", () => {
 		pagesUpdateMock.mockRejectedValueOnce(new Error("Not Found"));
 		const client = createClient();
 		await expect(
-			client.delete({ where: { id: "page-1" } }),
+			client.delete({ where: { id: MOCK_PAGE_ID } }),
 		).rejects.toThrow("Not Found");
 	});
 
 	test("throws when the page belongs to another data source", async () => {
 		pagesRetrieveMock.mockResolvedValueOnce({
 			object: "page",
-			id: "page-1",
+			id: MOCK_PAGE_ID,
 			parent: prismaApiDataSourceParent({ dataSourceId: "other-db" }),
 			properties: {
 				"Shop Name": databasePropertyValue.title("A"),
@@ -84,8 +88,8 @@ describe("delete", () => {
 			},
 		});
 		const client = createClient();
-		await expect(client.delete({ where: { id: "page-1" } })).rejects.toThrow(
-			"[@haustle/notion-orm] delete(): page page-1 does not belong to database Coffee Shops.",
+		await expect(client.delete({ where: { id: MOCK_PAGE_ID } })).rejects.toThrow(
+			`[@haustle/notion-orm] delete(): page ${MOCK_PAGE_ID} does not belong to database Coffee Shops.`,
 		);
 		expect(pagesUpdateMock).not.toHaveBeenCalled();
 	});

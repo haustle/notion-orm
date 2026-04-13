@@ -12,6 +12,10 @@ import {
 	queryDataSourceListResponse,
 } from "../../helpers/query-data-source-response";
 import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
+import {
+	MOCK_DATA_SOURCE_ID,
+	MOCK_PAGE_ID,
+} from "../../helpers/test-mock-ids";
 import { isRecord } from "../../helpers/type-guards";
 
 const { dataSourceQueryMock, pagesUpdateMock, pagesRetrieveMock } =
@@ -21,8 +25,8 @@ const { dataSourceQueryMock, pagesUpdateMock, pagesRetrieveMock } =
 		),
 		pagesRetrieveMock: mock<PrismaApiPagesRetrieveFn>(async () => ({
 			object: "page" as const,
-			id: "page-1",
-			parent: prismaApiDataSourceParent({ dataSourceId: "db-1" }),
+			id: MOCK_PAGE_ID,
+			parent: prismaApiDataSourceParent({ dataSourceId: MOCK_DATA_SOURCE_ID }),
 			properties: {
 				"Shop Name": databasePropertyValue.title("A"),
 				Rating: databasePropertyValue.number(3),
@@ -46,8 +50,8 @@ describe("update", () => {
 		pagesRetrieveMock.mockReset();
 		pagesRetrieveMock.mockResolvedValue({
 			object: "page",
-			id: "page-1",
-			parent: prismaApiDataSourceParent({ dataSourceId: "db-1" }),
+			id: MOCK_PAGE_ID,
+			parent: prismaApiDataSourceParent({ dataSourceId: MOCK_DATA_SOURCE_ID }),
 			properties: {
 				"Shop Name": databasePropertyValue.title("A"),
 				Rating: databasePropertyValue.number(3),
@@ -59,20 +63,20 @@ describe("update", () => {
 	test("calls pages.update with page_id and property patch", async () => {
 		const client = createClient();
 		await client.update({
-			where: { id: "page-1" },
+			where: { id: MOCK_PAGE_ID },
 			properties: { rating: 4 },
 		});
 		expect(pagesUpdateMock).toHaveBeenCalledWith({
-			page_id: "page-1",
+			page_id: MOCK_PAGE_ID,
 			properties: { Rating: { number: 4 } },
 		});
-		expect(pagesRetrieveMock).toHaveBeenCalledWith({ page_id: "page-1" });
+		expect(pagesRetrieveMock).toHaveBeenCalledWith({ page_id: MOCK_PAGE_ID });
 	});
 
 	test("sends only changed fields", async () => {
 		const client = createClient();
 		await client.update({
-			where: { id: "page-1" },
+			where: { id: MOCK_PAGE_ID },
 			properties: { shopName: "New Name" },
 		});
 		expect(pagesUpdateMock).toHaveBeenCalled();
@@ -100,7 +104,7 @@ describe("update", () => {
 	test("throws when properties is empty", async () => {
 		const client = createClient();
 		await expect(
-			client.update({ where: { id: "page-1" }, properties: {} }),
+			client.update({ where: { id: MOCK_PAGE_ID }, properties: {} }),
 		).rejects.toThrow(
 			"[@haustle/notion-orm] update(): pass at least one key in properties.",
 		);
@@ -110,14 +114,14 @@ describe("update", () => {
 		pagesUpdateMock.mockRejectedValueOnce(new Error("Forbidden"));
 		const client = createClient();
 		await expect(
-			client.update({ where: { id: "page-1" }, properties: { rating: 1 } }),
+			client.update({ where: { id: MOCK_PAGE_ID }, properties: { rating: 1 } }),
 		).rejects.toThrow("Forbidden");
 	});
 
 	test("throws when the page belongs to another data source", async () => {
 		pagesRetrieveMock.mockResolvedValueOnce({
 			object: "page",
-			id: "page-1",
+			id: MOCK_PAGE_ID,
 			parent: prismaApiDataSourceParent({ dataSourceId: "other-db" }),
 			properties: {
 				"Shop Name": databasePropertyValue.title("A"),
@@ -126,9 +130,9 @@ describe("update", () => {
 		});
 		const client = createClient();
 		await expect(
-			client.update({ where: { id: "page-1" }, properties: { rating: 1 } }),
+			client.update({ where: { id: MOCK_PAGE_ID }, properties: { rating: 1 } }),
 		).rejects.toThrow(
-			"[@haustle/notion-orm] update(): page page-1 does not belong to database Coffee Shops.",
+			`[@haustle/notion-orm] update(): page ${MOCK_PAGE_ID} does not belong to database Coffee Shops.`,
 		);
 		expect(pagesUpdateMock).not.toHaveBeenCalled();
 	});

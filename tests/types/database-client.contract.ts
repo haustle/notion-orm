@@ -6,6 +6,7 @@ import type {
 	PaginateResult,
 } from "../../src/client/database/types";
 import type { Equal, Expect } from "./helpers/assert";
+import { MOCK_PAGE_ID } from "../helpers/test-mock-ids";
 
 const columns = {
 	shopName: { columnName: "Shop Name", type: "title" },
@@ -28,7 +29,7 @@ const firstSelectedPromise = client.findFirst({
 	select: ["shopName"] as const,
 });
 const uniqueOmittedPromise = client.findUnique({
-	where: { id: "page-1" },
+	where: { id: MOCK_PAGE_ID },
 	omit: ["rating"] as const,
 });
 const paginatedSelectedPromise = client.findMany({

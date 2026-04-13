@@ -6,6 +6,7 @@ import {
 	prismaApiStubPartialPage,
 	type PrismaApiPagesCreateFn,
 } from "../../helpers/notion-client-test-mock";
+import { MOCK_DATA_SOURCE_ID } from "../../helpers/test-mock-ids";
 import { isRecord } from "../../helpers/type-guards";
 
 const { pagesCreateMock } = installPrismaApiNotionClientMock({
@@ -37,7 +38,7 @@ describe("create", () => {
 		expect(result.id).toBe("created-page-id");
 		expect(pagesCreateMock).toHaveBeenCalledWith(
 			expect.objectContaining({
-				parent: { data_source_id: "db-1", type: "data_source_id" },
+				parent: { data_source_id: MOCK_DATA_SOURCE_ID, type: "data_source_id" },
 				properties: {
 					"Shop Name": { title: [{ text: { content: "Cafe Nervosa" } }] },
 					Rating: { number: 4 },
