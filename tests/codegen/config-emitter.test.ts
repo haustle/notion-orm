@@ -24,6 +24,10 @@ import {
 	expectNormalizedCodeToMatch,
 	readGolden,
 } from "../helpers/golden-code-assertions";
+import {
+	MOCK_DATA_SOURCE_ID,
+	MOCK_DATA_SOURCE_ID_B,
+} from "../helpers/test-mock-ids";
 
 function extractListFromVariable(args: {
 	sourceCode: string;
@@ -160,7 +164,7 @@ describe("config emitter", () => {
 			"};",
 			"const NotionConfig = {",
 			"\tauth,",
-			'\tdatabases: ["db-1"],',
+			`\tdatabases: ["${MOCK_DATA_SOURCE_ID}"],`,
 			"\tagents: [],",
 			"};",
 			"export default NotionConfig;",
@@ -170,7 +174,7 @@ describe("config emitter", () => {
 			sourceCode: originalContent,
 			isTS: true,
 			key: "databases",
-			items: [{ value: "db-2", comment: "Orders" }],
+			items: [{ value: MOCK_DATA_SOURCE_ID_B, comment: "Orders" }],
 			strategy: "appendUnique",
 		});
 		expect(patched.modified).toBe(true);
@@ -187,7 +191,7 @@ describe("config emitter", () => {
 				variableName: "NotionConfig",
 				listKey: "databases",
 			}),
-		).toEqual(["db-1", "db-2"]);
+		).toEqual([MOCK_DATA_SOURCE_ID, MOCK_DATA_SOURCE_ID_B]);
 	});
 
 	// Checks patched config arrays are emitted as one-item-per-line lists.
@@ -196,7 +200,7 @@ describe("config emitter", () => {
 			'const auth = process.env.NOTION_KEY || "key";',
 			"const NotionConfig = {",
 			"\tauth,",
-			'\tdatabases: ["db-1"],',
+			`\tdatabases: ["${MOCK_DATA_SOURCE_ID}"],`,
 			'\tagents: ["agent-old"],',
 			"};",
 			"export default NotionConfig;",

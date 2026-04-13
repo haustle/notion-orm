@@ -57,6 +57,37 @@ export function printTsNodes(args: {
 }
 
 /**
+ * Prints multiple statement groups with a blank line between groups.
+ * Use this when comments alone do not create enough visual separation in generated modules.
+ */
+export function printTsNodeSegments(args: {
+	segments: readonly (readonly ts.Statement[])[];
+	context?: TsEmitContext;
+	listFormat?: ts.ListFormat;
+}): string {
+	const { segments, context = createEmitContext(), listFormat } = args;
+	const nonEmpty = segments.filter((segment) => segment.length > 0);
+	return nonEmpty
+		.map((segment) =>
+			printTsNodes({ nodes: segment, context, listFormat }).trimEnd(),
+		)
+		.join("\n\n");
+}
+
+/** Inserts a blank line after a two-line `//` banner (before the next non-comment line). */
+export function insertBlankLineAfterDoubleSlashBanner(code: string): string {
+	return code.replace(
+		/^(\/\/[^\n]+\r?\n\/\/[^\n]+)\r?\n(?=import\b)/m,
+		"$1\n\n",
+	);
+}
+
+/** Ensures emitted text ends with a single trailing newline (POSIX-friendly). */
+export function finalizeGeneratedSourceWithTrailingNewline(code: string): string {
+	return code.endsWith("\n") ? code : `${code}\n`;
+}
+
+/**
  * Transpiles generated TypeScript text into JavaScript text.
  * Callers provide module/target options based on the artifact being emitted.
  */

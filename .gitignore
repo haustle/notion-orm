@@ -1,5 +1,6 @@
 node_modules
 build
+notion
 db
 .env
 package-lock.json

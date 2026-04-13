@@ -44,12 +44,12 @@ describe("registry emitter", () => {
 		const runtimeModules = [
 			{
 				fileName: CODEGEN_EMIT_PATHS.inventoryItemsModuleJs,
-				exportName: "inventoryItems",
+				exportName: "InventoryItems",
 				id: "inventory-items",
 			},
 			{
 				fileName: CODEGEN_EMIT_PATHS.customerOrdersModuleJs,
-				exportName: "customerOrders",
+				exportName: "CustomerOrders",
 				id: "customer-orders",
 			},
 		] as const;

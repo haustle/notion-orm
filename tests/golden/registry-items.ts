@@ -1,6 +1,6 @@
-import { inventoryItems } from "./inventoryItems";
-import { customerOrders } from "./customerOrders";
+import { InventoryItems } from "./InventoryItems";
+import { CustomerOrders } from "./CustomerOrders";
 export const items = {
-	inventoryItems: inventoryItems,
-	customerOrders: customerOrders
+	inventoryItems: InventoryItems,
+	customerOrders: CustomerOrders
 };

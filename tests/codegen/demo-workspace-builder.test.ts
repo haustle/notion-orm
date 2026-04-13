@@ -9,12 +9,16 @@ import { camelize } from "../../src/helpers";
 
 const MOCK_PACKAGE_SOURCE = "export class DatabaseClient {}";
 const MOCK_BASE_SOURCE = "export class NotionORMBase {}";
+const MOCK_NOTION_ID_PATTERNS_SOURCE = `export const UNDASHED_NOTION_ID_PATTERN = /./;
+export const DASHED_NOTION_ID_PATTERN = /./;
+`;
 
 function buildWorkspace(): DemoPlaygroundWorkspaceResult {
 	return buildDemoPlaygroundWorkspace({
 		spec: DEMO_PLAYGROUND_SPEC,
 		mockPackageSource: MOCK_PACKAGE_SOURCE,
 		mockBaseSource: MOCK_BASE_SOURCE,
+		notionIdPatternsSource: MOCK_NOTION_ID_PATTERNS_SOURCE,
 	});
 }
 
@@ -64,9 +68,12 @@ describe("demo workspace builder", () => {
 		}
 	});
 
-	test("includes mock package and base files", () => {
+	test("includes mock package, notion id patterns, and base files", () => {
 		expect(result.files[PLAYGROUND_PATHS.MOCK_PACKAGE_INDEX]).toBe(
 			MOCK_PACKAGE_SOURCE,
+		);
+		expect(result.files[PLAYGROUND_PATHS.MOCK_PACKAGE_NOTION_ID_PATTERNS]).toBe(
+			MOCK_NOTION_ID_PATTERNS_SOURCE,
 		);
 		expect(result.files[PLAYGROUND_PATHS.MOCK_PACKAGE_BASE]).toBe(
 			MOCK_BASE_SOURCE,
@@ -80,6 +87,9 @@ describe("demo workspace builder", () => {
 
 	test("database entry references the spec scenario target", () => {
 		const entry = result.files[result.databaseEntryFile]!;
+		expect(entry).toContain(
+			`from "./${PLAYGROUND_PATHS.BUILD_INDEX_DIR}"`,
+		);
 		const targetModuleName = camelize(
 			DEMO_PLAYGROUND_SPEC.databaseScenario.targetDatabase,
 		);
@@ -93,6 +103,9 @@ describe("demo workspace builder", () => {
 
 	test("agent entry references all scenario agents", () => {
 		const entry = result.files[result.agentEntryFile]!;
+		expect(entry).toContain(
+			`from "./${PLAYGROUND_PATHS.BUILD_INDEX_DIR}"`,
+		);
 		const chatModuleName = camelize(
 			DEMO_PLAYGROUND_SPEC.agentScenario.chatAgent,
 		);
@@ -113,7 +126,7 @@ describe("demo workspace builder", () => {
 	test("file count matches expected total", () => {
 		const expectedDatabases = DEMO_PLAYGROUND_SPEC.databases.length;
 		const expectedAgents = DEMO_PLAYGROUND_SPEC.agents.length;
-		const staticFiles = 6;
+		const staticFiles = 7;
 		expect(Object.keys(result.files).length).toBe(
 			staticFiles + expectedDatabases + expectedAgents,
 		);

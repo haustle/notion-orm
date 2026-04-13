@@ -16,7 +16,7 @@
 		"test": "bun test",
 		"test:types": "bunx tsc -p tests/types/tsconfig.json --noEmit",
 		"lint": "bunx biome lint tests/runtime tests/cli tests/codegen tests/helpers tests/types --diagnostic-level=error",
-		"typecheck": "bunx tsc --noEmit",
+		"typecheck": "bunx tsc --noEmit && bunx tsc -p tests/tsconfig.json --noEmit",
 		"site": "bun run --cwd website  dev",
 		"site:deploy": "bun run --cwd website  deploy",
 		"site:typecheck": "bun run --cwd website  typecheck",

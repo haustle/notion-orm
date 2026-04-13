@@ -1,61 +1,65 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { z } from "zod";
 import {
-	emptyQueryDataSourceResponse,
-	queryDataSourceListResponse,
-} from "../../helpers/query-data-source-response";
+	createPrismaApiTestDatabaseClient,
+	installPrismaApiNotionClientMock,
+	prismaApiDataSourceParent,
+	prismaApiStubPartialPage,
+} from "../../helpers/notion-client-test-mock";
+import { queryDataSourceListResponse } from "../../helpers/query-data-source-response";
 import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
+import {
+	MOCK_DATA_SOURCE_ID,
+	MOCK_PAGE_ID,
+} from "../../helpers/test-mock-ids";
 
-const pagesUpdateMock = mock(async () => ({ id: "archived" }));
-const dataSourceQueryMock = mock(async () => emptyQueryDataSourceResponse());
+const { dataSourceQueryMock, pagesUpdateMock, pagesRetrieveMock } =
+	installPrismaApiNotionClientMock({
+		pagesUpdateMock: mock(async () => prismaApiStubPartialPage("archived")),
+		pagesRetrieveMock: mock(async () => ({
+			object: "page" as const,
+			id: MOCK_PAGE_ID,
+			parent: prismaApiDataSourceParent({ dataSourceId: MOCK_DATA_SOURCE_ID }),
+			properties: {
+				"Shop Name": databasePropertyValue.title("A"),
+				Rating: databasePropertyValue.number(1),
+			},
+		})),
+	});
 
-mock.module("@notionhq/client", () => ({
-	Client: class {
-		public pages = {
-			create: mock(async () => ({})),
-			update: pagesUpdateMock,
-			retrieve: mock(async () => ({})),
-		};
-		public dataSources = { query: dataSourceQueryMock };
-		constructor(_args: unknown) {}
-	},
-}));
-
-const { DatabaseClient } = await import("../../../src/client/DatabaseClient");
+const { DatabaseClient } = await import("../../../src/client/database/DatabaseClient");
 
 type TestSchema = { shopName: string; rating: number };
 type TestColumnTypes = { shopName: "title"; rating: "number" };
 
 function createClient() {
-	return new DatabaseClient<TestSchema, TestColumnTypes>({
-		id: "db-1",
-		auth: "token",
-		name: "Coffee Shops",
-		schema: z.object({
-			shopName: z.string().optional(),
-			rating: z.number().optional(),
-		}),
-		camelPropertyNameToNameAndTypeMap: {
-			shopName: { columnName: "Shop Name", type: "title" },
-			rating: { columnName: "Rating", type: "number" },
-		},
-	});
+	return createPrismaApiTestDatabaseClient(DatabaseClient);
 }
 
 describe("delete", () => {
 	beforeEach(() => {
 		pagesUpdateMock.mockReset();
-		pagesUpdateMock.mockResolvedValue({ id: "archived" });
+		pagesUpdateMock.mockResolvedValue(prismaApiStubPartialPage("archived"));
+		pagesRetrieveMock.mockReset();
+		pagesRetrieveMock.mockResolvedValue({
+			object: "page",
+			id: MOCK_PAGE_ID,
+			parent: prismaApiDataSourceParent({ dataSourceId: MOCK_DATA_SOURCE_ID }),
+			properties: {
+				"Shop Name": databasePropertyValue.title("A"),
+				Rating: databasePropertyValue.number(1),
+			},
+		});
 		dataSourceQueryMock.mockReset();
 	});
 
 	test("calls pages.update with in_trash: true", async () => {
 		const client = createClient();
-		await client.delete({ where: { id: "page-1" } });
+		await client.delete({ where: { id: MOCK_PAGE_ID } });
 		expect(pagesUpdateMock).toHaveBeenCalledWith({
-			page_id: "page-1",
+			page_id: MOCK_PAGE_ID,
 			in_trash: true,
 		});
+		expect(pagesRetrieveMock).toHaveBeenCalledWith({ page_id: MOCK_PAGE_ID });
 	});
 
 	test("throws when id is missing", async () => {
@@ -69,15 +73,32 @@ describe("delete", () => {
 		pagesUpdateMock.mockRejectedValueOnce(new Error("Not Found"));
 		const client = createClient();
 		await expect(
-			client.delete({ where: { id: "page-1" } }),
+			client.delete({ where: { id: MOCK_PAGE_ID } }),
 		).rejects.toThrow("Not Found");
+	});
+
+	test("throws when the page belongs to another data source", async () => {
+		pagesRetrieveMock.mockResolvedValueOnce({
+			object: "page",
+			id: MOCK_PAGE_ID,
+			parent: prismaApiDataSourceParent({ dataSourceId: "other-db" }),
+			properties: {
+				"Shop Name": databasePropertyValue.title("A"),
+				Rating: databasePropertyValue.number(1),
+			},
+		});
+		const client = createClient();
+		await expect(client.delete({ where: { id: MOCK_PAGE_ID } })).rejects.toThrow(
+			`[@haustle/notion-orm] delete(): page ${MOCK_PAGE_ID} does not belong to database Coffee Shops.`,
+		);
+		expect(pagesUpdateMock).not.toHaveBeenCalled();
 	});
 });
 
 describe("deleteMany", () => {
 	beforeEach(() => {
 		pagesUpdateMock.mockReset();
-		pagesUpdateMock.mockResolvedValue({ id: "archived" });
+		pagesUpdateMock.mockResolvedValue(prismaApiStubPartialPage("archived"));
 		dataSourceQueryMock.mockReset();
 	});
 

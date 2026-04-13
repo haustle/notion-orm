@@ -80,3 +80,6 @@ export type ObjectEntry<T> = T extends unknown
 			[K in Exclude<keyof T, symbol>]: [K, T[K]];
 		}[Exclude<keyof T, symbol>]
 	: never;
+
+/** Flattens intersections / mapped types for clearer hover output. */
+export type Simplify<T> = { [K in keyof T]: T[K] } & {};

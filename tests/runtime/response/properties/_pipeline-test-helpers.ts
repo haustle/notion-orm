@@ -1,13 +1,40 @@
 import { describe, expect, test } from "bun:test";
 import type { QueryDataSourceResponse } from "@notionhq/client/build/src/api-endpoints";
-import { buildQueryResponse } from "../../../../src/client/query";
-import type { NotionPropertyValue } from "../../../../src/client/query/types";
-import type { SupportedNotionColumnType } from "../../../../src/client/queryTypes";
+import { randomUUID } from "node:crypto";
+import { buildQueryResponse } from "../../../../src/client/database/query";
+import type { NotionPropertyValue } from "../../../../src/client/database/query/types";
+import { toNotionDatabaseId } from "../../../../src/client/database/types/notion-database-id";
+import {
+	isColumnTypesWithOptions,
+	type ColumnDefinition,
+	type DatabaseColumns,
+	type SupportedNotionColumnType,
+} from "../../../../src/client/database/types";
 import { queryDataSourceListResponse } from "../../../helpers/query-data-source-response";
 
 const PRIMARY_COLUMN_NAME = "Primary Value";
 const PRIMARY_CAMEL_COLUMN_NAME = "primaryValue";
 const UNMAPPED_COLUMN_NAME = "Unmapped Value";
+
+const PIPELINE_PAGE_ID = randomUUID();
+const PIPELINE_RELATION_RELATED_DATABASE_ID = toNotionDatabaseId(randomUUID());
+
+function columnDefinitionForPipeline(
+	columnName: string,
+	propertyType: SupportedNotionColumnType,
+): ColumnDefinition {
+	if (isColumnTypesWithOptions(propertyType)) {
+		return { columnName, type: propertyType, options: [] };
+	}
+	if (propertyType === "relation") {
+		return {
+			columnName,
+			type: "relation",
+			relatedDatabaseId: PIPELINE_RELATION_RELATED_DATABASE_ID,
+		};
+	}
+	return { columnName, type: propertyType };
+}
 
 export interface PropertyPipelineCase {
 		propertyType: SupportedNotionColumnType;
@@ -33,7 +60,7 @@ function buildSinglePageResponse(args: {
 		// @ts-expect-error malformed fixture
 		{
 			object: "page",
-			id: "pipeline-page-1",
+			id: PIPELINE_PAGE_ID,
 			properties,
 		},
 	]);
@@ -57,15 +84,17 @@ function transformPrimaryValue(args: {
 			validateCalls += 1;
 		});
 
+	const pipelineColumns: DatabaseColumns = {
+		[PRIMARY_CAMEL_COLUMN_NAME]: columnDefinitionForPipeline(
+			PRIMARY_COLUMN_NAME,
+			args.propertyType,
+		),
+	};
+
 	if (args.includeRawResponse) {
 		const output = buildQueryResponse<Record<string, unknown>>({
 			response: rawResponse,
-			columnNameToColumnProperties: {
-				[PRIMARY_CAMEL_COLUMN_NAME]: {
-					columnName: PRIMARY_COLUMN_NAME,
-					type: args.propertyType,
-				},
-			},
+			columns: pipelineColumns,
 			validateSchema,
 			options: { includeRawResponse: true },
 		});
@@ -74,12 +103,7 @@ function transformPrimaryValue(args: {
 
 	const output = buildQueryResponse<Record<string, unknown>>({
 		response: rawResponse,
-		columnNameToColumnProperties: {
-			[PRIMARY_CAMEL_COLUMN_NAME]: {
-				columnName: PRIMARY_COLUMN_NAME,
-				type: args.propertyType,
-			},
-		},
+		columns: pipelineColumns,
 		validateSchema,
 	});
 	return { output, validateCalls, rawResponse };

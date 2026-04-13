@@ -1,4 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { randomUUID } from "node:crypto";
+import { toNotionDatabaseId } from "../../src/client/database/types/notion-database-id";
+import { toUndashedNotionId } from "../../src/helpers";
+import {
+	MOCK_USER_ID,
+} from "../helpers/test-mock-ids";
 import {
 	buildQueryScenario,
 	databasePropertyValue,
@@ -28,12 +34,28 @@ type ExampleDatabaseSchema = {
 	recordId: string | null;
 };
 
+const e2eTagOptions = ["quiet", "brunch"] as const;
+const e2eVisitStatusOptions = ["Want to Go", "Favorite"] as const;
+const e2eCategoryOptions = ["Cafe", "Bakery"] as const;
+
 describe("runtime database capability", () => {
 	test("build schema + mock API results + transform normalized response", () => {
+		const relatedPageA = randomUUID();
+		const relatedPageB = randomUUID();
+		const relatedPagesExpected = [
+			toUndashedNotionId(relatedPageA),
+			toUndashedNotionId(relatedPageB),
+		];
+		const relatedDatabaseId = toNotionDatabaseId(randomUUID());
+
 		const schema = defineDatabaseSchema({
 			attachments: { type: "files", columnName: "Attachments" },
 			owners: { type: "people", columnName: "Owners" },
-			relatedPages: { type: "relation", columnName: "Related Pages" },
+					relatedPages: {
+						type: "relation",
+						columnName: "Related Pages",
+						relatedDatabaseId,
+					},
 			createdByUser: { type: "created_by", columnName: "Created By User" },
 			lastEditedByUser: {
 				type: "last_edited_by",
@@ -47,11 +69,23 @@ describe("runtime database capability", () => {
 			contactEmail: { type: "email", columnName: "Contact Email" },
 			hasWifi: { type: "checkbox", columnName: "Has WiFi" },
 			openedOn: { type: "date", columnName: "Opened On" },
-			tags: { type: "multi_select", columnName: "Tags" },
-			visitStatus: { type: "status", columnName: "Visit Status" },
+			tags: {
+				type: "multi_select",
+				columnName: "Tags",
+				options: e2eTagOptions,
+			},
+			visitStatus: {
+				type: "status",
+				columnName: "Visit Status",
+				options: e2eVisitStatusOptions,
+			},
 			rating: { type: "number", columnName: "Rating" },
 			notes: { type: "rich_text", columnName: "Notes" },
-			category: { type: "select", columnName: "Category" },
+			category: {
+				type: "select",
+				columnName: "Category",
+				options: e2eCategoryOptions,
+			},
 			recordId: { type: "unique_id", columnName: "Record Id" },
 		});
 
@@ -63,9 +97,12 @@ describe("runtime database capability", () => {
 						{ name: "menu.pdf", url: "https://files.dev/menu.pdf" },
 					]),
 					Owners: databasePropertyValue.people([
-						{ id: "user-1", name: "Tyrus" },
+						{ id: MOCK_USER_ID, name: "Tyrus" },
 					]),
-					"Related Pages": databasePropertyValue.relation(["page-1", "page-2"]),
+					"Related Pages": databasePropertyValue.relation([
+						relatedPageA,
+						relatedPageB,
+					]),
 					"Created By User": databasePropertyValue.createdBy(
 						"created-1",
 						"Admin",
@@ -112,7 +149,7 @@ describe("runtime database capability", () => {
 		expect(validatedResult).toEqual({
 			attachments: [{ name: "menu.pdf", url: "https://files.dev/menu.pdf" }],
 			owners: ["Tyrus"],
-			relatedPages: ["page-1", "page-2"],
+			relatedPages: relatedPagesExpected,
 			createdByUser: "Admin",
 			lastEditedByUser: "Reviewer",
 			createdAt: "2026-03-01T10:00:00.000Z",
@@ -135,7 +172,7 @@ describe("runtime database capability", () => {
 			{
 				attachments: [{ name: "menu.pdf", url: "https://files.dev/menu.pdf" }],
 				owners: ["Tyrus"],
-				relatedPages: ["page-1", "page-2"],
+				relatedPages: relatedPagesExpected,
 				createdByUser: "Admin",
 				lastEditedByUser: "Reviewer",
 				createdAt: "2026-03-01T10:00:00.000Z",

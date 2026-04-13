@@ -3,7 +3,7 @@ import type {
 	PartialDataSourceObjectResponse,
 	RichTextItemResponse,
 } from "@notionhq/client/build/src/api-endpoints";
-import type { DatabasePropertyType } from "../../src/client/queryTypes";
+import type { DatabasePropertyType } from "../../src/client/database/types";
 
 export interface DataSourcePropertyFixtureSpec {
 	type: DatabasePropertyType;
@@ -102,8 +102,8 @@ function buildPropertyConfig(args: {
 				...commonConfig,
 				type: "relation",
 				relation: {
-					data_source_id: "sync-source-id",
-					database_id: "sync-database-id",
+					data_source_id: "e5f6a1b2-c3d4-e5f6-a1b2-c3d4e5f6a1b2",
+					database_id: "d4e5f6a1-b2c3-d4e5-f6a1-b2c3d4e5f6a1",
 					type: "single_property",
 					single_property: {},
 				},

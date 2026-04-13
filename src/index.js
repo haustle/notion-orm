@@ -1,6 +1,12 @@
 import { NotionORMBase } from "./base";
 
-export { AgentClient, DatabaseClient, NotionORMBase } from "./base";
+export {
+	AgentClient,
+	DatabaseClient,
+	NotionORMBase,
+	resolveNotionAuth,
+} from "./base";
+export { objectEntries, objectKeys } from "./typeUtils";
 
 class NotionORM extends NotionORMBase {
 	constructor(config) {

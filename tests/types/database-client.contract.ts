@@ -1,18 +1,22 @@
-import type { DatabaseClient } from "../../src/client/DatabaseClient";
-import type { PaginateResult } from "../../src/client/queryTypes";
+import type { DatabaseClient } from "../../src/client/database/DatabaseClient";
+import type {
+	DatabaseColumns,
+	DatabaseDefinition,
+	InferDatabaseSchema,
+	PaginateResult,
+} from "../../src/client/database/types";
 import type { Equal, Expect } from "./helpers/assert";
+import { MOCK_PAGE_ID } from "../helpers/test-mock-ids";
 
-type Schema = {
-	shopName: string;
-	rating: number;
-};
+const columns = {
+	shopName: { columnName: "Shop Name", type: "title" },
+	rating: { columnName: "Rating", type: "number" },
+} as const satisfies DatabaseColumns;
 
-type ColumnTypes = {
-	shopName: "title";
-	rating: "number";
-};
+type DatabaseDefinitionType = DatabaseDefinition<typeof columns>;
+type Schema = InferDatabaseSchema<typeof columns>;
 
-declare const client: DatabaseClient<Schema, ColumnTypes>;
+declare const client: DatabaseClient<DatabaseDefinitionType>;
 
 const allRowsPromise = client.findMany();
 const selectedRowsPromise = client.findMany({
@@ -25,7 +29,7 @@ const firstSelectedPromise = client.findFirst({
 	select: ["shopName"] as const,
 });
 const uniqueOmittedPromise = client.findUnique({
-	where: { id: "page-1" },
+	where: { id: MOCK_PAGE_ID },
 	omit: ["rating"] as const,
 });
 const paginatedSelectedPromise = client.findMany({

@@ -31,7 +31,7 @@ If `consumer_app_paths` are missing, default to `orm_repo_path/../orm-testing` w
 - [ ] Confirm consumer has exactly one `@haustle/notion-orm` dependency entry in `package.json`
 - [ ] If dependency history looks noisy/stale, delete consumer `bun.lock` and run `bun install`
 - [ ] Confirm tarball ignores are in place (`*.tgz` in ORM `.gitignore`)
-- [ ] Confirm scripts/env needed for integration smoke are present (`NOTION_KEY` / `NOTION_AUTH`)
+- [ ] Confirm scripts/env needed for integration smoke are present (`NOTION_KEY`)
 - [ ] Treat generated output as disposable (do not hardwire source to repo-local generated files)
 ```
 
@@ -87,7 +87,7 @@ Re-running `bun add` after a new pack replaces the installed package with the ne
 
 ### 4) Regenerate generated types (when applicable)
 
-If the consumer relies on CLI-generated `build/` or `notion.config` outputs, run from each app:
+If the consumer relies on CLI-generated `notion/` or `notion.config` outputs, run from each app:
 
 ```bash
 bun notion sync

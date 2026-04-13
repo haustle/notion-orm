@@ -1,22 +1,35 @@
 // @ts-nocheck — mock module template served to the website playground editor
 export type {
-	CountArgs,
-	CreateArgs,
-	CreateManyArgs,
+	ColumnDefinition,
+	Count,
+	Create,
+	CreateMany,
+	DatabaseColumns,
+	DatabaseColumnTypes,
+	DatabaseDefinition,
 	DatabasePropertyValue,
-	DeleteArgs,
-	DeleteManyArgs,
-	FindFirstArgs,
-	FindManyArgs,
-	FindUniqueArgs,
+	DatabaseSchema,
+	Delete,
+	DeleteMany,
+	FindFirst,
+	FindMany,
+	FindUnique,
+	InferDatabaseSchema,
 	NotionConfigType,
 	PaginateResult,
-	UpdateArgs,
-	UpdateManyArgs,
-	UpsertArgs,
+	Projection,
+	Query,
+	ResultProjection,
+	Update,
+	UpdateMany,
+	Upsert,
 } from "../../index.ts";
 export { AgentClient, DatabaseClient } from "../../index.ts";
 
 export class NotionORMBase {
-	constructor(_config: { auth: string }) {}
+	protected readonly notionAuth: string;
+
+	constructor(_config: { auth?: string }) {
+		this.notionAuth = "";
+	}
 }

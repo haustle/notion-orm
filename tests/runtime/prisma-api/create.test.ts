@@ -1,53 +1,33 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { z } from "zod";
-import { emptyQueryDataSourceResponse } from "../../helpers/query-data-source-response";
+import {
+	createPrismaApiTestDatabaseClient,
+	installPrismaApiNotionClientMock,
+	PRISMA_API_CREATE_COLUMNS,
+	prismaApiStubPartialPage,
+	type PrismaApiPagesCreateFn,
+} from "../../helpers/notion-client-test-mock";
+import { MOCK_DATA_SOURCE_ID } from "../../helpers/test-mock-ids";
 import { isRecord } from "../../helpers/type-guards";
 
-const pagesCreateMock = mock(async (_args: unknown) => ({
-	id: "created-page-id",
-}));
+const { pagesCreateMock } = installPrismaApiNotionClientMock({
+	pagesCreateMock: mock<PrismaApiPagesCreateFn>(async () =>
+		prismaApiStubPartialPage("created-page-id"),
+	),
+});
 
-mock.module("@notionhq/client", () => ({
-	Client: class {
-		public pages = {
-			create: pagesCreateMock,
-			update: mock(async () => ({})),
-			retrieve: mock(async () => ({})),
-		};
-		public dataSources = {
-			query: mock(async () => emptyQueryDataSourceResponse()),
-		};
-		constructor(_args: unknown) {}
-	},
-}));
-
-const { DatabaseClient } = await import("../../../src/client/DatabaseClient");
+const { DatabaseClient } = await import("../../../src/client/database/DatabaseClient");
 
 type TestSchema = { shopName: string; rating: number; hasWifi: boolean };
 type TestColumnTypes = { shopName: "title"; rating: "number"; hasWifi: "checkbox" };
 
 function createClient() {
-	return new DatabaseClient<TestSchema, TestColumnTypes>({
-		id: "db-1",
-		auth: "token",
-		name: "Coffee Shops",
-		schema: z.object({
-			shopName: z.string().optional(),
-			rating: z.number().optional(),
-			hasWifi: z.boolean().optional(),
-		}),
-		camelPropertyNameToNameAndTypeMap: {
-			shopName: { columnName: "Shop Name", type: "title" },
-			rating: { columnName: "Rating", type: "number" },
-			hasWifi: { columnName: "Has WiFi", type: "checkbox" },
-		},
-	});
+	return createPrismaApiTestDatabaseClient(DatabaseClient, PRISMA_API_CREATE_COLUMNS);
 }
 
 describe("create", () => {
 	beforeEach(() => {
 		pagesCreateMock.mockReset();
-		pagesCreateMock.mockResolvedValue({ id: "created-page-id" });
+		pagesCreateMock.mockResolvedValue(prismaApiStubPartialPage("created-page-id"));
 	});
 
 	test("calls pages.create with correct properties", async () => {
@@ -58,7 +38,7 @@ describe("create", () => {
 		expect(result.id).toBe("created-page-id");
 		expect(pagesCreateMock).toHaveBeenCalledWith(
 			expect.objectContaining({
-				parent: { data_source_id: "db-1", type: "data_source_id" },
+				parent: { data_source_id: MOCK_DATA_SOURCE_ID, type: "data_source_id" },
 				properties: {
 					"Shop Name": { title: [{ text: { content: "Cafe Nervosa" } }] },
 					Rating: { number: 4 },

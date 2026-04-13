@@ -4,17 +4,87 @@
  */
 
 import * as ts from "typescript";
-import type { DatabasePropertyType } from "../../client/queryTypes";
+import type {
+	ColumnTypesWithOptions,
+	SupportedNotionColumnType,
+} from "../../client/database/types";
+import type { NotionDatabaseId } from "../../client/database/types/notion-database-id";
 import { objectEntries } from "../../typeUtils";
+import { AST_TYPE_NAMES } from "./constants";
+
+export { toPascalCase } from "../../helpers";
 
 /**
- * Lookup map used to generate strongly-typed property/type metadata objects
- * that power `Query<Schema, ColumnNameToColumnType>`.
+ * Plain column: emitted metadata has no `options` array (non–select-like types).
  */
-type camelPropertyNameToNameAndTypeMapType = Record<
+export type OptionlessColumnMetadataEntry = {
+	readonly columnName: string;
+	readonly type: Exclude<SupportedNotionColumnType, ColumnTypesWithOptions | "relation">;
+};
+
+/**
+ * Relation: emitted metadata includes the linked database id (undashed) from Notion.
+ */
+export type RelationGeneratedColumnMetadataEntry = {
+	readonly columnName: string;
+	readonly type: "relation";
+	readonly relatedDatabaseId: NotionDatabaseId;
+};
+
+/**
+ * Select / status / multi_select: emitted metadata includes `options` pointing at a
+ * generated const; `type` discriminates this arm from {@link OptionlessColumnMetadataEntry}.
+ */
+export type SelectLikeGeneratedColumnMetadataEntry = {
+	readonly columnName: string;
+	readonly type: ColumnTypesWithOptions;
+	readonly optionsIdentifier: string;
+};
+
+export type GeneratedColumnMetadataEntry =
+	| OptionlessColumnMetadataEntry
+	| SelectLikeGeneratedColumnMetadataEntry
+	| RelationGeneratedColumnMetadataEntry;
+
+/** Lookup map used to generate the emitted `columns` object. */
+export type GeneratedColumnMetadataMap = Record<
 	string,
-	{ columnName: string; type: DatabasePropertyType }
+	GeneratedColumnMetadataEntry
 >;
+
+function optionsPropertyAssignmentsForSelectLikeMetadata(
+	entry: SelectLikeGeneratedColumnMetadataEntry,
+): readonly ts.PropertyAssignment[] {
+	return [
+		ts.factory.createPropertyAssignment(
+			ts.factory.createIdentifier("options"),
+			ts.factory.createIdentifier(entry.optionsIdentifier),
+		),
+	];
+}
+
+/** Emits `options` / `relatedDatabaseId` for column metadata beyond `columnName` + `type`. */
+function extraMetadataPropertyAssignmentsForGeneratedColumn(
+	value: GeneratedColumnMetadataEntry,
+): readonly ts.PropertyAssignment[] {
+	switch (value.type) {
+		case "select":
+		case "status":
+		case "multi_select":
+			return optionsPropertyAssignmentsForSelectLikeMetadata(value);
+		case "relation":
+			return [
+				ts.factory.createPropertyAssignment(
+					ts.factory.createIdentifier("relatedDatabaseId"),
+					ts.factory.createStringLiteral(
+						String(value.relatedDatabaseId),
+					),
+				),
+			];
+		default:
+			return [];
+	}
+}
 
 /**
  * Generate text property signature
@@ -168,16 +238,6 @@ function createPropertyValuesElementType(arrayIdentifier: string) {
 }
 
 /**
- * Convert string to PascalCase
- */
-export function toPascalCase(value: string) {
-  if (!value) {
-    return value;
-  }
-  return value[0].toUpperCase() + value.slice(1);
-}
-
-/**
  * Generate database ID variable
  * const id = "<database-id>"
  */
@@ -226,126 +286,191 @@ export function createNameImport(args: {
 }
 
 /**
+ * `import type { a, b } from "path"`
+ */
+export function createTypeOnlyNamedImports(args: {
+	names: readonly string[];
+	path: string;
+}): ts.ImportDeclaration {
+	return ts.factory.createImportDeclaration(
+		undefined,
+		ts.factory.createImportClause(
+			true,
+			undefined,
+			ts.factory.createNamedImports(
+				args.names.map((name) =>
+					ts.factory.createImportSpecifier(
+						false,
+						undefined,
+						ts.factory.createIdentifier(name),
+					),
+				),
+			),
+		),
+		ts.factory.createStringLiteral(args.path),
+		undefined,
+	);
+}
+
+/**
  * Create column name to column properties mapping
  * Maps camelCase property names to their original names and types
  */
 export function createColumnNameToColumnProperties(
-  colMap: camelPropertyNameToNameAndTypeMapType
+  colMap: GeneratedColumnMetadataMap
 ) {
+	const metadataObjectLiteral = ts.factory.createObjectLiteralExpression(
+		[
+			...objectEntries(colMap).map(([propName, value]) =>
+				ts.factory.createPropertyAssignment(
+					ts.factory.createStringLiteral(propName),
+					ts.factory.createObjectLiteralExpression(
+						[
+							ts.factory.createPropertyAssignment(
+								ts.factory.createIdentifier("columnName"),
+								ts.factory.createStringLiteral(value.columnName),
+							),
+							ts.factory.createPropertyAssignment(
+								ts.factory.createIdentifier("type"),
+								ts.factory.createStringLiteral(value.type),
+							),
+							...extraMetadataPropertyAssignmentsForGeneratedColumn(value),
+						],
+						true,
+					),
+				),
+			),
+		],
+		true,
+	);
+	const asConst = ts.factory.createAsExpression(
+		metadataObjectLiteral,
+		ts.factory.createTypeReferenceNode(
+			ts.factory.createIdentifier("const"),
+			undefined,
+		),
+	);
+	const satisfiesTarget = ts.factory.createTypeReferenceNode(
+		ts.factory.createIdentifier("DatabaseColumns"),
+		undefined,
+	);
+	const initializer = ts.factory.createSatisfiesExpression(
+		asConst,
+		satisfiesTarget,
+	);
   return ts.factory.createVariableDeclarationList(
 			[
 				ts.factory.createVariableDeclaration(
-					ts.factory.createIdentifier("columnNameToColumnProperties"),
+					ts.factory.createIdentifier("columns"),
 					undefined,
 					undefined,
-					ts.factory.createAsExpression(
-						ts.factory.createObjectLiteralExpression(
-							[
-								...objectEntries(colMap).map(([propName, value]) =>
-									ts.factory.createPropertyAssignment(
-										ts.factory.createStringLiteral(propName),
-										ts.factory.createObjectLiteralExpression(
-											[
-												ts.factory.createPropertyAssignment(
-													ts.factory.createIdentifier("columnName"),
-													ts.factory.createStringLiteral(value.columnName),
-												),
-												ts.factory.createPropertyAssignment(
-													ts.factory.createIdentifier("type"),
-													ts.factory.createStringLiteral(value.type),
-												),
-											],
-											true,
-										),
-									),
-								),
-							],
-							true,
-						),
-						ts.factory.createTypeReferenceNode(
-							ts.factory.createIdentifier("const"),
-							undefined,
-						),
-					),
+					initializer,
 				),
 			],
 			ts.NodeFlags.Const,
 		);
 }
 
-/**
- * Create ColumnNameToColumnType type alias
- */
-export function createColumnNameToColumnType() {
-  return ts.factory.createTypeAliasDeclaration(
-    undefined,
-    ts.factory.createIdentifier("ColumnNameToColumnType"),
-    undefined,
-    ts.factory.createMappedTypeNode(
-      undefined,
-      ts.factory.createTypeParameterDeclaration(
-        undefined,
-        ts.factory.createIdentifier("Property"),
-        ts.factory.createTypeOperatorNode(
-          ts.SyntaxKind.KeyOfKeyword,
-          ts.factory.createTypeQueryNode(
-            ts.factory.createIdentifier("columnNameToColumnProperties"),
-            undefined
-          )
-        ),
-        undefined
-      ),
-      undefined,
-      undefined,
-      ts.factory.createIndexedAccessTypeNode(
-        ts.factory.createIndexedAccessTypeNode(
-          ts.factory.createTypeQueryNode(
-            ts.factory.createIdentifier("columnNameToColumnProperties"),
-            undefined
-          ),
-          ts.factory.createTypeReferenceNode(
-            ts.factory.createIdentifier("Property"),
-            undefined
-          )
-        ),
-        ts.factory.createLiteralTypeNode(ts.factory.createStringLiteral("type"))
-      ),
-      undefined
-    )
-  );
+/** `export type QuerySchema = Query<DatabaseDefinition<typeof columns>>` (name from `AST_TYPE_NAMES.QUERY_SCHEMA`). */
+export function createQuerySchemaTypeExport() {
+	return ts.factory.createTypeAliasDeclaration(
+		[ts.factory.createToken(ts.SyntaxKind.ExportKeyword)],
+		ts.factory.createIdentifier(AST_TYPE_NAMES.QUERY_SCHEMA),
+		undefined,
+		ts.factory.createTypeReferenceNode(ts.factory.createIdentifier("Query"), [
+			createDatabaseDefinitionOfColumnsTypeReference(),
+		]),
+	);
+}
+
+/** `export type PageSchema = InferDatabaseSchema<typeof columns>` (name from `AST_TYPE_NAMES.PAGE_SCHEMA`). */
+export function createPageSchemaTypeExport() {
+	return ts.factory.createTypeAliasDeclaration(
+		[ts.factory.createToken(ts.SyntaxKind.ExportKeyword)],
+		ts.factory.createIdentifier(AST_TYPE_NAMES.PAGE_SCHEMA),
+		undefined,
+		ts.factory.createTypeReferenceNode(
+			ts.factory.createIdentifier("InferDatabaseSchema"),
+			[
+				ts.factory.createTypeQueryNode(
+					ts.factory.createIdentifier("columns"),
+					undefined,
+				),
+			],
+		),
+	);
+}
+
+/** `export type CreateSchema = InferCreateSchema<typeof columns>` (name from `AST_TYPE_NAMES.CREATE_SCHEMA`). */
+export function createCreateSchemaTypeExport() {
+	return ts.factory.createTypeAliasDeclaration(
+		[ts.factory.createToken(ts.SyntaxKind.ExportKeyword)],
+		ts.factory.createIdentifier(AST_TYPE_NAMES.CREATE_SCHEMA),
+		undefined,
+		ts.factory.createTypeReferenceNode(
+			ts.factory.createIdentifier("InferCreateSchema"),
+			[
+				ts.factory.createTypeQueryNode(
+					ts.factory.createIdentifier("columns"),
+					undefined,
+				),
+			],
+		),
+	);
+}
+
+function createDatabaseDefinitionOfColumnsTypeReference() {
+	return ts.factory.createTypeReferenceNode(
+		ts.factory.createIdentifier("DatabaseDefinition"),
+		[
+			ts.factory.createTypeQueryNode(
+				ts.factory.createIdentifier("columns"),
+				undefined,
+			),
+		],
+	);
 }
 
 /**
- * Create QuerySchemaType export
- */
-export function createQueryTypeExport() {
-  return ts.factory.createTypeAliasDeclaration(
-    [ts.factory.createToken(ts.SyntaxKind.ExportKeyword)],
-    ts.factory.createIdentifier("QuerySchemaType"),
-    undefined,
-    ts.factory.createTypeReferenceNode(ts.factory.createIdentifier("Query"), [
-      ts.factory.createTypeReferenceNode(
-        ts.factory.createIdentifier("DatabaseSchemaType"),
-        undefined
-      ),
-      ts.factory.createTypeReferenceNode(
-        ts.factory.createIdentifier("ColumnNameToColumnType"),
-        undefined
-      ),
-    ])
-  );
-}
-
-/**
- * Create export statement for the database constructor function
- * export const <databaseName> = (auth: string) => new DatabaseClient<DatabaseSchemaType>({...})
+ * Create export statement for the database constructor function.
+ * Uses a block body + multiline object literal so generated files stay readable.
+ * `databaseName` is the exported const identifier (PascalCase, e.g. `CustomerOrders`).
  */
 export function createDatabaseClassExport(args: {
   databaseName: string;
-  schemaIdentifier: string;
   schemaTitle: string;
+  /** Undashed Notion data source id, inlined on the client config object. */
+  databaseId: string;
 }) {
-  const { databaseName, schemaIdentifier, schemaTitle } = args;
+  const { databaseName, schemaTitle, databaseId } = args;
+  const clientConfigObject = ts.factory.createObjectLiteralExpression(
+    [
+      ts.factory.createPropertyAssignment(
+        ts.factory.createIdentifier("id"),
+        ts.factory.createStringLiteral(databaseId),
+      ),
+      ts.factory.createPropertyAssignment(
+        ts.factory.createIdentifier("columns"),
+        ts.factory.createIdentifier("columns"),
+      ),
+      ts.factory.createPropertyAssignment(
+        ts.factory.createIdentifier("name"),
+        ts.factory.createStringLiteral(schemaTitle),
+      ),
+      ts.factory.createShorthandPropertyAssignment(
+        ts.factory.createIdentifier("auth"),
+        undefined,
+      ),
+    ],
+    true,
+  );
+  const newDatabaseClient = ts.factory.createNewExpression(
+    ts.factory.createIdentifier("DatabaseClient"),
+    [
+      createDatabaseDefinitionOfColumnsTypeReference(),
+    ],
+    [clientConfigObject],
+  );
   return ts.factory.createVariableStatement(
     [ts.factory.createModifier(ts.SyntaxKind.ExportKeyword)],
     ts.factory.createVariableDeclarationList(
@@ -364,111 +489,19 @@ export function createDatabaseClassExport(args: {
                 ts.factory.createIdentifier("auth"),
                 undefined,
                 ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
-                undefined
+                undefined,
               ),
             ],
             undefined,
             ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-            ts.factory.createNewExpression(
-              ts.factory.createIdentifier("DatabaseClient"),
-              [
-                ts.factory.createTypeReferenceNode(
-                  ts.factory.createIdentifier("DatabaseSchemaType"),
-                  undefined
-                ),
-                ts.factory.createTypeReferenceNode(
-                  ts.factory.createIdentifier("ColumnNameToColumnType"),
-                  undefined
-                ),
-              ],
-              [
-                ts.factory.createObjectLiteralExpression(
-                  [
-                    ts.factory.createShorthandPropertyAssignment(
-                      ts.factory.createIdentifier("id"),
-                      undefined
-                    ),
-                    ts.factory.createPropertyAssignment(
-                      ts.factory.createIdentifier(
-                        "camelPropertyNameToNameAndTypeMap"
-                      ),
-                      ts.factory.createIdentifier(
-                        "columnNameToColumnProperties"
-                      )
-                    ),
-                    ts.factory.createPropertyAssignment(
-                      ts.factory.createIdentifier("schema"),
-                      ts.factory.createIdentifier(schemaIdentifier)
-                    ),
-                    ts.factory.createPropertyAssignment(
-                      ts.factory.createIdentifier("name"),
-                      ts.factory.createStringLiteral(schemaTitle)
-                    ),
-                    ts.factory.createShorthandPropertyAssignment(
-                      ts.factory.createIdentifier("auth"),
-                      undefined
-                    ),
-                  ],
-                  false
-                ),
-              ]
-            )
-          )
+            ts.factory.createBlock(
+              [ts.factory.createReturnStatement(newDatabaseClient)],
+              true,
+            ),
+          ),
         ),
       ],
-      ts.NodeFlags.Const
-    )
+      ts.NodeFlags.Const,
+    ),
   );
-}
-
-/**
- * Create class-specific type exports for the custom NotionORM class
- * These allow the generated NotionORM class to import properly typed schemas
- */
-export function createClassSpecificTypeExports(args: {
-  databaseName: string;
-  schemaIdentifier: string;
-}) {
-  const { databaseName, schemaIdentifier } = args;
-  const pascalDatabaseName = toPascalCase(databaseName);
-  return [
-			// Export DatabaseSchemaType as [DatabaseName]Schema
-			ts.factory.createTypeAliasDeclaration(
-				[ts.factory.createToken(ts.SyntaxKind.ExportKeyword)],
-				ts.factory.createIdentifier(`${databaseName}Schema`),
-				undefined,
-				ts.factory.createTypeReferenceNode(
-					ts.factory.createIdentifier("DatabaseSchemaType"),
-					undefined,
-				),
-			),
-			// Export ColumnNameToColumnType as [DatabaseName]ColumnTypes
-			ts.factory.createTypeAliasDeclaration(
-				[ts.factory.createToken(ts.SyntaxKind.ExportKeyword)],
-				ts.factory.createIdentifier(`${databaseName}ColumnTypes`),
-				undefined,
-				ts.factory.createTypeReferenceNode(
-					ts.factory.createIdentifier("ColumnNameToColumnType"),
-					undefined,
-				),
-			),
-			// Export inferred schema type
-			ts.factory.createTypeAliasDeclaration(
-				[ts.factory.createToken(ts.SyntaxKind.ExportKeyword)],
-				ts.factory.createIdentifier(`${pascalDatabaseName}SchemaType`),
-				undefined,
-				ts.factory.createTypeReferenceNode(
-					ts.factory.createQualifiedName(
-						ts.factory.createIdentifier("z"),
-						ts.factory.createIdentifier("infer"),
-					),
-					[
-						ts.factory.createTypeQueryNode(
-							ts.factory.createIdentifier(schemaIdentifier),
-							undefined,
-						),
-					],
-				),
-			),
-		];
 }

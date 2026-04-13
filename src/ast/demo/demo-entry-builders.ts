@@ -55,7 +55,6 @@ export function buildDemoDatabaseEntry(args: {
 		);
 	}
 	const { moduleName } = targetModule;
-	const schemaTypeName = `${moduleName}Schema`;
 
 	const enumProperties = findSelectLikeProperties(
 		spec,
@@ -65,7 +64,7 @@ export function buildDemoDatabaseEntry(args: {
 
 	const namedImports = [
 		...enumImports.map((name) => `\t${name},`),
-		`\ttype ${schemaTypeName},`,
+		`\ttype CreateSchema,`,
 	].join("\n");
 
 	const schemaEntries = Object.entries(scenario.create.schemaLiteral)
@@ -98,7 +97,7 @@ export function buildDemoDatabaseEntry(args: {
 		? `\ticon: { type: "emoji", emoji: "${scenario.create.icon.emoji}" },\n`
 		: "";
 
-	return `import NotionORM from "./${PLAYGROUND_PATHS.BUILD_INDEX}";
+	return `import { NotionORM } from "./${PLAYGROUND_PATHS.BUILD_INDEX_DIR}";
 
 import {
 ${namedImports}
@@ -107,7 +106,7 @@ ${namedImports}
 const notion = new NotionORM({ auth: "${PLAYGROUND_PATHS.DEMO_AUTH_PLACEHOLDER}" });
 
 // create — row + icon
-const track: ${schemaTypeName} = {
+const track: CreateSchema = {
 ${schemaEntries}
 };
 const created = await notion.databases.${moduleName}.create({
@@ -155,7 +154,7 @@ export function buildDemoAgentEntry(args: {
 		);
 	}
 
-	return `import NotionORM from "./${PLAYGROUND_PATHS.BUILD_INDEX}";
+	return `import { NotionORM } from "./${PLAYGROUND_PATHS.BUILD_INDEX_DIR}";
 
 const notion = new NotionORM({ auth: "${PLAYGROUND_PATHS.DEMO_AUTH_PLACEHOLDER}" });
 

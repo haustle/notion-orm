@@ -3,7 +3,7 @@ import type {
 	PartialDataSourceObjectResponse,
 	QueryDataSourceResponse,
 } from "@notionhq/client/build/src/api-endpoints";
-import { buildQueryResponse } from "../../../src/client/query";
+import { buildQueryResponse } from "../../../src/client/database/query";
 import {
 	databasePropertyValue,
 	page,
@@ -35,7 +35,7 @@ describe("query response pipeline", () => {
 
 		const response = buildQueryResponse<{ shopName: string }>({
 			response: notionResponse,
-			columnNameToColumnProperties: {
+			columns: {
 				shopName: {
 					columnName: "Shop Name",
 					type: "title",
@@ -70,7 +70,7 @@ describe("query response pipeline", () => {
 
 		const response = buildQueryResponse<{ shopName: string }>({
 			response: rawResponse,
-			columnNameToColumnProperties: {
+			columns: {
 				shopName: {
 					columnName: "Shop Name",
 					type: "title",

@@ -5,7 +5,23 @@
 
 import * as ts from "typescript";
 
-import type { SupportedNotionColumnType } from "../../client/queryTypes";
+import type { SupportedNotionColumnType } from "../../client/database/types";
+
+/**
+ * Column metadata from property emitters before `propName` / `columnName` / `type`
+ * are attached. Use `type` to narrow option-literal columns without `in` checks.
+ */
+export type ZodMetaColumnPayload =
+	| {
+			type: "plain";
+			isRequired: boolean;
+	  }
+	| {
+			type: "optionLiterals";
+			isRequired: boolean;
+			options: string[];
+			propertyValuesIdentifier: string;
+	  };
 
 export interface ZodMetadata {
 		propName: string;
@@ -17,7 +33,7 @@ export interface ZodMetadata {
 	}
 
 /**
- * Creates the exported `const <SchemaName> = z.object({...})` statement
+ * Creates the exported `const schema = z.object({...})` statement
  * from per-column metadata collected during database AST generation.
  */
 export function createZodSchema(args: {

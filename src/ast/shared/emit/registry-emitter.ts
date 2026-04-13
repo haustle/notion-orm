@@ -4,7 +4,7 @@ import { TS_EMIT_OPTIONS_DEFAULT } from "./ts-emit-options";
 
 /**
  * One exported item inside a generated registry module
- * (`db/index.ts`, `agents/index.ts`, etc).
+ * (`databases/index.ts`, `agents/index.ts`, etc).
  */
 export interface RegistryEntry {
 	importName: string;

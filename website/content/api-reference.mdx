@@ -57,7 +57,7 @@ const agent = notion.agents.yourAgentName;
 
 ### `findUnique`
 
-Retrieves a single page by its Notion page ID. Returns `null` for missing or partial pages. Supports `select` / `omit` projection with the same semantics as `findMany`.
+Retrieves a single page by its Notion page ID, scoped to the current database client's data source. Returns `null` for missing, partial, or cross-data-source pages. Supports `select` / `omit` projection with the same semantics as `findMany`.
 
 ```ts
 const page = await db.findUnique({
@@ -528,7 +528,7 @@ For script-level usage without the `NotionORM` wrapper:
 
 | Import Path                                    | What You Get                                                                                                                                                                 |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@haustle/notion-orm/build/db/<databaseName>`  | `<databaseName>(auth)` factory, `DatabaseSchemaType`, `QuerySchemaType`, generated Zod schema, generated option tuples (for select/status/multi-select), schema/type aliases |
-| `@haustle/notion-orm/build/agents/<agentName>` | `<agentName>(auth)` factory that returns an `AgentClient`                                                                                                                    |
-| `@haustle/notion-orm/build/db`                 | `databases` barrel object (all database factories)                                                                                                                           |
-| `@haustle/notion-orm/build/agents`             | `agents` barrel object (all agent factories)                                                                                                                                 |
+| `@haustle/notion-orm/notion/databases/<databaseName>`  | `<databaseName>(auth)` factory, `PageSchema`, `CreateSchema`, `QuerySchema`, generated Zod schema, generated option tuples (for select/status/multi-select), schema/type aliases |
+| `@haustle/notion-orm/notion/agents/<AgentName>` | `<AgentName>(auth)` factory that returns an `AgentClient` (PascalCase export; registry keys on `notion.agents` stay camelCase)                                                |
+| `@haustle/notion-orm/notion/databases`                 | `databases` barrel object (all database factories)                                                                                                                           |
+| `@haustle/notion-orm/notion/agents`             | `agents` barrel object (all agent factories)                                                                                                                                 |

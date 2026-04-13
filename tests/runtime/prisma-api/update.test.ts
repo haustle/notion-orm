@@ -1,73 +1,82 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { z } from "zod";
+import {
+	createPrismaApiTestDatabaseClient,
+	installPrismaApiNotionClientMock,
+	prismaApiDataSourceParent,
+	prismaApiStubPartialPage,
+	type PrismaApiPagesRetrieveFn,
+	type PrismaApiPagesUpdateFn,
+} from "../../helpers/notion-client-test-mock";
 import {
 	emptyQueryDataSourceResponse,
 	queryDataSourceListResponse,
 } from "../../helpers/query-data-source-response";
 import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
+import {
+	MOCK_DATA_SOURCE_ID,
+	MOCK_PAGE_ID,
+} from "../../helpers/test-mock-ids";
 import { isRecord } from "../../helpers/type-guards";
 
-const pagesUpdateMock = mock(async (_args: unknown) => ({
-	id: "updated-page-id",
-}));
-const dataSourceQueryMock = mock(async () => emptyQueryDataSourceResponse());
+const { dataSourceQueryMock, pagesUpdateMock, pagesRetrieveMock } =
+	installPrismaApiNotionClientMock({
+		pagesUpdateMock: mock<PrismaApiPagesUpdateFn>(async () =>
+			prismaApiStubPartialPage("updated-page-id"),
+		),
+		pagesRetrieveMock: mock<PrismaApiPagesRetrieveFn>(async () => ({
+			object: "page" as const,
+			id: MOCK_PAGE_ID,
+			parent: prismaApiDataSourceParent({ dataSourceId: MOCK_DATA_SOURCE_ID }),
+			properties: {
+				"Shop Name": databasePropertyValue.title("A"),
+				Rating: databasePropertyValue.number(3),
+			},
+		})),
+	});
 
-mock.module("@notionhq/client", () => ({
-	Client: class {
-		public pages = {
-			create: mock(async () => ({})),
-			update: pagesUpdateMock,
-			retrieve: mock(async () => ({})),
-		};
-		public dataSources = { query: dataSourceQueryMock };
-		constructor(_args: unknown) {}
-	},
-}));
-
-const { DatabaseClient } = await import("../../../src/client/DatabaseClient");
+const { DatabaseClient } = await import("../../../src/client/database/DatabaseClient");
 
 type TestSchema = { shopName: string; rating: number };
 type TestColumnTypes = { shopName: "title"; rating: "number" };
 
 function createClient() {
-	return new DatabaseClient<TestSchema, TestColumnTypes>({
-		id: "db-1",
-		auth: "token",
-		name: "Coffee Shops",
-		schema: z.object({
-			shopName: z.string().optional(),
-			rating: z.number().optional(),
-		}),
-		camelPropertyNameToNameAndTypeMap: {
-			shopName: { columnName: "Shop Name", type: "title" },
-			rating: { columnName: "Rating", type: "number" },
-		},
-	});
+	return createPrismaApiTestDatabaseClient(DatabaseClient);
 }
 
 describe("update", () => {
 	beforeEach(() => {
 		pagesUpdateMock.mockReset();
-		pagesUpdateMock.mockResolvedValue({ id: "updated-page-id" });
+		pagesUpdateMock.mockResolvedValue(prismaApiStubPartialPage("updated-page-id"));
+		pagesRetrieveMock.mockReset();
+		pagesRetrieveMock.mockResolvedValue({
+			object: "page",
+			id: MOCK_PAGE_ID,
+			parent: prismaApiDataSourceParent({ dataSourceId: MOCK_DATA_SOURCE_ID }),
+			properties: {
+				"Shop Name": databasePropertyValue.title("A"),
+				Rating: databasePropertyValue.number(3),
+			},
+		});
 		dataSourceQueryMock.mockReset();
 	});
 
 	test("calls pages.update with page_id and property patch", async () => {
 		const client = createClient();
 		await client.update({
-			where: { id: "page-1" },
+			where: { id: MOCK_PAGE_ID },
 			properties: { rating: 4 },
 		});
 		expect(pagesUpdateMock).toHaveBeenCalledWith({
-			page_id: "page-1",
+			page_id: MOCK_PAGE_ID,
 			properties: { Rating: { number: 4 } },
 		});
+		expect(pagesRetrieveMock).toHaveBeenCalledWith({ page_id: MOCK_PAGE_ID });
 	});
 
 	test("sends only changed fields", async () => {
 		const client = createClient();
 		await client.update({
-			where: { id: "page-1" },
+			where: { id: MOCK_PAGE_ID },
 			properties: { shopName: "New Name" },
 		});
 		expect(pagesUpdateMock).toHaveBeenCalled();
@@ -95,7 +104,7 @@ describe("update", () => {
 	test("throws when properties is empty", async () => {
 		const client = createClient();
 		await expect(
-			client.update({ where: { id: "page-1" }, properties: {} }),
+			client.update({ where: { id: MOCK_PAGE_ID }, properties: {} }),
 		).rejects.toThrow(
 			"[@haustle/notion-orm] update(): pass at least one key in properties.",
 		);
@@ -105,15 +114,34 @@ describe("update", () => {
 		pagesUpdateMock.mockRejectedValueOnce(new Error("Forbidden"));
 		const client = createClient();
 		await expect(
-			client.update({ where: { id: "page-1" }, properties: { rating: 1 } }),
+			client.update({ where: { id: MOCK_PAGE_ID }, properties: { rating: 1 } }),
 		).rejects.toThrow("Forbidden");
+	});
+
+	test("throws when the page belongs to another data source", async () => {
+		pagesRetrieveMock.mockResolvedValueOnce({
+			object: "page",
+			id: MOCK_PAGE_ID,
+			parent: prismaApiDataSourceParent({ dataSourceId: "other-db" }),
+			properties: {
+				"Shop Name": databasePropertyValue.title("A"),
+				Rating: databasePropertyValue.number(3),
+			},
+		});
+		const client = createClient();
+		await expect(
+			client.update({ where: { id: MOCK_PAGE_ID }, properties: { rating: 1 } }),
+		).rejects.toThrow(
+			`[@haustle/notion-orm] update(): page ${MOCK_PAGE_ID} does not belong to database Coffee Shops.`,
+		);
+		expect(pagesUpdateMock).not.toHaveBeenCalled();
 	});
 });
 
 describe("updateMany", () => {
 	beforeEach(() => {
 		pagesUpdateMock.mockReset();
-		pagesUpdateMock.mockResolvedValue({ id: "updated" });
+		pagesUpdateMock.mockResolvedValue(prismaApiStubPartialPage("updated"));
 		dataSourceQueryMock.mockReset();
 	});
 
@@ -151,6 +179,33 @@ describe("updateMany", () => {
 		);
 		expect(pagesUpdateMock).toHaveBeenCalledWith(
 			expect.objectContaining({ page_id: "p2" }),
+		);
+	});
+
+	test("skips partial query rows when collecting ids for bulk updates", async () => {
+		dataSourceQueryMock.mockResolvedValueOnce(
+			queryDataSourceListResponse([
+				{ object: "page", id: "partial-page" },
+				{
+					object: "page",
+					id: "p1",
+					properties: {
+						"Shop Name": databasePropertyValue.title("A"),
+						Rating: databasePropertyValue.number(3),
+					},
+				},
+			]),
+		);
+
+		const client = createClient();
+		await client.updateMany({
+			where: { rating: { less_than: 4 } },
+			properties: { rating: 5 },
+		});
+
+		expect(pagesUpdateMock).toHaveBeenCalledTimes(1);
+		expect(pagesUpdateMock).toHaveBeenCalledWith(
+			expect.objectContaining({ page_id: "p1" }),
 		);
 	});
 });

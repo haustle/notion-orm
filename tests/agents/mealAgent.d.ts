@@ -1,3 +1,3 @@
 import type { AgentClient } from "../golden/base";
 
-export declare const mealAgent: (auth: string) => AgentClient;
+export declare const MealAgent: (auth: string) => AgentClient;

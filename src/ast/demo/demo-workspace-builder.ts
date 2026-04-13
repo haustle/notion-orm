@@ -52,11 +52,14 @@ export function buildDemoPlaygroundWorkspace(args: {
 	spec?: DemoPlaygroundSpec;
 	mockPackageSource: string;
 	mockBaseSource: string;
+	/** Same source as repo `src/notion-id-patterns.ts` (playground mock imports it). */
+	notionIdPatternsSource: string;
 }): DemoPlaygroundWorkspaceResult {
 	const {
 		spec = DEMO_PLAYGROUND_SPEC,
 		mockPackageSource,
 		mockBaseSource,
+		notionIdPatternsSource,
 	} = args;
 
 	const databaseModules = spec.databases.map((fixture) =>
@@ -111,6 +114,7 @@ export function buildDemoPlaygroundWorkspace(args: {
 		[spec.agentEntryFile]: agentEntry,
 		[PLAYGROUND_PATHS.BUILD_INDEX]: generatedIndexTs,
 		[PLAYGROUND_PATHS.MOCK_PACKAGE_INDEX]: mockPackageSource,
+		[PLAYGROUND_PATHS.MOCK_PACKAGE_NOTION_ID_PATTERNS]: notionIdPatternsSource,
 		[PLAYGROUND_PATHS.MOCK_PACKAGE_BASE]: mockBaseSource,
 	};
 

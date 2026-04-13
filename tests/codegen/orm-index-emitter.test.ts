@@ -41,7 +41,7 @@ type RuntimeNotionOrmInstance = {
 };
 
 type RuntimeNotionOrmConstructor = new (config: {
-	auth: string;
+	auth?: string;
 }) => RuntimeNotionOrmInstance;
 
 function isRuntimeNotionOrmConstructor(
@@ -77,10 +77,8 @@ describe("orm index emitter", () => {
 
 	test("emits runtime index that executes and wires databases/agents", async () => {
 		const tempDirectory = createTempWorkspace("orm-index-");
-		const srcDirectory = join(tempDirectory, CODEGEN_EMIT_PATHS.srcDir);
-		const dbDirectory = join(tempDirectory, CODEGEN_EMIT_PATHS.dbDir);
+		const dbDirectory = join(tempDirectory, CODEGEN_EMIT_PATHS.databasesDir);
 		const agentsDirectory = join(tempDirectory, CODEGEN_EMIT_PATHS.agentsDir);
-		mkdirSync(srcDirectory, { recursive: true });
 		mkdirSync(dbDirectory, { recursive: true });
 		mkdirSync(agentsDirectory, { recursive: true });
 
@@ -89,15 +87,11 @@ describe("orm index emitter", () => {
 			"export class DatabaseClient {}",
 			"export class NotionORMBase {",
 			"  constructor(config) {",
-			"    this.auth = config.auth;",
+			"    this.notionAuth = config.auth ?? \"\";",
 			"  }",
 			"}",
 			"",
 		].join("\n");
-		writeFileSync(
-			join(srcDirectory, CODEGEN_EMIT_PATHS.baseModuleJs),
-			baseStub,
-		);
 		const packageBaseDir = join(
 			tempDirectory,
 			"node_modules/@haustle/notion-orm/build/src",
@@ -106,16 +100,16 @@ describe("orm index emitter", () => {
 		writeFileSync(join(packageBaseDir, "base.js"), baseStub);
 		writeFileSync(
 			join(dbDirectory, CODEGEN_EMIT_PATHS.taskDbModuleJs),
-			'export const taskDb = (auth) => ({ kind: "db", auth });\n',
+			'export const TaskDb = (auth) => ({ kind: "db", auth });\n',
 		);
 		writeFileSync(
 			join(agentsDirectory, CODEGEN_EMIT_PATHS.mealAgentModuleJs),
-			'export const mealAgent = (auth) => ({ kind: "agent", auth });\n',
+			'export const MealAgent = (auth) => ({ kind: "agent", auth });\n',
 		);
 
-		const buildIndexTsPath = join(srcDirectory, CODEGEN_EMIT_PATHS.indexTs);
-		const buildIndexJsPath = join(srcDirectory, CODEGEN_EMIT_PATHS.indexJs);
-		const buildIndexDtsPath = join(srcDirectory, CODEGEN_EMIT_PATHS.indexDts);
+		const buildIndexTsPath = join(tempDirectory, CODEGEN_EMIT_PATHS.indexTs);
+		const buildIndexJsPath = join(tempDirectory, CODEGEN_EMIT_PATHS.indexJs);
+		const buildIndexDtsPath = join(tempDirectory, CODEGEN_EMIT_PATHS.indexDts);
 		emitOrmIndexArtifacts({
 			...metadata,
 			buildIndexTsPath,
@@ -125,10 +119,10 @@ describe("orm index emitter", () => {
 		});
 
 		const importedModule = await import(pathToFileURL(buildIndexJsPath).href);
-		if (!isRuntimeNotionOrmConstructor(importedModule.default)) {
-			throw new Error("Expected emitted module default export to be a class");
+		if (!isRuntimeNotionOrmConstructor(importedModule.NotionORM)) {
+			throw new Error("Expected emitted module named export NotionORM to be a class");
 		}
-		const NotionORM = importedModule.default;
+		const { NotionORM } = importedModule;
 		const client = new NotionORM({ auth: "token-123" });
 
 		expect(client.databases.taskDb.kind).toBe("db");

@@ -5,7 +5,7 @@
 
 import type { DataSourceObjectResponse } from "@notionhq/client/build/src/api-endpoints.js";
 import * as ts from "typescript";
-import type { SupportedNotionColumnType } from "../../client/queryTypes";
+import type { SupportedNotionColumnType } from "../../client/database/types";
 import {
 	createCheckboxProperty,
 	createDateProperty,
@@ -15,11 +15,11 @@ import {
 	createTextProperty,
 	toPascalCase,
 } from "../shared/ast-builders";
-import type { ZodMetadata } from "./zod-schema";
+import type { ZodMetaColumnPayload } from "./zod-schema";
 
 export interface PropertyASTResult {
 	tsPropertySignature: ts.TypeElement;
-	zodMeta: Omit<ZodMetadata, "propName" | "columnName" | "type">;
+	zodMeta: ZodMetaColumnPayload;
 	enumConstStatement?: ts.Statement;
 }
 
@@ -76,6 +76,7 @@ export const propertyASTGenerators = {
 			isTitle: true,
 		}),
 		zodMeta: {
+			type: "plain",
 			isRequired: true,
 		},
 		enumConstStatement: undefined,
@@ -87,6 +88,7 @@ export const propertyASTGenerators = {
 			isTitle: false,
 		}),
 		zodMeta: {
+			type: "plain",
 			isRequired: false,
 		},
 		enumConstStatement: undefined,
@@ -98,6 +100,7 @@ export const propertyASTGenerators = {
 			isTitle: false,
 		}),
 		zodMeta: {
+			type: "plain",
 			isRequired: false,
 		},
 		enumConstStatement: undefined,
@@ -109,6 +112,7 @@ export const propertyASTGenerators = {
 			isTitle: false,
 		}),
 		zodMeta: {
+			type: "plain",
 			isRequired: false,
 		},
 		enumConstStatement: undefined,
@@ -120,6 +124,7 @@ export const propertyASTGenerators = {
 			isTitle: false,
 		}),
 		zodMeta: {
+			type: "plain",
 			isRequired: false,
 		},
 		enumConstStatement: undefined,
@@ -128,6 +133,7 @@ export const propertyASTGenerators = {
 	number: ({ camelizedName }) => ({
 		tsPropertySignature: createNumberProperty(camelizedName),
 		zodMeta: {
+			type: "plain",
 			isRequired: false,
 		},
 		enumConstStatement: undefined,
@@ -136,6 +142,7 @@ export const propertyASTGenerators = {
 	date: ({ camelizedName }) => ({
 		tsPropertySignature: createDateProperty(camelizedName),
 		zodMeta: {
+			type: "plain",
 			isRequired: false,
 		},
 		enumConstStatement: undefined,
@@ -144,6 +151,7 @@ export const propertyASTGenerators = {
 	checkbox: ({ camelizedName }) => ({
 		tsPropertySignature: createCheckboxProperty(camelizedName),
 		zodMeta: {
+			type: "plain",
 			isRequired: false,
 		},
 		enumConstStatement: undefined,
@@ -165,6 +173,7 @@ export const propertyASTGenerators = {
 				isArray: false,
 			}),
 			zodMeta: {
+				type: "optionLiterals",
 				isRequired: false,
 				options,
 				propertyValuesIdentifier,
@@ -192,6 +201,7 @@ export const propertyASTGenerators = {
 				isArray: false,
 			}),
 			zodMeta: {
+				type: "optionLiterals",
 				isRequired: false,
 				options,
 				propertyValuesIdentifier,
@@ -219,6 +229,7 @@ export const propertyASTGenerators = {
 				isArray: true,
 			}),
 			zodMeta: {
+				type: "optionLiterals",
 				isRequired: false,
 				options,
 				propertyValuesIdentifier,
@@ -233,6 +244,7 @@ export const propertyASTGenerators = {
 	files: ({ camelizedName }) => ({
 		tsPropertySignature: createFilesProperty(camelizedName),
 		zodMeta: {
+			type: "plain",
 			isRequired: false,
 		},
 		enumConstStatement: undefined,
@@ -241,6 +253,7 @@ export const propertyASTGenerators = {
 	people: ({ camelizedName }) => ({
 		tsPropertySignature: createStringArrayProperty(camelizedName),
 		zodMeta: {
+			type: "plain",
 			isRequired: false,
 		},
 		enumConstStatement: undefined,
@@ -249,6 +262,7 @@ export const propertyASTGenerators = {
 	relation: ({ camelizedName }) => ({
 		tsPropertySignature: createStringArrayProperty(camelizedName),
 		zodMeta: {
+			type: "plain",
 			isRequired: false,
 		},
 		enumConstStatement: undefined,
@@ -260,6 +274,7 @@ export const propertyASTGenerators = {
 			isTitle: false,
 		}),
 		zodMeta: {
+			type: "plain",
 			isRequired: false,
 		},
 		enumConstStatement: undefined,
@@ -271,6 +286,7 @@ export const propertyASTGenerators = {
 			isTitle: false,
 		}),
 		zodMeta: {
+			type: "plain",
 			isRequired: false,
 		},
 		enumConstStatement: undefined,
@@ -282,6 +298,7 @@ export const propertyASTGenerators = {
 			isTitle: false,
 		}),
 		zodMeta: {
+			type: "plain",
 			isRequired: false,
 		},
 		enumConstStatement: undefined,
@@ -293,6 +310,7 @@ export const propertyASTGenerators = {
 			isTitle: false,
 		}),
 		zodMeta: {
+			type: "plain",
 			isRequired: false,
 		},
 		enumConstStatement: undefined,
@@ -304,6 +322,7 @@ export const propertyASTGenerators = {
 			isTitle: false,
 		}),
 		zodMeta: {
+			type: "plain",
 			isRequired: false,
 		},
 		enumConstStatement: undefined,

@@ -1,44 +1,52 @@
+import { randomUUID } from "node:crypto";
 import { describe, expect, test } from "bun:test";
-import type { camelPropertyNameToNameAndTypeMapType } from "../../../src/client/DatabaseClient";
-import { transformQueryFilterToApiFilter } from "../../../src/client/query/filter";
-import type { QueryFilter } from "../../../src/client/queryTypes";
+import type {
+	DatabaseColumns,
+	DatabaseDefinition,
+	InferDatabaseSchema,
+	QueryFilter,
+} from "../../../src/client/database/types";
+import { transformQueryFilterToApiFilter } from "../../../src/client/database/query/filter";
+import { toNotionDatabaseId } from "../../../src/client/database/types/notion-database-id";
+import {
+	MOCK_PAGE_ID,
+	MOCK_USER_ID,
+	MOCK_USER_ID_2,
+	MOCK_USER_ID_3,
+} from "../../helpers/test-mock-ids";
 
-type QuerySchema = {
-	shopName: string;
-	rating: number;
-	visitStatus: string;
-	website: string;
-	contactEmail: string;
-	contactPhone: string;
-	hasWifi: boolean;
-	openedOn: { start: string; end?: string };
-	tags: string[];
-	neighborhood: string;
-	notes: string;
-	attachments: Array<{ name: string; url: string }>;
-	relatedPages: string[];
-	owners: string[];
-	createdByUser: string;
-	lastEditedByUser: string;
-	createdAt: string;
-	updatedAt: string;
-	recordId: number;
-};
+const RELATION_RELATED_DATABASE_ID = toNotionDatabaseId(randomUUID());
+
+const visitStatusOptions = ["Open", "Closed"] as const;
+const tagOptions = ["quiet", "brunch", "study"] as const;
+const neighborhoodOptions = ["Downtown", "Midtown"] as const;
 
 const map = {
 	shopName: { columnName: "Shop Name", type: "title" },
 	rating: { columnName: "Rating", type: "number" },
-	visitStatus: { columnName: "Visit Status", type: "status" },
+	visitStatus: {
+		columnName: "Visit Status",
+		type: "status",
+		options: visitStatusOptions,
+	},
 	website: { columnName: "Website", type: "url" },
 	contactEmail: { columnName: "Contact Email", type: "email" },
 	contactPhone: { columnName: "Contact Phone", type: "phone_number" },
 	hasWifi: { columnName: "Has WiFi", type: "checkbox" },
 	openedOn: { columnName: "Opened On", type: "date" },
-	tags: { columnName: "Tags", type: "multi_select" },
-	neighborhood: { columnName: "Neighborhood", type: "select" },
+	tags: { columnName: "Tags", type: "multi_select", options: tagOptions },
+	neighborhood: {
+		columnName: "Neighborhood",
+		type: "select",
+		options: neighborhoodOptions,
+	},
 	notes: { columnName: "Notes", type: "rich_text" },
 	attachments: { columnName: "Attachments", type: "files" },
-	relatedPages: { columnName: "Related Pages", type: "relation" },
+	relatedPages: {
+		columnName: "Related Pages",
+		type: "relation",
+		relatedDatabaseId: RELATION_RELATED_DATABASE_ID,
+	},
 	owners: { columnName: "Owners", type: "people" },
 	createdByUser: { columnName: "Created By User", type: "created_by" },
 	lastEditedByUser: {
@@ -48,17 +56,13 @@ const map = {
 	createdAt: { columnName: "Created At", type: "created_time" },
 	updatedAt: { columnName: "Updated At", type: "last_edited_time" },
 	recordId: { columnName: "Record Id", type: "unique_id" },
-} as const satisfies camelPropertyNameToNameAndTypeMapType;
+} as const satisfies DatabaseColumns;
 
-type QueryColumns = {
-	[Property in keyof typeof map]: (typeof map)[Property]["type"];
-};
+type QueryDefinition = DatabaseDefinition<typeof map>;
+type QuerySchema = InferDatabaseSchema<typeof map>;
 
-function transformFilter(queryFilter: QueryFilter<QuerySchema, QueryColumns>) {
-	return transformQueryFilterToApiFilter<QuerySchema, QueryColumns>(
-		queryFilter,
-		map,
-	);
+function transformFilter(queryFilter: QueryFilter<QueryDefinition>) {
+	return transformQueryFilterToApiFilter<QueryDefinition>(queryFilter, map);
 }
 
 describe("query filter transform", () => {
@@ -138,10 +142,10 @@ describe("query filter transform", () => {
 				{ neighborhood: { equals: "Downtown" } },
 				{ notes: { contains: "espresso" } },
 				{ attachments: { is_not_empty: true } },
-				{ relatedPages: { contains: "page-1" } },
-				{ owners: { contains: "user-1" } },
-				{ createdByUser: { contains: "user-2" } },
-				{ lastEditedByUser: { does_not_contain: "user-3" } },
+				{ relatedPages: { contains: MOCK_PAGE_ID } },
+				{ owners: { contains: MOCK_USER_ID } },
+				{ createdByUser: { contains: MOCK_USER_ID_2 } },
+				{ lastEditedByUser: { does_not_contain: MOCK_USER_ID_3 } },
 				{ createdAt: { on_or_after: "2026-02-01" } },
 				{ updatedAt: { before: "2026-03-01" } },
 			],
@@ -187,19 +191,19 @@ describe("query filter transform", () => {
 				},
 				{
 					property: "Related Pages",
-					relation: { contains: "page-1" },
+					relation: { contains: MOCK_PAGE_ID },
 				},
 				{
 					property: "Owners",
-					people: { contains: "user-1" },
+					people: { contains: MOCK_USER_ID },
 				},
 				{
 					property: "Created By User",
-					created_by: { contains: "user-2" },
+					created_by: { contains: MOCK_USER_ID_2 },
 				},
 				{
 					property: "Last Edited By User",
-					last_edited_by: { does_not_contain: "user-3" },
+					last_edited_by: { does_not_contain: MOCK_USER_ID_3 },
 				},
 				{
 					property: "Created At",

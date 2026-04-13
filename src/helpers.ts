@@ -1,6 +1,21 @@
-const UNDASHED_NOTION_ID_PATTERN = /^[0-9a-f]{32}$/;
-const DASHED_NOTION_ID_PATTERN =
-	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+import {
+	DASHED_NOTION_ID_PATTERN,
+	UNDASHED_NOTION_ID_PATTERN,
+} from "./notion-id-patterns";
+
+/**
+ * Returns a random version 4 UUID string using the built-in Web Crypto API
+ * (`globalThis.crypto.randomUUID()` — Node 19+ and modern browsers).
+ */
+export function randomUuidV4(): string {
+	const crypto = globalThis.crypto;
+	if (crypto?.randomUUID === undefined) {
+		throw new Error(
+			"globalThis.crypto.randomUUID is not available (requires Node 19+ or a modern browser).",
+		);
+	}
+	return crypto.randomUUID();
+}
 
 /** Normalizes arbitrary labels into stable camelCase identifiers for emitted symbols. */
 export function camelize(str: string) {
@@ -21,35 +36,47 @@ export function camelize(str: string) {
 		.join("")}`;
 }
 
-/** Accepts dashed or undashed Notion ids and returns the canonical undashed form. */
+/**
+ * Capitalizes the first character of an identifier (e.g. camelCase module key → file stem).
+ * Used for generated module filenames alongside PascalCase factory exports.
+ */
+export function toPascalCase(value: string): string {
+	if (!value) {
+		return value;
+	}
+	return value[0].toUpperCase() + value.slice(1);
+}
+
+/**
+ * Accepts dashed or undashed Notion UUIDs and returns the canonical undashed (32 hex) form.
+ * - With hyphens: must match dashed 8-4-4-4-12 lowercase hex.
+ * - Without hyphens: must be exactly 32 hex characters.
+ * Trims ASCII whitespace; empty / invalid shapes throw.
+ */
 export function toUndashedNotionId(id: string): string {
-	const normalizedId = id.replace(/-/g, "").toLowerCase();
-	if (!UNDASHED_NOTION_ID_PATTERN.test(normalizedId)) {
+	const trimmed = id.trim();
+	if (trimmed.length === 0) {
+		throw new Error(`Invalid Notion ID: expected a non-empty string.`);
+	}
+	const lowered = trimmed.toLowerCase();
+	if (lowered.includes("-")) {
+		if (!DASHED_NOTION_ID_PATTERN.test(lowered)) {
+			throw new Error(
+				`Invalid Notion ID. Expected UUID shape (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx), received '${id}'.`,
+			);
+		}
+		return lowered.replace(/-/g, "");
+	}
+	if (!UNDASHED_NOTION_ID_PATTERN.test(lowered)) {
 		throw new Error(
-			`Invalid Notion ID. Expected 32 hex characters after removing dashes, received '${id}'.`,
+			`Invalid Notion ID. Expected 32 hexadecimal characters, received '${id}'.`,
 		);
 	}
-	return normalizedId;
+	return lowered;
 }
 
 /** Formats a canonical Notion id back into dashed UUID form for user-facing output. */
 export function toDashedNotionId(id: string): string {
 	const normalizedId = toUndashedNotionId(id);
-	const dashedId = `${normalizedId.slice(0, 8)}-${normalizedId.slice(8, 12)}-${normalizedId.slice(12, 16)}-${normalizedId.slice(16, 20)}-${normalizedId.slice(20)}`;
-	if (!DASHED_NOTION_ID_PATTERN.test(dashedId)) {
-		throw new Error(
-			`Failed to format Notion ID into dashed UUID shape from '${id}'.`,
-		);
-	}
-	return dashedId;
-}
-
-export type Entries<T extends object> = {
-	[K in Extract<keyof T, string>]-?: [K, T[K]];
-}[Extract<keyof T, string>][];
-
-// Typed Object.entries helper for developer ergonomics in generic utilities.
-export function objectEntries<T extends object>(obj: T): Entries<T> {
-	// biome-ignore lint: Object.entries loses key/value relation without a cast.
-	return Object.entries(obj) as Entries<T>;
+	return `${normalizedId.slice(0, 8)}-${normalizedId.slice(8, 12)}-${normalizedId.slice(12, 16)}-${normalizedId.slice(16, 20)}-${normalizedId.slice(20)}`;
 }

@@ -6,7 +6,7 @@ import {
 	isSupportedPropertyType,
 	SUPPORTED_PROPERTY_TYPES,
 	type SupportedNotionColumnType,
-} from "../../src/client/queryTypes";
+} from "../../src/client/database/types";
 import { objectKeys } from "../../src/typeUtils";
 import {
 	CODEGEN_EMIT_PATHS,
@@ -193,8 +193,14 @@ describe("database module emitter", () => {
 			const jsPath = join(tempDir, CODEGEN_EMIT_PATHS.customerOrdersModuleJs);
 			const mod = await import(pathToFileURL(jsPath).href);
 
-			expect(mod.CustomerOrdersSchema).toBeDefined();
-			expect(typeof mod.customerOrders).toBe("function");
+			expect(typeof mod.CustomerOrders).toBe("function");
+			const client = mod.CustomerOrders("token");
+			expect(client.args).toMatchObject({
+				id: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4",
+				name: "Customer Orders",
+				auth: "token",
+			});
+			expect(client.args.columns).toBeDefined();
 		});
 	});
 });

@@ -7,7 +7,7 @@
 		"moduleResolution": "bundler",
 		"strict": false,
 		"skipLibCheck": true,
-		"types": ["node"]
+		"types": ["bun-types", "node"]
 	},
 	"include": ["./**/*.ts", "./**/*.d.ts", "../src/babel-types.d.ts"],
 	"exclude": ["./golden/**"]

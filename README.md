@@ -15,7 +15,9 @@ A lightweight TypeScript [Notion API](https://developers.notion.com/) wrapper th
 bun add @haustle/notion-orm
 ```
 
-After upgrading the package, run **`bun notion sync`** so generated `build/src/index.*` stays in sync with the version you installed (stale codegen can break at runtime when imports from the ORM package change).
+After upgrading the package, run **`bun notion sync`** so generated files under **`notion/`** stay in sync with the version you installed (stale codegen can break at runtime when imports from the ORM package change). In app code, prefer **`import { NotionORM } from "./notion/"`** — the directory import resolves to `index.ts`, so you do not need to spell **`index`**.
+
+If you import agent factories directly from **`@haustle/notion-orm/notion/agents/<file>`** (instead of using `notion.agents.*` on `NotionORM`), the exported factory name is **PascalCase** (for example `MealAgent`), matching generated database modules. Update named imports after upgrading if you used a previous camelCase export.
 
 # Quick start
 
@@ -158,10 +160,10 @@ const thread = await notion.agents.helpBot.chatStream({
 
 ### Client setup
 
-Create a single ORM instance with your Notion integration key:
+Create a single ORM instance with your Notion integration key. Import from the generated **`notion/`** folder (directory specifier → `index`):
 
 ```ts
-import NotionORM from "@haustle/notion-orm";
+import { NotionORM } from "./notion/";
 
 const notion = new NotionORM({
   auth: process.env.NOTION_KEY!,
@@ -378,10 +380,11 @@ See [API Reference](#api-reference) for full method signatures, `ThreadInfo` sha
 
 | import path                                    | what you get                                                                                                                                                                 | when to use                                                  |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `@haustle/notion-orm/build/db/<databaseName>`  | `<databaseName>(auth)` factory, `DatabaseSchemaType`, `QuerySchemaType`, generated Zod schema, generated option tuples (for select/status/multi-select), schema/type aliases | Script-level direct DB usage without the `NotionORM` wrapper |
-| `@haustle/notion-orm/build/agents/<agentName>` | `<agentName>(auth)` factory that returns an `AgentClient`                                                                                                                    | Script-level direct agent usage                              |
-| `@haustle/notion-orm/build/db`                 | `databases` barrel object (all database factories)                                                                                                                           | Dynamic database selection or custom registry wiring         |
-| `@haustle/notion-orm/build/agents`             | `agents` barrel object (all agent factories)                                                                                                                                 | Dynamic agent selection or custom registry wiring            |
+| `./notion/` (relative)                         | `NotionORM` class (generated entry; same as `./notion/index` but shorter)                                                                                                    | Typical app code after **`notion sync`**                     |
+| `@haustle/notion-orm/notion/databases/<databaseName>`  | `<databaseName>(auth)` factory, `PageSchema`, `CreateSchema`, `QuerySchema`, generated Zod schema, generated option tuples (for select/status/multi-select), schema/type aliases | Script-level direct DB usage without the `NotionORM` wrapper |
+| `@haustle/notion-orm/notion/agents/<AgentName>` | `<AgentName>(auth)` factory that returns an `AgentClient` (PascalCase export; registry keys on `notion.agents` stay camelCase)                                                | Script-level direct agent usage                              |
+| `@haustle/notion-orm/notion/databases`                 | `databases` barrel object (all database factories)                                                                                                                           | Dynamic database selection or custom registry wiring         |
+| `@haustle/notion-orm/notion/agents`             | `agents` barrel object (all agent factories)                                                                                                                                 | Dynamic agent selection or custom registry wiring            |
 
 ## Thread response shapes
 
@@ -450,9 +453,9 @@ All supported properties can be used in typed filters. Formula properties are no
 │   │   └── shared
 │   └── types            # local type bridges
 ├── plugins              # lint/tooling helpers
-└── build                # generated output (after build/sync)
-    ├── src
-    ├── db
+└── notion               # generated output (after notion sync)
+    ├── index.*          # import as ./notion/
+    ├── databases
     └── agents
 ```
 

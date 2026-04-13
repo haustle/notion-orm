@@ -6,22 +6,20 @@ import {
 } from "../../../src/config/loadConfig";
 import { CODEGEN_EMIT_PATHS } from "../../helpers/codegen-file-names";
 import {
+	MOCK_DATA_SOURCE_ID,
+	MOCK_DATA_SOURCE_ID_B,
+} from "../../helpers/test-mock-ids";
+import {
 	cleanupTempWorkspaces,
 	createTempWorkspace,
 	writeWorkspaceFile,
 } from "../../helpers/temp-workspace";
 
 const ORIGINAL_CWD = process.cwd();
-const ORIGINAL_NOTION_AUTH = process.env.NOTION_AUTH;
 const ORIGINAL_NOTION_KEY = process.env.NOTION_KEY;
 
 afterEach(() => {
 	process.chdir(ORIGINAL_CWD);
-	if (ORIGINAL_NOTION_AUTH === undefined) {
-		delete process.env.NOTION_AUTH;
-	} else {
-		process.env.NOTION_AUTH = ORIGINAL_NOTION_AUTH;
-	}
 	if (ORIGINAL_NOTION_KEY === undefined) {
 		delete process.env.NOTION_KEY;
 	} else {
@@ -40,7 +38,7 @@ describe("config loading contracts", () => {
 			content: [
 				"export default {",
 				"  auth: 'token-123',",
-				"  databases: ['db-1'],",
+				`  databases: ['${MOCK_DATA_SOURCE_ID}'],`,
 				"  agents: ['agent-1'],",
 				"};",
 			].join("\n"),
@@ -49,7 +47,7 @@ describe("config loading contracts", () => {
 		const config = await loadConfig(configPath);
 		expect(config).toEqual({
 			auth: "token-123",
-			databases: ["db-1"],
+			databases: [MOCK_DATA_SOURCE_ID],
 			agents: ["agent-1"],
 		});
 	});
@@ -74,11 +72,10 @@ describe("config loading contracts", () => {
 		await expect(loadConfig(configPath)).rejects.toThrow("auth");
 	});
 
-	test("getNotionConfig falls back to NOTION_AUTH when no config file exists", async () => {
+	test("getNotionConfig falls back to NOTION_KEY when no config file exists", async () => {
 		const workspacePath = createTempWorkspace("config-env-fallback-");
 		process.chdir(workspacePath);
-		process.env.NOTION_AUTH = "env-auth-token";
-		delete process.env.NOTION_KEY;
+		process.env.NOTION_KEY = "env-auth-token";
 
 		const config = await getNotionConfig();
 		expect(config).toEqual({
@@ -92,11 +89,10 @@ describe("config loading contracts", () => {
 		const workspacePath = createTempWorkspace("config-cache-");
 		process.chdir(workspacePath);
 
-		process.env.NOTION_AUTH = "cached-token";
-		delete process.env.NOTION_KEY;
+		process.env.NOTION_KEY = "cached-token";
 		const first = await getNotionConfig();
 
-		process.env.NOTION_AUTH = "new-token";
+		process.env.NOTION_KEY = "new-token";
 		const second = await getNotionConfig();
 
 		expect(first.auth).toBe("cached-token");
@@ -115,17 +111,20 @@ describe("config loading contracts", () => {
 			content: [
 				"export default {",
 				"  auth: 'config-auth-token',",
-				"  databases: ['db-1', 'db-2'],",
+				`  databases: ['${MOCK_DATA_SOURCE_ID}', '${MOCK_DATA_SOURCE_ID_B}'],`,
 				"  agents: ['agent-1'],",
 				"};",
 			].join("\n"),
 		});
 		process.chdir(workspacePath);
-		process.env.NOTION_AUTH = "env-fallback-should-not-win";
+		process.env.NOTION_KEY = "env-fallback-should-not-win";
 
 		const config = await getNotionConfig();
 		expect(config.auth).toBe("config-auth-token");
-		expect(config.databases).toEqual(["db-1", "db-2"]);
+		expect(config.databases).toEqual([
+			MOCK_DATA_SOURCE_ID,
+			MOCK_DATA_SOURCE_ID_B,
+		]);
 		expect(config.agents).toEqual(["agent-1"]);
 	});
 });

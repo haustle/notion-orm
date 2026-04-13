@@ -1,7 +1,11 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { z } from "zod";
-import type { NotionPropertyValue } from "../../../src/client/query/types";
+import { beforeEach, describe, expect, test } from "bun:test";
+import type { NotionPropertyValue } from "../../../src/client/database/query/types";
 import { objectKeys } from "../../../src/typeUtils";
+import {
+	createPrismaApiTestDatabaseClient,
+	installPrismaApiNotionClientMock,
+	PRISMA_API_FIND_MANY_COLUMNS,
+} from "../../helpers/notion-client-test-mock";
 import {
 	emptyQueryDataSourceResponse,
 	type QueryDataSourceResultRow,
@@ -11,26 +15,15 @@ import {
 	databasePropertyValue,
 	page,
 } from "../../helpers/query-transform-fixtures";
+import {
+	MOCK_DATA_SOURCE_ID,
+	MOCK_PAGE_ID,
+} from "../../helpers/test-mock-ids";
 
-const dataSourceQueryMock = mock(async () => emptyQueryDataSourceResponse());
+const { dataSourceQueryMock, pagesCreateMock, pagesUpdateMock, pagesRetrieveMock } =
+	installPrismaApiNotionClientMock();
 
-const pagesCreateMock = mock(async () => ({ id: "created-page-id" }));
-const pagesUpdateMock = mock(async () => ({ id: "updated-page-id" }));
-const pagesRetrieveMock = mock(async () => ({}));
-
-mock.module("@notionhq/client", () => ({
-	Client: class {
-		public pages = {
-			create: pagesCreateMock,
-			update: pagesUpdateMock,
-			retrieve: pagesRetrieveMock,
-		};
-		public dataSources = { query: dataSourceQueryMock };
-		constructor(_args: unknown) {}
-	},
-}));
-
-const { DatabaseClient } = await import("../../../src/client/DatabaseClient");
+const { DatabaseClient } = await import("../../../src/client/database/DatabaseClient");
 
 type TestSchema = {
 	shopName: string;
@@ -47,23 +40,7 @@ type TestColumnTypes = {
 };
 
 function createClient() {
-	return new DatabaseClient<TestSchema, TestColumnTypes>({
-		id: "db-1",
-		auth: "token",
-		name: "Coffee Shops",
-		schema: z.object({
-			shopName: z.string().optional(),
-			rating: z.number().optional(),
-			hasWifi: z.boolean().optional(),
-			notes: z.string().optional(),
-		}),
-		camelPropertyNameToNameAndTypeMap: {
-			shopName: { columnName: "Shop Name", type: "title" },
-			rating: { columnName: "Rating", type: "number" },
-			hasWifi: { columnName: "Has WiFi", type: "checkbox" },
-			notes: { columnName: "Notes", type: "rich_text" },
-		},
-	});
+	return createPrismaApiTestDatabaseClient(DatabaseClient, PRISMA_API_FIND_MANY_COLUMNS);
 }
 
 function mockQueryResponse(
@@ -79,7 +56,7 @@ function mockQueryResponse(
 
 function makePage(
 	properties: Record<string, NotionPropertyValue>,
-	id = "page-1",
+	id = MOCK_PAGE_ID,
 ): QueryDataSourceResultRow {
 	return page(properties, id);
 }
@@ -166,7 +143,7 @@ describe("findMany", () => {
 		});
 		expect(dataSourceQueryMock).toHaveBeenCalledWith(
 			expect.objectContaining({
-				data_source_id: "db-1",
+				data_source_id: MOCK_DATA_SOURCE_ID,
 				filter: {
 					property: "Rating",
 					number: { greater_than: 3 },
@@ -255,7 +232,7 @@ describe("findMany", () => {
 	test("throws when both select and omit are provided", () => {
 		const client = createClient();
 		expect(() =>
-			// @ts-expect-error invalid args
+			// @ts-expect-error intentional invalid args — runtime validates projection
 			client.findMany({
 				select: ["shopName"] as const,
 				omit: ["notes"] as const,

@@ -4,6 +4,18 @@
  * emitters do not need to duplicate structure-sensitive values.
  */
 import path from "path";
+import { toPascalCase } from "../../helpers";
+
+/**
+ * Top-level directory name for CLI-generated artifacts in consuming projects
+ * (`notion/` entry + `databases/`, `agents/`). Prefer **`import { NotionORM } from "./notion/"`**
+ * in apps (directory import resolves to `index` — no need to spell `index`). Distinct from this package's
+ * npm `outDir` (`build/`), which remains `@haustle/notion-orm/build/...`.
+ */
+export const PROJECT_CODEGEN_DIR_NAME = "notion" as const;
+
+/** Subdirectory under the codegen root for generated database modules. */
+export const PROJECT_DATABASES_DIR_NAME = "databases" as const;
 
 /**
  * Resolve generated artifact paths from the current project root, not from the
@@ -11,15 +23,15 @@ import path from "path";
  * consuming app when the package is linked locally.
  */
 function getProjectBuildDir(): string {
-	return path.resolve(process.cwd(), "build");
+	return path.resolve(process.cwd(), PROJECT_CODEGEN_DIR_NAME);
 }
 
-/** Canonical output directory for generated database modules (`build/db/*`). */
+/** Canonical output directory for generated database modules (`notion/databases/*`). */
 function getDatabasesDir(): string {
-	return path.join(getProjectBuildDir(), "db");
+	return path.join(getProjectBuildDir(), PROJECT_DATABASES_DIR_NAME);
 }
 
-/** Canonical output directory for generated agent modules (`build/agents/*`). */
+/** Canonical output directory for generated agent modules (`notion/agents/*`). */
 function getAgentsDir(): string {
 	return path.join(getProjectBuildDir(), "agents");
 }
@@ -29,8 +41,9 @@ export const AGENTS_DIR = getAgentsDir();
 
 /** Filesystem targets used by emitters. Getters stay lazy for testability. */
 export const AST_FS_PATHS = {
-	get BUILD_SRC_DIR(): string {
-		return path.join(getProjectBuildDir(), "src");
+	/** Codegen root (`notion/`): index entrypoint lives here alongside `databases/` and `agents/`. */
+	get CODEGEN_ROOT_DIR(): string {
+		return getProjectBuildDir();
 	},
 
 	get DATABASES_DIR(): string {
@@ -46,20 +59,20 @@ export const AST_FS_PATHS = {
 	},
 
 	get buildIndexTs(): string {
-		return path.resolve(AST_FS_PATHS.BUILD_SRC_DIR, AST_FS_FILENAMES.INDEX_TS);
+		return path.resolve(AST_FS_PATHS.CODEGEN_ROOT_DIR, AST_FS_FILENAMES.INDEX_TS);
 	},
 
 	get buildIndexJs(): string {
-		return path.resolve(AST_FS_PATHS.BUILD_SRC_DIR, AST_FS_FILENAMES.INDEX_JS);
+		return path.resolve(AST_FS_PATHS.CODEGEN_ROOT_DIR, AST_FS_FILENAMES.INDEX_JS);
 	},
 
 	get buildIndexDts(): string {
-		return path.resolve(AST_FS_PATHS.BUILD_SRC_DIR, AST_FS_FILENAMES.INDEX_DTS);
+		return path.resolve(AST_FS_PATHS.CODEGEN_ROOT_DIR, AST_FS_FILENAMES.INDEX_DTS);
 	},
 
 	get buildIndexDtsMap(): string {
 		return path.resolve(
-			AST_FS_PATHS.BUILD_SRC_DIR,
+			AST_FS_PATHS.CODEGEN_ROOT_DIR,
 			AST_FS_FILENAMES.INDEX_DTS_MAP,
 		);
 	},
@@ -92,11 +105,11 @@ export const AST_IMPORT_PATHS = {
 	ZOD: "zod",
 
 	databaseClass(name: string): string {
-		return `../db/${name}`;
+		return `./${PROJECT_DATABASES_DIR_NAME}/${toPascalCase(name)}`;
 	},
 
 	agentClass(name: string): string {
-		return `../agents/${name}`;
+		return `./agents/${toPascalCase(name)}`;
 	},
 } as const;
 
@@ -116,9 +129,10 @@ export const AST_RUNTIME_CONSTANTS = {
 
 /** Canonical generated type names referenced across emitters. */
 export const AST_TYPE_NAMES = {
-	DATABASE_SCHEMA_TYPE: "DatabaseSchemaType",
+	PAGE_SCHEMA: "PageSchema",
+	CREATE_SCHEMA: "CreateSchema",
 	COLUMN_NAME_TO_COLUMN_TYPE: "ColumnNameToColumnType",
-	QUERY_SCHEMA_TYPE: "QuerySchemaType",
+	QUERY_SCHEMA: "QuerySchema",
 	PROPERTY_VALUES_SUFFIX: "PropertyValues",
 } as const;
 
@@ -131,23 +145,32 @@ export const AST_TYPE_NAMES = {
  * when the build layout changes.
  */
 export const PLAYGROUND_PATHS = {
-	BUILD_INDEX: "build/src/index.ts",
+	/** Virtual file path for the generated index module. */
+	BUILD_INDEX: `${PROJECT_CODEGEN_DIR_NAME}/index.ts`,
+
+	/**
+	 * Recommended import path segment for consumer code (`./notion/` → `index.ts`).
+	 * Keeps demo snippets aligned with the same pattern we document in README.
+	 */
+	BUILD_INDEX_DIR: `${PROJECT_CODEGEN_DIR_NAME}/`,
 
 	databaseModule(name: string): string {
-		return `build/db/${name}.ts`;
+		return `${PROJECT_CODEGEN_DIR_NAME}/${PROJECT_DATABASES_DIR_NAME}/${toPascalCase(name)}.ts`;
 	},
 	agentModule(name: string): string {
-		return `build/agents/${name}.ts`;
+		return `${PROJECT_CODEGEN_DIR_NAME}/agents/${toPascalCase(name)}.ts`;
 	},
 
 	databaseImport(name: string): string {
-		return `../db/${name}.ts`;
+		return `./${PROJECT_DATABASES_DIR_NAME}/${toPascalCase(name)}.ts`;
 	},
 	agentImport(name: string): string {
-		return `../agents/${name}.ts`;
+		return `./agents/${toPascalCase(name)}.ts`;
 	},
 
 	MOCK_PACKAGE_INDEX: "playground_modules/haustle-notion-orm/index.ts",
+	MOCK_PACKAGE_NOTION_ID_PATTERNS:
+		"playground_modules/haustle-notion-orm/notion-id-patterns.ts",
 	MOCK_PACKAGE_BASE: "playground_modules/haustle-notion-orm/build/src/base.ts",
 	MOCK_PACKAGE_PREFIX: "playground_modules/",
 

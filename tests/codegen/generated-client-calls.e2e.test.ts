@@ -14,6 +14,11 @@ import {
 	buildMockDataSourceResponse,
 	CUSTOMER_ORDERS_FIXTURE,
 } from "../helpers/datasource-fixture-builder";
+import {
+	installPrismaApiNotionClientMock,
+	prismaApiStubPartialPage,
+	type PrismaApiPagesCreateFn,
+} from "../helpers/notion-client-test-mock";
 import { queryDataSourceListResponse } from "../helpers/query-data-source-response";
 import { databasePropertyValue } from "../helpers/query-transform-fixtures";
 import {
@@ -41,25 +46,11 @@ const dataSourceQueryMock = mock(async (_call: QueryDataSourceParameters) =>
 	]),
 );
 
-const pagesCreateMock = mock(async (_call: CreatePageParameters) => ({
-	id: "created-page-id",
-}));
+const pagesCreateMock = mock<PrismaApiPagesCreateFn>(async (_call) =>
+	prismaApiStubPartialPage("created-page-id"),
+);
 
-mock.module("@notionhq/client", () => {
-	return {
-		Client: class {
-			public pages = {
-				create: pagesCreateMock,
-			};
-
-			public dataSources = {
-				query: dataSourceQueryMock,
-			};
-
-			constructor(_args: unknown) {}
-		},
-	};
-});
+installPrismaApiNotionClientMock({ dataSourceQueryMock, pagesCreateMock });
 
 afterEach(() => {
 	dataSourceQueryMock.mockReset();
@@ -76,7 +67,7 @@ describe("generated database client e2e calls", () => {
 		const workspacePath = createTempWorkspace("generated-client-calls-");
 		const databaseClientSourcePath = join(
 			process.cwd(),
-			"src/client/DatabaseClient.ts",
+			"src/client/database/DatabaseClient.ts",
 		);
 		const zodSourcePath = join(process.cwd(), "node_modules/zod");
 
@@ -101,7 +92,7 @@ describe("generated database client e2e calls", () => {
 				join(workspacePath, CODEGEN_EMIT_PATHS.customerOrdersModuleJs),
 			).href
 		);
-		const dbClient = mod.customerOrders("token-123");
+		const dbClient = mod.CustomerOrders("token-123");
 
 		await dbClient.create({
 			properties: {

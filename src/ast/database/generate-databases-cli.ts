@@ -7,6 +7,7 @@ import { Client } from "@notionhq/client";
 import fs from "fs";
 import { getNotionConfig } from "../../config/loadConfig";
 import { toUndashedNotionId } from "../../helpers";
+import { toPascalCase } from "../shared/ast-builders";
 import {
 	type CachedEntityMetadata,
 	readAgentMetadataFromDisk,
@@ -58,6 +59,8 @@ export const createDatabaseTypes = async (
 
 	if (isFullGenerate) {
 		// Start from a clean generated directory so removed databases do not linger.
+		// (When called via `notion sync`, the parent codegen root is already wiped,
+		// but this is still needed for direct callers and tests.)
 		fs.rmSync(AST_FS_PATHS.DATABASES_DIR, { recursive: true, force: true });
 		metadataMap = new Map();
 	} else {
@@ -118,7 +121,7 @@ export const createDatabaseTypes = async (
 	return { databaseNames, databaseKeys };
 };
 
-/** Emits `db/index.ts|js` so generated databases can be addressed as a registry. */
+/** Emits `databases/index.ts|js` so generated databases can be addressed as a registry. */
 function createDatabaseBarrelFile(args: {
 	databaseInfo: Array<{ name: string }>;
 }) {
@@ -127,8 +130,9 @@ function createDatabaseBarrelFile(args: {
 	emitRegistryModuleArtifacts({
 		registryName: "databases",
 		entries: databaseInfo.map(({ name }) => ({
-			importName: name,
-			importPath: `./${name}`,
+			importName: toPascalCase(name),
+			importPath: `./${toPascalCase(name)}`,
+			registryKey: name,
 		})),
 		tsPath: AST_FS_PATHS.databaseBarrelTs,
 		jsPath: AST_FS_PATHS.databaseBarrelJs,

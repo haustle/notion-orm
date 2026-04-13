@@ -1,47 +1,57 @@
 import type {
-	FindFirstArgs,
-	FindManyArgs,
-	FindUniqueArgs,
-	ProjectedFromArgs,
-	ProjectionArgs,
+	DatabaseColumns,
+	DatabaseDefinition,
+	FindFirst,
+	FindMany,
+	FindUnique,
+	InferDatabaseSchema,
+	Projection,
 	Query,
-	UpdateManyArgs,
-} from "../../src/client/queryTypes";
+	ResultProjection,
+	UpdateMany,
+} from "../../src/client/database/types";
 import type { Equal, Expect } from "./helpers/assert";
+import { MOCK_PAGE_ID } from "../helpers/test-mock-ids";
 
-type BookSchema = {
-	shopName: string;
-	rating: number;
-	hasWifi: boolean;
-	neighborhood: "Downtown" | "Midtown";
-	tags: string[];
-};
+const NeighborhoodOptions = ["Downtown", "Midtown"] as const;
+const TagOptions = ["quiet", "outdoor", "study"] as const;
 
-type BookColumnTypes = {
-	shopName: "title";
-	rating: "number";
-	hasWifi: "checkbox";
-	neighborhood: "select";
-	tags: "multi_select";
-};
+const bookColumns = {
+	shopName: { columnName: "Shop Name", type: "title" },
+	rating: { columnName: "Rating", type: "number" },
+	hasWifi: { columnName: "Has Wifi", type: "checkbox" },
+	neighborhood: {
+		columnName: "Neighborhood",
+		type: "select",
+		options: NeighborhoodOptions,
+	},
+	tags: {
+		columnName: "Tags",
+		type: "multi_select",
+		options: TagOptions,
+	},
+} as const satisfies DatabaseColumns;
 
-/** When `Projection` is inferred as the full `ProjectionArgs` union, row keys must stay the full schema (not `never`). */
-type _projectedFromInferredUnion = Expect<
+type BookDefinition = DatabaseDefinition<typeof bookColumns>;
+type BookSchema = InferDatabaseSchema<typeof bookColumns>;
+
+/** When `Projection` is inferred as the full projection union, row keys must stay the full schema (not `never`). */
+type _resultProjectionInferredUnion = Expect<
 	Equal<
-		keyof ProjectedFromArgs<BookSchema, ProjectionArgs<BookSchema>>,
+		keyof ResultProjection<BookSchema, Projection<BookSchema>>,
 		keyof Partial<BookSchema>
 	>
 >;
 
 /** Notion `filter` / `sort` payload shape for the query transformer — not `findMany` args (`where` / `sortBy`). */
-type ApiQueryFilterSortShape = Query<BookSchema, BookColumnTypes>;
+type ApiQueryFilterSortShape = Query<BookDefinition>;
 type _queryShapeExists = Expect<
 	ApiQueryFilterSortShape extends object ? true : false
 >;
-type FindManyShape = FindManyArgs<BookSchema, BookColumnTypes>;
-type FindFirstShape = FindFirstArgs<BookSchema, BookColumnTypes>;
-type FindUniqueShape = FindUniqueArgs<BookSchema>;
-type UpdateManyShape = UpdateManyArgs<BookSchema, BookColumnTypes>;
+type FindManyShape = FindMany<BookDefinition>;
+type FindFirstShape = FindFirst<BookDefinition>;
+type FindUniqueShape = FindUnique<BookSchema>;
+type UpdateManyShape = UpdateMany<BookDefinition>;
 
 const validQuery: ApiQueryFilterSortShape = {
 	filter: {
@@ -110,7 +120,7 @@ const validFindFirstProjection: FindFirstShape = {
 void validFindFirstProjection;
 
 const validFindUniqueProjection: FindUniqueShape = {
-	where: { id: "page-1" },
+	where: { id: MOCK_PAGE_ID },
 	select: ["shopName"] as const,
 };
 void validFindUniqueProjection;

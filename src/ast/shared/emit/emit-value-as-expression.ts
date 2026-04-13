@@ -30,12 +30,12 @@ function valueToExpression(value: unknown): ts.Expression {
 				valueToExpression(v),
 			),
 		);
-		return ts.factory.createObjectLiteralExpression(props, false);
+		return ts.factory.createObjectLiteralExpression(props, true);
 	}
 	if (Array.isArray(value)) {
 		return ts.factory.createArrayLiteralExpression(
 			value.map((v) => valueToExpression(v)),
-			false,
+			true,
 		);
 	}
 	throw new Error(`Cannot emit value as expression: ${typeof value}`);

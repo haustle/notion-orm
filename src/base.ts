@@ -4,33 +4,75 @@
  * The main index.ts is generated and re-exports from here plus adds generated types.
  */
 
-export { AgentClient } from "./client/AgentClient";
-export { DatabaseClient } from "./client/DatabaseClient";
+import type { NotionORMConfig } from "./config/resolveNotionAuth";
+import { resolveNotionAuth } from "./config/resolveNotionAuth";
+
+export { AgentClient } from "./client/agent/AgentClient";
+export { DatabaseClient } from "./client/database/DatabaseClient";
+export { buildZodFromColumns } from "./client/database/schema-builder";
+export { isColumnTypesWithOptions } from "./client/database/types";
 export type {
+	BrandedNotionId,
+	ColumnDefinition,
+	ColumnDefinitionBase,
+	ColumnTypesWithOptions,
+	MultiSelectColumnDefinition,
+	NotionDatabaseId,
+	NotionIdKind,
+	NotionPageId,
+	NotionUserId,
+	NotionPropertyTypeToColumnDefinitionMap,
+	PlainColumnDefinition,
+	RelationColumnDefinition,
+	SelectColumnDefinition,
+	StatusColumnDefinition,
 	ColumnTypeMap,
-	CountArgs,
-	CreateArgs,
-	CreateManyArgs,
+	Count,
+	Create,
+	CreateMany,
+	DatabaseColumns,
+	DatabaseColumnTypes,
+	CreateSchema,
+	DatabaseDefinition,
+	DatabasePropertyType,
 	DatabasePropertyValue,
-	DeleteArgs,
-	DeleteManyArgs,
-	FindFirstArgs,
-	FindManyArgs,
-	FindUniqueArgs,
+	DatabaseSchema,
+	Delete,
+	DeleteMany,
+	FindFirst,
+	FindMany,
+	FindUnique,
+	InferDatabaseColumns,
+	InferCreateSchema,
+	InferDatabaseSchema,
+	NotWritableDatabaseColumnType,
 	PaginateResult,
-	ProjectedFromArgs,
 	ProjectedRow,
-	ProjectionArgs,
+	Projection,
 	ProjectionPropertyList,
+	Query,
+	ResultProjection,
 	SchemaRecord,
-	UpdateArgs,
-	UpdateManyArgs,
-	UpsertArgs,
-} from "./client/queryTypes";
+	Update,
+	UpdateMany,
+	Upsert,
+} from "./client/database/types";
+export {
+	brandedNotionIdsAsStringArray,
+	toNotionDatabaseId,
+	toNotionPageId,
+	toNotionUserId,
+} from "./client/database/types";
 export type { NotionConfigType } from "./config/helpers";
+export type { NotionORMConfig } from "./config/resolveNotionAuth";
+export { resolveNotionAuth } from "./config/resolveNotionAuth";
+export type { Simplify } from "./typeUtils";
 
 export class NotionORMBase {
-	constructor(config: { auth: string }) {
+	protected readonly notionAuth: string;
+
+	constructor(config: NotionORMConfig) {
+		this.notionAuth = resolveNotionAuth(config);
 		// Database and agent properties are added by the generated NotionORM class
 	}
 }

@@ -84,7 +84,7 @@ export async function getNotionConfig(): Promise<NotionConfigType> {
 
 	if (!configFile) {
 		// Fallback to environment variable
-		const authFromEnv = process.env.NOTION_AUTH || process.env.NOTION_KEY;
+		const authFromEnv = process.env.NOTION_KEY;
 		if (authFromEnv) {
 			const databases: string[] = [];
 			const agents: string[] = [];
@@ -98,8 +98,8 @@ export async function getNotionConfig(): Promise<NotionConfigType> {
 		}
 
 		throw new Error(
-			"No notion.config.js/ts/mjs file found and no NOTION_AUTH/NOTION_KEY environment variable set. " +
-				"Please create a config file or set NOTION_AUTH or NOTION_KEY.",
+			"No notion.config.js/ts/mjs file found and no NOTION_KEY environment variable set. " +
+				"Please create a config file or set NOTION_KEY.",
 		);
 	}
 
