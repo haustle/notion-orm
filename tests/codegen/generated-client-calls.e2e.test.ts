@@ -14,6 +14,11 @@ import {
 	buildMockDataSourceResponse,
 	CUSTOMER_ORDERS_FIXTURE,
 } from "../helpers/datasource-fixture-builder";
+import {
+	installPrismaApiNotionClientMock,
+	prismaApiStubPartialPage,
+	type PrismaApiPagesCreateFn,
+} from "../helpers/notion-client-test-mock";
 import { queryDataSourceListResponse } from "../helpers/query-data-source-response";
 import { databasePropertyValue } from "../helpers/query-transform-fixtures";
 import {
@@ -41,25 +46,11 @@ const dataSourceQueryMock = mock(async (_call: QueryDataSourceParameters) =>
 	]),
 );
 
-const pagesCreateMock = mock(async (_call: CreatePageParameters) => ({
-	id: "created-page-id",
-}));
+const pagesCreateMock = mock<PrismaApiPagesCreateFn>(async (_call) =>
+	prismaApiStubPartialPage("created-page-id"),
+);
 
-mock.module("@notionhq/client", () => {
-	return {
-		Client: class {
-			public pages = {
-				create: pagesCreateMock,
-			};
-
-			public dataSources = {
-				query: dataSourceQueryMock,
-			};
-
-			constructor(_args: unknown) {}
-		},
-	};
-});
+installPrismaApiNotionClientMock({ dataSourceQueryMock, pagesCreateMock });
 
 afterEach(() => {
 	dataSourceQueryMock.mockReset();

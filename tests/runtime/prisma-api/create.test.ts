@@ -1,24 +1,18 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { emptyQueryDataSourceResponse } from "../../helpers/query-data-source-response";
+import {
+	createPrismaApiTestDatabaseClient,
+	installPrismaApiNotionClientMock,
+	PRISMA_API_CREATE_COLUMNS,
+	prismaApiStubPartialPage,
+	type PrismaApiPagesCreateFn,
+} from "../../helpers/notion-client-test-mock";
 import { isRecord } from "../../helpers/type-guards";
 
-const pagesCreateMock = mock(async (_args: unknown) => ({
-	id: "created-page-id",
-}));
-
-mock.module("@notionhq/client", () => ({
-	Client: class {
-		public pages = {
-			create: pagesCreateMock,
-			update: mock(async () => ({})),
-			retrieve: mock(async () => ({})),
-		};
-		public dataSources = {
-			query: mock(async () => emptyQueryDataSourceResponse()),
-		};
-		constructor(_args: unknown) {}
-	},
-}));
+const { pagesCreateMock } = installPrismaApiNotionClientMock({
+	pagesCreateMock: mock<PrismaApiPagesCreateFn>(async () =>
+		prismaApiStubPartialPage("created-page-id"),
+	),
+});
 
 const { DatabaseClient } = await import("../../../src/client/database/DatabaseClient");
 
@@ -26,22 +20,13 @@ type TestSchema = { shopName: string; rating: number; hasWifi: boolean };
 type TestColumnTypes = { shopName: "title"; rating: "number"; hasWifi: "checkbox" };
 
 function createClient() {
-	return new DatabaseClient({
-		id: "db-1",
-		auth: "token",
-		name: "Coffee Shops",
-		columns: {
-			shopName: { columnName: "Shop Name", type: "title" },
-			rating: { columnName: "Rating", type: "number" },
-			hasWifi: { columnName: "Has WiFi", type: "checkbox" },
-		},
-	});
+	return createPrismaApiTestDatabaseClient(DatabaseClient, PRISMA_API_CREATE_COLUMNS);
 }
 
 describe("create", () => {
 	beforeEach(() => {
 		pagesCreateMock.mockReset();
-		pagesCreateMock.mockResolvedValue({ id: "created-page-id" });
+		pagesCreateMock.mockResolvedValue(prismaApiStubPartialPage("created-page-id"));
 	});
 
 	test("calls pages.create with correct properties", async () => {

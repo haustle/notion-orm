@@ -1,28 +1,26 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import {
+	createPrismaApiTestDatabaseClient,
+	installPrismaApiNotionClientMock,
+	prismaApiStubPartialPage,
+	type PrismaApiPagesCreateFn,
+	type PrismaApiPagesUpdateFn,
+} from "../../helpers/notion-client-test-mock";
+import {
 	emptyQueryDataSourceResponse,
 	queryDataSourceListResponse,
 } from "../../helpers/query-data-source-response";
 import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
 
-const pagesCreateMock = mock(async () => ({
-	object: "page" as const,
-	id: "new-page",
-}));
-const pagesUpdateMock = mock(async () => ({ id: "updated-page" }));
-const dataSourceQueryMock = mock(async () => emptyQueryDataSourceResponse());
-
-mock.module("@notionhq/client", () => ({
-	Client: class {
-		public pages = {
-			create: pagesCreateMock,
-			update: pagesUpdateMock,
-			retrieve: mock(async () => ({})),
-		};
-		public dataSources = { query: dataSourceQueryMock };
-		constructor(_args: unknown) {}
-	},
-}));
+const { dataSourceQueryMock, pagesCreateMock, pagesUpdateMock } =
+	installPrismaApiNotionClientMock({
+		pagesCreateMock: mock<PrismaApiPagesCreateFn>(async () =>
+			prismaApiStubPartialPage("new-page"),
+		),
+		pagesUpdateMock: mock<PrismaApiPagesUpdateFn>(async () =>
+			prismaApiStubPartialPage("updated-page"),
+		),
+	});
 
 const { DatabaseClient } = await import("../../../src/client/database/DatabaseClient");
 
@@ -30,23 +28,15 @@ type TestSchema = { shopName: string; rating: number };
 type TestColumnTypes = { shopName: "title"; rating: "number" };
 
 function createClient() {
-	return new DatabaseClient({
-		id: "db-1",
-		auth: "token",
-		name: "Coffee Shops",
-		columns: {
-			shopName: { columnName: "Shop Name", type: "title" },
-			rating: { columnName: "Rating", type: "number" },
-		},
-	});
+	return createPrismaApiTestDatabaseClient(DatabaseClient);
 }
 
 describe("upsert", () => {
 	beforeEach(() => {
 		pagesCreateMock.mockReset();
-		pagesCreateMock.mockResolvedValue({ object: "page", id: "new-page" });
+		pagesCreateMock.mockResolvedValue(prismaApiStubPartialPage("new-page"));
 		pagesUpdateMock.mockReset();
-		pagesUpdateMock.mockResolvedValue({ id: "updated-page" });
+		pagesUpdateMock.mockResolvedValue(prismaApiStubPartialPage("updated-page"));
 		dataSourceQueryMock.mockReset();
 	});
 
@@ -165,9 +155,8 @@ describe("upsert", () => {
 			update: { rating: 5 },
 		});
 
-		const firstQueryArg = dataSourceQueryMock.mock.calls[0]?.[0] as {
-			sorts?: unknown;
-		};
+		const firstCall = dataSourceQueryMock.mock.calls.at(0);
+		const firstQueryArg = firstCall?.at(0) as { sorts?: unknown } | undefined;
 		expect(firstQueryArg.sorts).toEqual([
 			{ timestamp: "created_time", direction: "ascending" },
 		]);

@@ -1,22 +1,12 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { emptyQueryDataSourceResponse } from "../../helpers/query-data-source-response";
+import { beforeEach, describe, expect, test } from "bun:test";
+import {
+	createPrismaApiTestDatabaseClient,
+	installPrismaApiNotionClientMock,
+	prismaApiDataSourceParent,
+} from "../../helpers/notion-client-test-mock";
 import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
 
-const pagesRetrieveMock = mock(async () => ({}));
-
-mock.module("@notionhq/client", () => ({
-	Client: class {
-		public pages = {
-			create: mock(async () => ({})),
-			update: mock(async () => ({})),
-			retrieve: pagesRetrieveMock,
-		};
-		public dataSources = {
-			query: mock(async () => emptyQueryDataSourceResponse()),
-		};
-		constructor(_args: unknown) {}
-	},
-}));
+const { pagesRetrieveMock } = installPrismaApiNotionClientMock();
 
 const { DatabaseClient } = await import("../../../src/client/database/DatabaseClient");
 
@@ -24,15 +14,7 @@ type TestSchema = { shopName: string; rating: number };
 type TestColumnTypes = { shopName: "title"; rating: "number" };
 
 function createClient() {
-	return new DatabaseClient({
-		id: "db-1",
-		auth: "token",
-		name: "Coffee Shops",
-		columns: {
-			shopName: { columnName: "Shop Name", type: "title" },
-			rating: { columnName: "Rating", type: "number" },
-		},
-	});
+	return createPrismaApiTestDatabaseClient(DatabaseClient);
 }
 
 describe("findUnique", () => {
@@ -44,10 +26,7 @@ describe("findUnique", () => {
 		pagesRetrieveMock.mockResolvedValueOnce({
 			object: "page",
 			id: "page-abc",
-			parent: {
-				type: "data_source_id",
-				data_source_id: "db-1",
-			},
+			parent: prismaApiDataSourceParent({ dataSourceId: "db-1" }),
 			properties: {
 				"Shop Name": databasePropertyValue.title("Blue Bottle"),
 				Rating: databasePropertyValue.number(5),
@@ -73,10 +52,7 @@ describe("findUnique", () => {
 		pagesRetrieveMock.mockResolvedValueOnce({
 			object: "page",
 			id: "page-abc",
-			parent: {
-				type: "data_source_id",
-				data_source_id: "db-1",
-			},
+			parent: prismaApiDataSourceParent({ dataSourceId: "db-1" }),
 			properties: {
 				"Shop Name": databasePropertyValue.title("Blue Bottle"),
 				Rating: databasePropertyValue.number(5),
@@ -94,10 +70,7 @@ describe("findUnique", () => {
 		pagesRetrieveMock.mockResolvedValueOnce({
 			object: "page",
 			id: "page-abc",
-			parent: {
-				type: "data_source_id",
-				data_source_id: "other-db",
-			},
+			parent: prismaApiDataSourceParent({ dataSourceId: "other-db" }),
 			properties: {
 				"Shop Name": databasePropertyValue.title("Blue Bottle"),
 				Rating: databasePropertyValue.number(5),
@@ -111,7 +84,7 @@ describe("findUnique", () => {
 	test("throws when both select and omit are provided", async () => {
 		const client = createClient();
 		await expect(
-			// @ts-expect-error invalid args
+			// @ts-expect-error intentional invalid args — runtime validates projection
 			client.findUnique({
 				where: { id: "page-abc" },
 				select: ["shopName"] as const,

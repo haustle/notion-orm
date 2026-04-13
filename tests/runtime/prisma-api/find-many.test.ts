@@ -1,6 +1,11 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import type { NotionPropertyValue } from "../../../src/client/database/query/types";
 import { objectKeys } from "../../../src/typeUtils";
+import {
+	createPrismaApiTestDatabaseClient,
+	installPrismaApiNotionClientMock,
+	PRISMA_API_FIND_MANY_COLUMNS,
+} from "../../helpers/notion-client-test-mock";
 import {
 	emptyQueryDataSourceResponse,
 	type QueryDataSourceResultRow,
@@ -11,23 +16,8 @@ import {
 	page,
 } from "../../helpers/query-transform-fixtures";
 
-const dataSourceQueryMock = mock(async () => emptyQueryDataSourceResponse());
-
-const pagesCreateMock = mock(async () => ({ id: "created-page-id" }));
-const pagesUpdateMock = mock(async () => ({ id: "updated-page-id" }));
-const pagesRetrieveMock = mock(async () => ({}));
-
-mock.module("@notionhq/client", () => ({
-	Client: class {
-		public pages = {
-			create: pagesCreateMock,
-			update: pagesUpdateMock,
-			retrieve: pagesRetrieveMock,
-		};
-		public dataSources = { query: dataSourceQueryMock };
-		constructor(_args: unknown) {}
-	},
-}));
+const { dataSourceQueryMock, pagesCreateMock, pagesUpdateMock, pagesRetrieveMock } =
+	installPrismaApiNotionClientMock();
 
 const { DatabaseClient } = await import("../../../src/client/database/DatabaseClient");
 
@@ -46,17 +36,7 @@ type TestColumnTypes = {
 };
 
 function createClient() {
-	return new DatabaseClient({
-		id: "db-1",
-		auth: "token",
-		name: "Coffee Shops",
-		columns: {
-			shopName: { columnName: "Shop Name", type: "title" },
-			rating: { columnName: "Rating", type: "number" },
-			hasWifi: { columnName: "Has WiFi", type: "checkbox" },
-			notes: { columnName: "Notes", type: "rich_text" },
-		},
-	});
+	return createPrismaApiTestDatabaseClient(DatabaseClient, PRISMA_API_FIND_MANY_COLUMNS);
 }
 
 function mockQueryResponse(
@@ -248,7 +228,7 @@ describe("findMany", () => {
 	test("throws when both select and omit are provided", () => {
 		const client = createClient();
 		expect(() =>
-			// @ts-expect-error invalid args
+			// @ts-expect-error intentional invalid args — runtime validates projection
 			client.findMany({
 				select: ["shopName"] as const,
 				omit: ["notes"] as const,

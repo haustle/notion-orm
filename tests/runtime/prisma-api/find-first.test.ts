@@ -1,23 +1,15 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
+import {
+	createPrismaApiTestDatabaseClient,
+	installPrismaApiNotionClientMock,
+} from "../../helpers/notion-client-test-mock";
 import {
 	emptyQueryDataSourceResponse,
 	queryDataSourceListResponse,
 } from "../../helpers/query-data-source-response";
 import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
 
-const dataSourceQueryMock = mock(async () => emptyQueryDataSourceResponse());
-
-mock.module("@notionhq/client", () => ({
-	Client: class {
-		public pages = {
-			create: mock(async () => ({})),
-			update: mock(async () => ({})),
-			retrieve: mock(async () => ({})),
-		};
-		public dataSources = { query: dataSourceQueryMock };
-		constructor(_args: unknown) {}
-	},
-}));
+const { dataSourceQueryMock } = installPrismaApiNotionClientMock();
 
 const { DatabaseClient } = await import("../../../src/client/database/DatabaseClient");
 
@@ -25,15 +17,7 @@ type TestSchema = { shopName: string; rating: number };
 type TestColumnTypes = { shopName: "title"; rating: "number" };
 
 function createClient() {
-	return new DatabaseClient({
-		id: "db-1",
-		auth: "token",
-		name: "Coffee Shops",
-		columns: {
-			shopName: { columnName: "Shop Name", type: "title" },
-			rating: { columnName: "Rating", type: "number" },
-		},
-	});
+	return createPrismaApiTestDatabaseClient(DatabaseClient);
 }
 
 describe("findFirst", () => {

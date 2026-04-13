@@ -1,39 +1,34 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import {
+	createPrismaApiTestDatabaseClient,
+	installPrismaApiNotionClientMock,
+	prismaApiDataSourceParent,
+	prismaApiStubPartialPage,
+	type PrismaApiPagesRetrieveFn,
+	type PrismaApiPagesUpdateFn,
+} from "../../helpers/notion-client-test-mock";
+import {
 	emptyQueryDataSourceResponse,
 	queryDataSourceListResponse,
 } from "../../helpers/query-data-source-response";
 import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
 import { isRecord } from "../../helpers/type-guards";
 
-const pagesUpdateMock = mock(async (_args: unknown) => ({
-	id: "updated-page-id",
-}));
-const pagesRetrieveMock = mock(async (_args: unknown) => ({
-	object: "page" as const,
-	id: "page-1",
-	parent: {
-		type: "data_source_id" as const,
-		data_source_id: "db-1",
-	},
-	properties: {
-		"Shop Name": databasePropertyValue.title("A"),
-		Rating: databasePropertyValue.number(3),
-	},
-}));
-const dataSourceQueryMock = mock(async () => emptyQueryDataSourceResponse());
-
-mock.module("@notionhq/client", () => ({
-	Client: class {
-		public pages = {
-			create: mock(async () => ({})),
-			update: pagesUpdateMock,
-			retrieve: pagesRetrieveMock,
-		};
-		public dataSources = { query: dataSourceQueryMock };
-		constructor(_args: unknown) {}
-	},
-}));
+const { dataSourceQueryMock, pagesUpdateMock, pagesRetrieveMock } =
+	installPrismaApiNotionClientMock({
+		pagesUpdateMock: mock<PrismaApiPagesUpdateFn>(async () =>
+			prismaApiStubPartialPage("updated-page-id"),
+		),
+		pagesRetrieveMock: mock<PrismaApiPagesRetrieveFn>(async () => ({
+			object: "page" as const,
+			id: "page-1",
+			parent: prismaApiDataSourceParent({ dataSourceId: "db-1" }),
+			properties: {
+				"Shop Name": databasePropertyValue.title("A"),
+				Rating: databasePropertyValue.number(3),
+			},
+		})),
+	});
 
 const { DatabaseClient } = await import("../../../src/client/database/DatabaseClient");
 
@@ -41,29 +36,18 @@ type TestSchema = { shopName: string; rating: number };
 type TestColumnTypes = { shopName: "title"; rating: "number" };
 
 function createClient() {
-	return new DatabaseClient({
-		id: "db-1",
-		auth: "token",
-		name: "Coffee Shops",
-		columns: {
-			shopName: { columnName: "Shop Name", type: "title" },
-			rating: { columnName: "Rating", type: "number" },
-		},
-	});
+	return createPrismaApiTestDatabaseClient(DatabaseClient);
 }
 
 describe("update", () => {
 	beforeEach(() => {
 		pagesUpdateMock.mockReset();
-		pagesUpdateMock.mockResolvedValue({ id: "updated-page-id" });
+		pagesUpdateMock.mockResolvedValue(prismaApiStubPartialPage("updated-page-id"));
 		pagesRetrieveMock.mockReset();
 		pagesRetrieveMock.mockResolvedValue({
 			object: "page",
 			id: "page-1",
-			parent: {
-				type: "data_source_id",
-				data_source_id: "db-1",
-			},
+			parent: prismaApiDataSourceParent({ dataSourceId: "db-1" }),
 			properties: {
 				"Shop Name": databasePropertyValue.title("A"),
 				Rating: databasePropertyValue.number(3),
@@ -134,10 +118,7 @@ describe("update", () => {
 		pagesRetrieveMock.mockResolvedValueOnce({
 			object: "page",
 			id: "page-1",
-			parent: {
-				type: "data_source_id",
-				data_source_id: "other-db",
-			},
+			parent: prismaApiDataSourceParent({ dataSourceId: "other-db" }),
 			properties: {
 				"Shop Name": databasePropertyValue.title("A"),
 				Rating: databasePropertyValue.number(3),
@@ -156,7 +137,7 @@ describe("update", () => {
 describe("updateMany", () => {
 	beforeEach(() => {
 		pagesUpdateMock.mockReset();
-		pagesUpdateMock.mockResolvedValue({ id: "updated" });
+		pagesUpdateMock.mockResolvedValue(prismaApiStubPartialPage("updated"));
 		dataSourceQueryMock.mockReset();
 	});
 

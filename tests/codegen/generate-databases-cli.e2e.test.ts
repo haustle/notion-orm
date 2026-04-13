@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { createDatabaseTypes } from "../../src/ast/database/generate-databases-cli";
 import { readDatabaseMetadata } from "../../src/ast/shared/cached-metadata";
 import { AST_FS_PATHS } from "../../src/ast/shared/constants";
 import { clearConfigCache } from "../../src/config/loadConfig";
@@ -12,6 +11,7 @@ import {
 	EDGE_CASES_FIXTURE,
 	INVENTORY_ITEMS_FIXTURE,
 } from "../helpers/datasource-fixture-builder";
+import { installCodegenRetrieveOnlyNotionClientMock } from "../helpers/notion-client-test-mock";
 import {
 	cleanupTempWorkspaces,
 	createTempWorkspace,
@@ -25,17 +25,11 @@ const retrieveDataSourceMock = mock(
 	},
 );
 
-mock.module("@notionhq/client", () => {
-	return {
-		Client: class {
-			public dataSources = {
-				retrieve: retrieveDataSourceMock,
-			};
+installCodegenRetrieveOnlyNotionClientMock(retrieveDataSourceMock);
 
-			constructor(_args: unknown) {}
-		},
-	};
-});
+const { createDatabaseTypes } = await import(
+	"../../src/ast/database/generate-databases-cli"
+);
 
 function writeConfigFile(args: {
 	workspacePath: string;
