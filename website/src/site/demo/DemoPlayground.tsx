@@ -490,6 +490,8 @@ function createCompilerOptions(ts: TypeScriptApi) {
 function createWorkspaceFiles(): Record<string, string> {
 	const MOCK_PACKAGE_INDEX =
 		"playground_modules/haustle-notion-orm/index.ts" as const;
+	const MOCK_PACKAGE_NOTION_ID_PATTERNS =
+		"playground_modules/haustle-notion-orm/notion-id-patterns.ts" as const;
 	const MOCK_PACKAGE_BASE =
 		"playground_modules/haustle-notion-orm/build/src/base.ts" as const;
 	const MOCK_PACKAGE_PREFIX = "playground_modules/" as const;
@@ -498,6 +500,10 @@ function createWorkspaceFiles(): Record<string, string> {
 		[
 			"/node_modules/@haustle/notion-orm/index.ts",
 			playgroundFiles[MOCK_PACKAGE_INDEX],
+		],
+		[
+			"/node_modules/@haustle/notion-orm/notion-id-patterns.ts",
+			playgroundFiles[MOCK_PACKAGE_NOTION_ID_PATTERNS],
 		],
 		[
 			"/node_modules/@haustle/notion-orm/build/src/base.ts",
@@ -639,6 +645,73 @@ function resetEditorToInitial(
 	});
 }
 
+type DemoPlaygroundEditorChromeArgs = {
+	label: string;
+	resetAriaLabel: string;
+	apiReferenceHref: string;
+	apiReferenceAriaLabel: string;
+	entryFileKey: keyof typeof playgroundFiles;
+	viewRef: MutableRefObject<EditorView | null>;
+	containerRef: RefObject<HTMLDivElement | null>;
+	wrapperExtraClass?: string;
+	status: "loading" | "ready" | "error";
+	errorMessage: string | null;
+};
+
+function demoPlaygroundEditorChrome(args: DemoPlaygroundEditorChromeArgs) {
+	return (
+		<div className={cx(wrapperClass, args.wrapperExtraClass)}>
+			<div className={headerClass}>
+				<div className={headerTitleGroupClass}>
+					<span className={fileLabelClass}>{args.label}</span>
+					<span className={headerBulletClass} aria-hidden>
+						·
+					</span>
+					<Link
+						href={args.apiReferenceHref}
+						className={apiReferenceLinkClass}
+						aria-label={args.apiReferenceAriaLabel}>
+						Docs
+					</Link>
+				</div>
+				<div className={headerActionsClass}>
+					<button
+						type="button"
+						className={cx(resetButtonClass, DEMO_PLAYGROUND_RESET_BUTTON_CLASS)}
+						disabled={args.status !== "ready"}
+						aria-label={args.resetAriaLabel}
+						onClick={() => {
+							const view = args.viewRef.current;
+							if (view) {
+								resetEditorToInitial(view, args.entryFileKey);
+							}
+						}}>
+						Reset
+					</button>
+				</div>
+			</div>
+			<div
+				ref={args.containerRef}
+				className={cx(
+					editorContainerClass,
+					(args.status === "loading" || args.status === "error") &&
+						editorContainerPlaceholderClass,
+				)}>
+				{args.status === "loading" && (
+					<div className={loadingOverlayClass}>
+						Loading CodeMirror and TypeScript...
+					</div>
+				)}
+				{args.status === "error" && (
+					<div className={loadingOverlayClass}>
+						{args.errorMessage ?? "Unable to load the editor."}
+					</div>
+				)}
+			</div>
+		</div>
+	);
+}
+
 export function DemoPlayground() {
 	const databasesContainerRef = useRef<HTMLDivElement>(null);
 	const agentsContainerRef = useRef<HTMLDivElement>(null);
@@ -734,73 +807,12 @@ export function DemoPlayground() {
 		};
 	}, []);
 
-	const editorChrome = (args: {
-		label: string;
-		resetAriaLabel: string;
-		apiReferenceHref: string;
-		apiReferenceAriaLabel: string;
-		entryFileKey: keyof typeof playgroundFiles;
-		viewRef: MutableRefObject<EditorView | null>;
-		containerRef: RefObject<HTMLDivElement | null>;
-		wrapperExtraClass?: string;
-	}) => (
-		<div className={cx(wrapperClass, args.wrapperExtraClass)}>
-			<div className={headerClass}>
-				<div className={headerTitleGroupClass}>
-					<span className={fileLabelClass}>{args.label}</span>
-					<span className={headerBulletClass} aria-hidden>
-						·
-					</span>
-					<Link
-						href={args.apiReferenceHref}
-						className={apiReferenceLinkClass}
-						aria-label={args.apiReferenceAriaLabel}>
-						Docs
-					</Link>
-				</div>
-				<div className={headerActionsClass}>
-					<button
-						type="button"
-						className={cx(resetButtonClass, DEMO_PLAYGROUND_RESET_BUTTON_CLASS)}
-						disabled={status !== "ready"}
-						aria-label={args.resetAriaLabel}
-						onClick={() => {
-							const view = args.viewRef.current;
-							if (view) {
-								resetEditorToInitial(view, args.entryFileKey);
-							}
-						}}>
-						Reset
-					</button>
-				</div>
-			</div>
-			<div
-				ref={args.containerRef}
-				className={cx(
-					editorContainerClass,
-					(status === "loading" || status === "error") &&
-						editorContainerPlaceholderClass,
-				)}>
-				{status === "loading" && (
-					<div className={loadingOverlayClass}>
-						Loading CodeMirror and TypeScript...
-					</div>
-				)}
-				{status === "error" && (
-					<div className={loadingOverlayClass}>
-						{errorMessage ?? "Unable to load the editor."}
-					</div>
-				)}
-			</div>
-		</div>
-	);
-
 	const databasesPanel = demoPlaygroundPanelMeta[0];
 	const agentsPanel = demoPlaygroundPanelMeta[1];
 
 	return (
 		<>
-			{editorChrome({
+			{demoPlaygroundEditorChrome({
 				label: databasesPanel.label,
 				resetAriaLabel: databasesPanel.resetAriaLabel,
 				apiReferenceHref: databasesPanel.apiReferenceHref,
@@ -808,8 +820,10 @@ export function DemoPlayground() {
 				entryFileKey: databaseEntryFile,
 				viewRef: databasesViewRef,
 				containerRef: databasesContainerRef,
+				status,
+				errorMessage,
 			})}
-			{editorChrome({
+			{demoPlaygroundEditorChrome({
 				label: agentsPanel.label,
 				resetAriaLabel: agentsPanel.resetAriaLabel,
 				apiReferenceHref: agentsPanel.apiReferenceHref,
@@ -818,6 +832,8 @@ export function DemoPlayground() {
 				viewRef: agentsViewRef,
 				containerRef: agentsContainerRef,
 				wrapperExtraClass: sectionGapClass,
+				status,
+				errorMessage,
 			})}
 		</>
 	);

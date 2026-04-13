@@ -1,5 +1,64 @@
-// @ts-nocheck — mock module template served to the website playground editor
+// @ts-nocheck — mock module template served to the website playground editor.
+// Keep aligned with `src/helpers.ts`, `src/client/database/types/schema.ts`, `crud.ts`, and branded id helpers when those public types change.
+
+import {
+	DASHED_NOTION_ID_PATTERN,
+	UNDASHED_NOTION_ID_PATTERN,
+} from "./notion-id-patterns.ts";
+
 type DateValue = { start: string; end?: string | null };
+
+type NotionIdKind = "page" | "database" | "user";
+type BrandedNotionId<K extends NotionIdKind> = string & {
+	readonly __notionIdKind?: K;
+};
+
+export type NotionPageId = BrandedNotionId<"page">;
+export type NotionDatabaseId = BrandedNotionId<"database">;
+export type NotionUserId = BrandedNotionId<"user">;
+
+/** Mirrors `src/helpers.ts` `toUndashedNotionId` (shared dashed/undashed patterns module). */
+function playgroundCanonicalUndashedNotionId(id: string): string {
+	const t = id.trim();
+	if (t.length === 0) {
+		throw new Error("Invalid Notion ID: expected a non-empty string.");
+	}
+	const l = t.toLowerCase();
+	if (l.includes("-")) {
+		if (!DASHED_NOTION_ID_PATTERN.test(l)) {
+			throw new Error(
+				`Invalid Notion ID. Expected UUID shape (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx), received '${id}'.`,
+			);
+		}
+		return l.replace(/-/g, "");
+	}
+	if (!UNDASHED_NOTION_ID_PATTERN.test(l)) {
+		throw new Error(
+			`Invalid Notion ID. Expected 32 hexadecimal characters, received '${id}'.`,
+		);
+	}
+	return l;
+}
+
+/** Same pattern as package `toNotionPageId` / `toNotionDatabaseId` / `toNotionUserId` — canonical string is assignable to the branded alias. */
+export function toNotionPageId(id: string): NotionPageId {
+	return playgroundCanonicalUndashedNotionId(id);
+}
+
+export function toNotionDatabaseId(id: string): NotionDatabaseId {
+	return playgroundCanonicalUndashedNotionId(id);
+}
+
+export function toNotionUserId(id: string): NotionUserId {
+	return playgroundCanonicalUndashedNotionId(id);
+}
+
+/** Same as `src/client/database/types/notion-id-brand.ts` — widens branded id arrays to `string[]`. */
+export function brandedNotionIdsAsStringArray<K extends NotionIdKind>(
+	ids: readonly BrandedNotionId<K>[] | BrandedNotionId<K>[] | null | undefined,
+): string[] {
+	return ids == null ? [] : [...ids];
+}
 
 export type DatabasePropertyValue =
 	| string
@@ -8,6 +67,7 @@ export type DatabasePropertyValue =
 	| undefined
 	| null
 	| string[]
+	| NotionPageId[]
 	| { name: string; url: string }[]
 	| DateValue;
 
@@ -58,7 +118,7 @@ export type MultiSelectColumnDefinition = ColumnDefinitionBase & {
 
 export type RelationColumnDefinition = ColumnDefinitionBase & {
 	type: "relation";
-	readonly relatedDatabaseId: string;
+	readonly relatedDatabaseId: NotionDatabaseId;
 };
 
 export type NotionPropertyTypeToColumnDefinitionMap = {
@@ -102,7 +162,7 @@ type NotionTypeToValueMap = {
 	multi_select: string[];
 	files: { name: string; url: string }[];
 	people: string[];
-	relation: string[];
+	relation: NotionPageId[];
 	created_by: string;
 	last_edited_by: string;
 	created_time: string;
@@ -136,6 +196,24 @@ export type InferDatabaseSchema<Columns extends DatabaseColumns> = {
 		: Property]?: InferColumnValue<Columns[Property]>;
 };
 
+export type NotWritableDatabaseColumnType =
+	| "created_by"
+	| "last_edited_by"
+	| "created_time"
+	| "last_edited_time"
+	| "unique_id";
+
+type NonWritablePropertyKeys<Columns extends DatabaseColumns> = {
+	[K in keyof Columns]: Columns[K]["type"] extends NotWritableDatabaseColumnType
+		? K
+		: never;
+}[keyof Columns];
+
+export type InferCreateSchema<Columns extends DatabaseColumns> = Omit<
+	InferDatabaseSchema<Columns>,
+	NonWritablePropertyKeys<Columns>
+>;
+
 /** Bundles the row shape and property -> column-type map for one database. */
 export type DatabaseDefinition<
 	Columns extends DatabaseColumns = DatabaseColumns,
@@ -147,6 +225,12 @@ export type DatabaseDefinition<
 		[Property in keyof Columns]: Columns[Property]["type"];
 	};
 };
+
+export type InferDatabaseColumns<Definition extends DatabaseDefinition> =
+	Definition extends DatabaseDefinition<infer Columns> ? Columns : never;
+
+export type CreateSchema<Definition extends DatabaseDefinition> =
+	InferCreateSchema<InferDatabaseColumns<Definition>>;
 
 /** Extracts the row shape from a `DatabaseDefinition`. */
 export type DatabaseSchema<
@@ -371,15 +455,15 @@ export type UpdateMany<
 		Definition extends DatabaseDefinition,
 	> = {
 		where: QueryFilter<Definition>;
-		properties: Partial<DatabaseSchema<Definition>>;
+		properties: Partial<CreateSchema<Definition>>;
 	};
 
 export type Upsert<
 		Definition extends DatabaseDefinition,
 	> = {
 		where: QueryFilter<Definition>;
-		create: DatabaseSchema<Definition>;
-		update: Partial<DatabaseSchema<Definition>>;
+		create: CreateSchema<Definition>;
+		update: Partial<CreateSchema<Definition>>;
 		sortBy?: SortBy<Definition>;
 	};
 
@@ -495,19 +579,19 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 		}
 
 		async create(
-			_args: Create<DatabaseSchema<Definition>>,
+			_args: Create<CreateSchema<Definition>>,
 		): Promise<{ id: string }> {
 			return { id: "mock-page-id" };
 		}
 
 		async createMany(
-			_args: CreateMany<DatabaseSchema<Definition>>,
+			_args: CreateMany<CreateSchema<Definition>>,
 		): Promise<Array<{ id: string }>> {
 			return [];
 		}
 
 		async update(
-			_args: Update<DatabaseSchema<Definition>>,
+			_args: Update<CreateSchema<Definition>>,
 		): Promise<void> {}
 
 		async updateMany(_args: UpdateMany<Definition>): Promise<void> {}

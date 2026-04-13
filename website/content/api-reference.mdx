@@ -528,7 +528,7 @@ For script-level usage without the `NotionORM` wrapper:
 
 | Import Path                                    | What You Get                                                                                                                                                                 |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@haustle/notion-orm/notion/databases/<databaseName>`  | `<databaseName>(auth)` factory, `DatabaseSchemaType`, `QuerySchemaType`, generated Zod schema, generated option tuples (for select/status/multi-select), schema/type aliases |
-| `@haustle/notion-orm/notion/agents/<agentName>` | `<agentName>(auth)` factory that returns an `AgentClient`                                                                                                                    |
+| `@haustle/notion-orm/notion/databases/<databaseName>`  | `<databaseName>(auth)` factory, `PageSchema`, `CreateSchema`, `QuerySchema`, generated Zod schema, generated option tuples (for select/status/multi-select), schema/type aliases |
+| `@haustle/notion-orm/notion/agents/<AgentName>` | `<AgentName>(auth)` factory that returns an `AgentClient` (PascalCase export; registry keys on `notion.agents` stay camelCase)                                                |
 | `@haustle/notion-orm/notion/databases`                 | `databases` barrel object (all database factories)                                                                                                                           |
 | `@haustle/notion-orm/notion/agents`             | `agents` barrel object (all agent factories)                                                                                                                                 |
