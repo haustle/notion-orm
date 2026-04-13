@@ -18,6 +18,7 @@ export type {
 	MultiSelectColumnDefinition,
 	NotionPropertyTypeToColumnDefinitionMap,
 	PlainColumnDefinition,
+	RelationColumnDefinition,
 	SelectColumnDefinition,
 	StatusColumnDefinition,
 	ColumnTypeMap,

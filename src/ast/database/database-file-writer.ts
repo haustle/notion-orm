@@ -204,7 +204,18 @@ export function buildDatabaseModuleNodes(
 					type: propertyType,
 					optionsIdentifier,
 				};
+			} else if (value.type === "relation") {
+				columns[camelizedColumnName] = {
+					columnName: propertyName,
+					type: "relation",
+					relatedDatabaseId: toUndashedNotionId(value.relation.database_id),
+				};
 			} else {
+				if (propertyType === "relation") {
+					throw new Error(
+						`[${databaseModuleName}] Internal error: relation column '${propertyName}' reached plain-metadata branch.`,
+					);
+				}
 				columns[camelizedColumnName] = {
 					columnName: propertyName,
 					type: propertyType,

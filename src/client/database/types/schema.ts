@@ -111,20 +111,34 @@ export type MultiSelectColumnDefinition = ColumnDefinitionBase & {
 };
 
 /**
+ * Relation columns: Notion exposes the linked database id on the property config;
+ * codegen emits it as `relatedDatabaseId` (canonical undashed id) for cross-database typing.
+ */
+export type RelationColumnDefinition = ColumnDefinitionBase & {
+	readonly type: "relation";
+	readonly relatedDatabaseId: string;
+};
+
+/**
  * Maps each supported Notion property type to its emitted `columns` metadata shape.
- * Select-like types use dedicated definitions with `options`; all others are plain
- * `{ columnName, type }` entries keyed by the exact Notion `type` string.
+ * Select-like types use dedicated definitions with `options`; relation includes
+ * `relatedDatabaseId`; all others are plain `{ columnName, type }` entries keyed by the
+ * exact Notion `type` string.
  *
  * Adding a new `SupportedNotionColumnType` forces an entry here (via `Exclude` / intersection).
  */
 export type NotionPropertyTypeToColumnDefinitionMap = {
-	[K in Exclude<SupportedNotionColumnType, ColumnTypesWithOptions>]: ColumnDefinitionBase & {
+	[K in Exclude<
+		SupportedNotionColumnType,
+		ColumnTypesWithOptions | "relation"
+	>]: ColumnDefinitionBase & {
 		readonly type: K;
 	};
 } & {
 	select: SelectColumnDefinition;
 	status: StatusColumnDefinition;
 	multi_select: MultiSelectColumnDefinition;
+	relation: RelationColumnDefinition;
 };
 
 /**

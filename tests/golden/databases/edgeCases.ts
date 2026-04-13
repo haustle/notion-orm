@@ -20,7 +20,8 @@ const columns = {
     },
     "relatedItems": {
         columnName: "Related Items",
-        type: "relation"
+        type: "relation",
+        relatedDatabaseId: "d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1"
     },
     "createdBy": {
         columnName: "Created By",

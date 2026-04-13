@@ -17,7 +17,16 @@ export { toPascalCase } from "../../helpers";
  */
 export type OptionlessColumnMetadataEntry = {
 	readonly columnName: string;
-	readonly type: Exclude<SupportedNotionColumnType, ColumnTypesWithOptions>;
+	readonly type: Exclude<SupportedNotionColumnType, ColumnTypesWithOptions | "relation">;
+};
+
+/**
+ * Relation: emitted metadata includes the linked database id (undashed) from Notion.
+ */
+export type RelationGeneratedColumnMetadataEntry = {
+	readonly columnName: string;
+	readonly type: "relation";
+	readonly relatedDatabaseId: string;
 };
 
 /**
@@ -32,7 +41,8 @@ export type SelectLikeGeneratedColumnMetadataEntry = {
 
 export type GeneratedColumnMetadataEntry =
 	| OptionlessColumnMetadataEntry
-	| SelectLikeGeneratedColumnMetadataEntry;
+	| SelectLikeGeneratedColumnMetadataEntry
+	| RelationGeneratedColumnMetadataEntry;
 
 /** Lookup map used to generate the emitted `columns` object. */
 export type GeneratedColumnMetadataMap = Record<
@@ -51,8 +61,8 @@ function optionsPropertyAssignmentsForSelectLikeMetadata(
 	];
 }
 
-/** Emits `options: <identifier>` only for select-like column metadata; `type` narrows the union. */
-function optionsPropertyAssignmentsForGeneratedColumn(
+/** Emits `options` / `relatedDatabaseId` for column metadata beyond `columnName` + `type`. */
+function extraMetadataPropertyAssignmentsForGeneratedColumn(
 	value: GeneratedColumnMetadataEntry,
 ): readonly ts.PropertyAssignment[] {
 	switch (value.type) {
@@ -60,6 +70,13 @@ function optionsPropertyAssignmentsForGeneratedColumn(
 		case "status":
 		case "multi_select":
 			return optionsPropertyAssignmentsForSelectLikeMetadata(value);
+		case "relation":
+			return [
+				ts.factory.createPropertyAssignment(
+					ts.factory.createIdentifier("relatedDatabaseId"),
+					ts.factory.createStringLiteral(value.relatedDatabaseId),
+				),
+			];
 		default:
 			return [];
 	}
@@ -313,7 +330,7 @@ export function createColumnNameToColumnProperties(
 								ts.factory.createIdentifier("type"),
 								ts.factory.createStringLiteral(value.type),
 							),
-							...optionsPropertyAssignmentsForGeneratedColumn(value),
+							...extraMetadataPropertyAssignmentsForGeneratedColumn(value),
 						],
 						true,
 					),

@@ -32,7 +32,11 @@ const map = {
 	},
 	notes: { columnName: "Notes", type: "rich_text" },
 	attachments: { columnName: "Attachments", type: "files" },
-	relatedPages: { columnName: "Related Pages", type: "relation" },
+	relatedPages: {
+		columnName: "Related Pages",
+		type: "relation",
+		relatedDatabaseId: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4",
+	},
 	owners: { columnName: "Owners", type: "people" },
 	createdByUser: { columnName: "Created By User", type: "created_by" },
 	lastEditedByUser: {

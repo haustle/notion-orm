@@ -37,7 +37,11 @@ describe("runtime database capability", () => {
 		const schema = defineDatabaseSchema({
 			attachments: { type: "files", columnName: "Attachments" },
 			owners: { type: "people", columnName: "Owners" },
-			relatedPages: { type: "relation", columnName: "Related Pages" },
+					relatedPages: {
+						type: "relation",
+						columnName: "Related Pages",
+						relatedDatabaseId: "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5",
+					},
 			createdByUser: { type: "created_by", columnName: "Created By User" },
 			lastEditedByUser: {
 				type: "last_edited_by",

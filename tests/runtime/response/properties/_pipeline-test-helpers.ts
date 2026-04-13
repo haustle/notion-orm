@@ -14,12 +14,22 @@ const PRIMARY_COLUMN_NAME = "Primary Value";
 const PRIMARY_CAMEL_COLUMN_NAME = "primaryValue";
 const UNMAPPED_COLUMN_NAME = "Unmapped Value";
 
+const PIPELINE_RELATION_RELATED_DATABASE_ID =
+	"a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4";
+
 function columnDefinitionForPipeline(
 	columnName: string,
 	propertyType: SupportedNotionColumnType,
 ): ColumnDefinition {
 	if (isColumnTypesWithOptions(propertyType)) {
 		return { columnName, type: propertyType, options: [] };
+	}
+	if (propertyType === "relation") {
+		return {
+			columnName,
+			type: "relation",
+			relatedDatabaseId: PIPELINE_RELATION_RELATED_DATABASE_ID,
+		};
 	}
 	return { columnName, type: propertyType };
 }

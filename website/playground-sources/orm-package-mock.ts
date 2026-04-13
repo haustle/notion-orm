@@ -56,14 +56,23 @@ export type MultiSelectColumnDefinition = ColumnDefinitionBase & {
 	options: readonly string[];
 };
 
+export type RelationColumnDefinition = ColumnDefinitionBase & {
+	type: "relation";
+	readonly relatedDatabaseId: string;
+};
+
 export type NotionPropertyTypeToColumnDefinitionMap = {
-	[K in Exclude<SupportedNotionColumnType, ColumnTypesWithOptions>]: ColumnDefinitionBase & {
+	[K in Exclude<
+		SupportedNotionColumnType,
+		ColumnTypesWithOptions | "relation"
+	>]: ColumnDefinitionBase & {
 		type: K;
 	};
 } & {
 	select: SelectColumnDefinition;
 	status: StatusColumnDefinition;
 	multi_select: MultiSelectColumnDefinition;
+	relation: RelationColumnDefinition;
 };
 
 export type PlainColumnDefinition =
