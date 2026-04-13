@@ -1,6 +1,6 @@
 import type { CreatePageParameters } from "@notionhq/client/build/src/api-endpoints";
-import { AST_RUNTIME_CONSTANTS } from "../ast/shared/constants";
-import type { SupportedNotionColumnType } from "./queryTypes";
+import { AST_RUNTIME_CONSTANTS } from "../../../ast/shared/constants";
+import type { SupportedNotionColumnType } from "../types";
 
 type CreatePagePropertyValue = NonNullable<
 	NonNullable<CreatePageParameters["properties"]>[string]
@@ -87,9 +87,13 @@ function isDateAddInput(
 
 export function buildPropertyValueForAddPage(args: {
 	type: SupportedNotionColumnType;
-	value: AddPageValueInput;
+	value: AddPageValueInput | undefined;
 }): CreatePagePropertyValue {
 	const { type, value } = args;
+
+	if (value === undefined) {
+		throw invalidAddValueError({ type, value });
+	}
 
 	const builder = ADD_PROPERTY_BUILDERS[type];
 	if (!builder) {
@@ -98,12 +102,6 @@ export function buildPropertyValueForAddPage(args: {
 
 	return builder(value);
 }
-
-/* 
-======================================================
-GENERATE OBJECT BASED ON TYPE
-======================================================
-*/
 
 const selectCall = (value: unknown): CreatePagePropertyByKey<"select"> => {
 	if (typeof value !== "string") {

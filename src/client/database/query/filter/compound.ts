@@ -1,4 +1,4 @@
-import type { apiFilterType } from "../../queryTypes";
+import type { apiFilterType } from "../../types";
 
 function isDefined<T>(value: T | undefined): value is T {
 	return value !== undefined;

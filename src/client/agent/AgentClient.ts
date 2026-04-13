@@ -5,7 +5,7 @@ import type {
 	ThreadListItem,
 	ThreadStatus,
 } from "@notionhq/agents-client";
-import { loadAgentsSdk, stripLangTags } from "../agents-sdk-resolver";
+import { loadAgentsSdk, stripLangTags } from "../../agents-sdk-resolver";
 
 export type ThreadInfo = {
 	threadId: NotionThreadInfo["thread_id"];

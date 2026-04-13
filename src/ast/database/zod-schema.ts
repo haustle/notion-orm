@@ -5,7 +5,7 @@
 
 import * as ts from "typescript";
 
-import type { SupportedNotionColumnType } from "../../client/queryTypes";
+import type { SupportedNotionColumnType } from "../../client/database/types";
 
 export interface ZodMetadata {
 		propName: string;

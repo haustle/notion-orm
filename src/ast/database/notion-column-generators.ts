@@ -5,7 +5,7 @@
 
 import type { DataSourceObjectResponse } from "@notionhq/client/build/src/api-endpoints.js";
 import * as ts from "typescript";
-import type { SupportedNotionColumnType } from "../../client/queryTypes";
+import type { SupportedNotionColumnType } from "../../client/database/types";
 import {
 	createCheckboxProperty,
 	createDateProperty,

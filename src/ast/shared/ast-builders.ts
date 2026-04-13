@@ -4,7 +4,7 @@
  */
 
 import * as ts from "typescript";
-import type { DatabasePropertyType } from "../../client/queryTypes";
+import type { DatabasePropertyType } from "../../client/database/types";
 import { objectEntries } from "../../typeUtils";
 
 export { toPascalCase } from "../../helpers";

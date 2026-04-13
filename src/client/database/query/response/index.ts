@@ -1,4 +1,4 @@
-import type { SupportedNotionColumnType } from "../../queryTypes";
+import type { SupportedNotionColumnType } from "../../types";
 import type { NotionPropertyValue, ResponseResolver } from "../types";
 import { resolveCheckbox } from "./checkbox";
 import { resolveCreatedBy } from "./created_by";

@@ -1,12 +1,12 @@
-import { objectEntries } from "../../../typeUtils";
-import type { camelPropertyNameToNameAndTypeMapType } from "../../DatabaseClient";
+import { objectEntries } from "../../../../typeUtils";
+import type { camelPropertyNameToNameAndTypeMapType } from "../../types";
 import type {
 	apiFilterType,
 	QueryFilter,
 	SchemaRecord,
 	SupportedNotionColumnType,
-} from "../../queryTypes";
-import { isFilterablePropertyType } from "../../queryTypes";
+} from "../../types";
+import { isFilterablePropertyType } from "../../types";
 import type { FilterableColumnType } from "../types";
 import { filterLeafBuilders, filterValueGuards } from "./builders";
 import { buildCompoundFilter } from "./compound";

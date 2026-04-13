@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import * as ts from "typescript";
-import type { AgentIcon } from "../../client/AgentClient";
+import type { AgentIcon } from "../../client/agent/AgentClient";
 import { camelize, toPascalCase } from "../../helpers";
 import { createNameImport } from "../shared/ast-builders";
 import { AGENTS_DIR, AST_IMPORT_PATHS, AST_RUNTIME_CONSTANTS } from "../shared/constants";

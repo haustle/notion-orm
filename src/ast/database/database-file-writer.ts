@@ -14,7 +14,7 @@ import {
 	type DatabasePropertyType,
 	isSupportedPropertyType,
 	type SupportedNotionColumnType,
-} from "../../client/queryTypes";
+} from "../../client/database/types";
 import { camelize, toUndashedNotionId } from "../../helpers";
 import {
 	createColumnNameToColumnProperties,

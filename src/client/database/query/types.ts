@@ -9,7 +9,7 @@ import type {
 	QuerySort,
 	SchemaRecord,
 	SupportedNotionColumnType,
-} from "../queryTypes";
+} from "../types";
 
 export type QueryDataSourcePageResultWithProperties = Extract<
 	QueryDataSourceResponse["results"][number],
@@ -48,13 +48,13 @@ export type SingleApiFilterByType = {
 	[K in FilterableColumnType]: Extract<ApiSingleFilter, Record<K, unknown>>;
 };
 
-export interface FilterLeafBuilderArgs<K extends FilterableColumnType> {
+export interface FilterLeaf<K extends FilterableColumnType> {
 	columnName: string;
 	columnFilterValue: FilterValueByType[K];
 }
 
 export type FilterLeafBuilder<K extends FilterableColumnType> = (
-	args: FilterLeafBuilderArgs<K>,
+	args: FilterLeaf<K>,
 ) => SingleApiFilterByType[K];
 
 export type FilterLeafBuilderRegistry = {

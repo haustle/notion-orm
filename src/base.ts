@@ -7,31 +7,31 @@
 import type { NotionORMConfig } from "./config/resolveNotionAuth";
 import { resolveNotionAuth } from "./config/resolveNotionAuth";
 
-export { AgentClient } from "./client/AgentClient";
-export { DatabaseClient } from "./client/DatabaseClient";
+export { AgentClient } from "./client/agent/AgentClient";
+export { DatabaseClient } from "./client/database/DatabaseClient";
 export type {
 	ColumnTypeMap,
-	CountArgs,
-	CreateArgs,
-	CreateManyArgs,
+	Count,
+	Create,
+	CreateMany,
 	DatabasePropertyType,
 	DatabasePropertyValue,
-	DeleteArgs,
-	DeleteManyArgs,
-	FindFirstArgs,
-	FindManyArgs,
-	FindUniqueArgs,
+	Delete,
+	DeleteMany,
+	FindFirst,
+	FindMany,
+	FindUnique,
 	PaginateResult,
-	ProjectedFromArgs,
 	ProjectedRow,
-	ProjectionArgs,
+	Projection,
 	ProjectionPropertyList,
 	Query,
+	ResultProjection,
 	SchemaRecord,
-	UpdateArgs,
-	UpdateManyArgs,
-	UpsertArgs,
-} from "./client/queryTypes";
+	Update,
+	UpdateMany,
+	Upsert,
+} from "./client/database/types";
 export type { NotionConfigType } from "./config/helpers";
 export type { NotionORMConfig } from "./config/resolveNotionAuth";
 export { resolveNotionAuth } from "./config/resolveNotionAuth";
