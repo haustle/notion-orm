@@ -524,11 +524,31 @@ const title = await notion.agents.helpBot.getThreadTitle("thread-id-here");
 
 ## Generated exports
 
-For script-level usage without the `NotionORM` wrapper:
+`bun notion sync` writes generated modules under **`notion/`** at your **project root** (next to `notion.config.ts`) — it is your app’s synced copy of available databases and agents.
 
-| Import Path                                    | What You Get                                                                                                                                                                 |
-| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@haustle/notion-orm/notion/databases/<databaseName>`  | `<databaseName>(auth)` factory, `PageSchema`, `CreateSchema`, `QuerySchema`, generated Zod schema, generated option tuples (for select/status/multi-select), schema/type aliases |
-| `@haustle/notion-orm/notion/agents/<AgentName>` | `<AgentName>(auth)` factory that returns an `AgentClient` (PascalCase export; registry keys on `notion.agents` stay camelCase)                                                |
-| `@haustle/notion-orm/notion/databases`                 | `databases` barrel object (all database factories)                                                                                                                           |
-| `@haustle/notion-orm/notion/agents`             | `agents` barrel object (all agent factories)                                                                                                                                 |
+**On-disk layout**
+
+```txt
+notion/
+├── index.ts              # named export: NotionORM (plus re-exports from the ORM base module)
+├── databases/
+│   ├── index.ts          # `databases` registry (all DB factories)
+│   ├── <Database>.ts     # one file per tracked database (PascalCase stem, e.g. CustomerOrders.ts)
+│   └── metadata.json
+└── agents/
+    ├── index.ts          # `agents` registry (all agent factories)
+    ├── <Agent>.ts        # one file per agent (PascalCase stem, e.g. MealAgent.ts)
+    └── metadata.json
+```
+
+Registry keys on `notion.databases` / `notion.agents` use **camelCase** (from config). Per-module **file names** and **factory exports** use **PascalCase** (e.g. import `MealAgent` from `./notion/agents/MealAgent` while `notion.agents.mealAgent` is the runtime map entry).
+
+**Imports** — prefer **project-relative** paths into `./notion/`. The same path segments work if your tooling maps `@haustle/notion-orm/notion/*` → `./notion/*` (the npm package does not ship your generated files; they only exist under `./notion/` after sync).
+
+| Import path | What you get | When to use |
+| ----------- | ------------ | ----------- |
+| `./notion/` | `NotionORM` and base re-exports (`import { NotionORM } from "./notion/"`; directory import resolves to `index.ts`) | Typical app code |
+| `./notion/databases/<Database>` | `<Database>(auth)` factory, `PageSchema`, `CreateSchema`, `QuerySchema`, generated Zod schema, option tuples for select/status/multi-select, related type aliases | Direct database usage without the `NotionORM` wrapper |
+| `./notion/agents/<Agent>` | `<Agent>(auth)` factory → `AgentClient` | Direct agent usage without the wrapper |
+| `./notion/databases` | `databases` barrel (all database factories) | Dynamic DB selection or custom wiring |
+| `./notion/agents` | `agents` barrel (all agent factories) | Dynamic agent selection or custom wiring |
