@@ -1,6 +1,9 @@
 import type { CreatePageParameters } from "@notionhq/client/build/src/api-endpoints";
 import { AST_RUNTIME_CONSTANTS } from "../../../ast/shared/constants";
 import type { SupportedNotionColumnType } from "../types";
+import { toNotionPageId } from "../types/notion-page-id";
+import type { NotWritableDatabaseColumnType } from "../types/schema";
+import { toNotionUserId } from "../types/notion-user-id";
 
 type CreatePagePropertyValue = NonNullable<
 	NonNullable<CreatePageParameters["properties"]>[string]
@@ -242,7 +245,7 @@ const peopleCall = (value: unknown): CreatePagePropertyByKey<"people"> => {
 		throw invalidAddValueError({ type: "people", value });
 	}
 	return {
-		people: value.map((id) => ({ id })),
+		people: value.map((id) => ({ id: toNotionUserId(id) })),
 	};
 };
 
@@ -251,7 +254,7 @@ const relationCall = (value: unknown): CreatePagePropertyByKey<"relation"> => {
 		throw invalidAddValueError({ type: "relation", value });
 	}
 	return {
-		relation: value.map((id) => ({ id })),
+		relation: value.map((id) => ({ id: toNotionPageId(id) })),
 	};
 };
 
@@ -271,10 +274,15 @@ const filesCall = (value: unknown): CreatePagePropertyByKey<"files"> => {
 };
 
 type AddPropertyBuilder = (value: unknown) => CreatePagePropertyValue;
-const ADD_PROPERTY_BUILDERS: Record<
-	SupportedNotionColumnType,
-	AddPropertyBuilder | undefined
-> = {
+/**
+ * Must stay aligned with `NotWritableDatabaseColumnType` in `types/schema.ts`:
+ * non-writable column types use `undefined` here so they are omitted from `InferCreateSchema`.
+ */
+const ADD_PROPERTY_BUILDERS: {
+	[K in SupportedNotionColumnType]: K extends NotWritableDatabaseColumnType
+		? undefined
+		: AddPropertyBuilder;
+} = {
 	created_by: undefined,
 	last_edited_by: undefined,
 	created_time: undefined,

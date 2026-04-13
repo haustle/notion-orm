@@ -40,6 +40,7 @@ import type {
 	Count,
 	Create,
 	CreateMany,
+	CreateSchema,
 	DatabaseDefinition,
 	DatabaseSchema,
 	Delete,
@@ -126,7 +127,7 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 	}
 
 	private async createPage(args: {
-		properties: DatabaseSchema<Definition>;
+		properties: CreateSchema<Definition>;
 		icon?: CreatePageParameters["icon"];
 		cover?: CreatePageParameters["cover"];
 		markdown?: CreatePageParameters["markdown"];
@@ -304,7 +305,7 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 	}
 
 	public async create(
-		args: Create<DatabaseSchema<Definition>>,
+		args: Create<CreateSchema<Definition>>,
 	): Promise<CreatePageResponse> {
 		return this.createPage({
 			properties: args.properties,
@@ -315,7 +316,7 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 	}
 
 	public async createMany(
-		args: CreateMany<DatabaseSchema<Definition>>,
+		args: CreateMany<CreateSchema<Definition>>,
 	): Promise<CreatePageResponse[]> {
 		const results: CreatePageResponse[] = [];
 		for (const properties of args.properties) {
@@ -325,7 +326,7 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 	}
 
 	public async update(
-		args: Update<DatabaseSchema<Definition>>,
+		args: Update<CreateSchema<Definition>>,
 	): Promise<void> {
 		if (!args.where.id) {
 			throw new Error(

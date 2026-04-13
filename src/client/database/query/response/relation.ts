@@ -1,6 +1,10 @@
 import type { NotionPropertyValue } from "../types";
+import {
+	type NotionPageId,
+	toNotionPageId,
+} from "../../types/notion-page-id";
 
-export function resolveRelation(property: NotionPropertyValue) {
+export function resolveRelation(property: NotionPropertyValue): NotionPageId[] | null {
 	if (property.type !== "relation") {
 		return null;
 	}
@@ -11,5 +15,6 @@ export function resolveRelation(property: NotionPropertyValue) {
 
 	return property.relation
 		.map((item) => item.id)
-		.filter((value): value is string => typeof value === "string");
+		.filter((value): value is string => typeof value === "string")
+		.map(toNotionPageId);
 }

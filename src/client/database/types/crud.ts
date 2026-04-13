@@ -5,6 +5,7 @@
 import type { CreatePageParameters } from "@notionhq/client/build/src/api-endpoints";
 import type { QueryFilter } from "./query-filter";
 import type {
+	CreateSchema,
 	DatabaseDefinition,
 	DatabaseSchema,
 	SchemaRecord,
@@ -29,13 +30,13 @@ export type Update<Y extends SchemaRecord> = {
 
 export type UpdateMany<Definition extends DatabaseDefinition> = {
 	where: QueryFilter<Definition>;
-	properties: Partial<DatabaseSchema<Definition>>;
+	properties: Partial<CreateSchema<Definition>>;
 };
 
 export type Upsert<Definition extends DatabaseDefinition> = {
 	where: QueryFilter<Definition>;
-	create: DatabaseSchema<Definition>;
-	update: Partial<DatabaseSchema<Definition>>;
+	create: CreateSchema<Definition>;
+	update: Partial<CreateSchema<Definition>>;
 	/** When multiple rows match `where`, which row to update (default: oldest by `created_time`). */
 	sortBy?: QuerySort<Definition>;
 };

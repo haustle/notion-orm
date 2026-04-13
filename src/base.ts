@@ -12,10 +12,15 @@ export { DatabaseClient } from "./client/database/DatabaseClient";
 export { buildZodFromColumns } from "./client/database/schema-builder";
 export { isColumnTypesWithOptions } from "./client/database/types";
 export type {
+	BrandedNotionId,
 	ColumnDefinition,
 	ColumnDefinitionBase,
 	ColumnTypesWithOptions,
 	MultiSelectColumnDefinition,
+	NotionDatabaseId,
+	NotionIdKind,
+	NotionPageId,
+	NotionUserId,
 	NotionPropertyTypeToColumnDefinitionMap,
 	PlainColumnDefinition,
 	RelationColumnDefinition,
@@ -27,6 +32,7 @@ export type {
 	CreateMany,
 	DatabaseColumns,
 	DatabaseColumnTypes,
+	CreateSchema,
 	DatabaseDefinition,
 	DatabasePropertyType,
 	DatabasePropertyValue,
@@ -36,7 +42,10 @@ export type {
 	FindFirst,
 	FindMany,
 	FindUnique,
+	InferDatabaseColumns,
+	InferCreateSchema,
 	InferDatabaseSchema,
+	NotWritableDatabaseColumnType,
 	PaginateResult,
 	ProjectedRow,
 	Projection,
@@ -47,6 +56,12 @@ export type {
 	Update,
 	UpdateMany,
 	Upsert,
+} from "./client/database/types";
+export {
+	brandedNotionIdsAsStringArray,
+	toNotionDatabaseId,
+	toNotionPageId,
+	toNotionUserId,
 } from "./client/database/types";
 export type { NotionConfigType } from "./config/helpers";
 export type { NotionORMConfig } from "./config/resolveNotionAuth";

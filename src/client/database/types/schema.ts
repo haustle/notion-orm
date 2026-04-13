@@ -4,6 +4,8 @@
 
 import type { DataSourceObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import type { Simplify } from "../../../typeUtils";
+import type { NotionDatabaseId } from "./notion-database-id";
+import type { NotionPageId } from "./notion-page-id";
 
 type NotionPropertyTypeToConfigMap = DataSourceObjectResponse["properties"];
 export type DatabasePropertyType =
@@ -20,6 +22,7 @@ export type DatabasePropertyValue =
 	| undefined
 	| null
 	| string[]
+	| NotionPageId[]
 	| { name: string; url: string }[]
 	| { start: string; end?: string | null };
 
@@ -116,7 +119,7 @@ export type MultiSelectColumnDefinition = ColumnDefinitionBase & {
  */
 export type RelationColumnDefinition = ColumnDefinitionBase & {
 	readonly type: "relation";
-	readonly relatedDatabaseId: string;
+	readonly relatedDatabaseId: NotionDatabaseId;
 };
 
 /**
@@ -170,7 +173,7 @@ export interface NotionTypeToValueMap
 	date: { start: string; end?: string };
 	files: { name: string; url: string }[];
 	people: string[];
-	relation: string[];
+	relation: NotionPageId[];
 	multi_select: string[];
 	select: string;
 	status: string;
@@ -214,6 +217,32 @@ export type InferDatabaseSchema<Columns extends DatabaseColumns> = Simplify<
 	}
 >;
 
+/**
+ * Column types included on full query rows but not settable via this client's
+ * create/update mappers. Kept in lockstep with `ADD_PROPERTY_BUILDERS` in
+ * `create/property-value.ts` (that object uses `satisfies` against this union).
+ */
+export type NotWritableDatabaseColumnType =
+	| "created_by"
+	| "last_edited_by"
+	| "created_time"
+	| "last_edited_time"
+	| "unique_id";
+
+type NonWritablePropertyKeys<Columns extends DatabaseColumns> = {
+	[K in keyof Columns]: Columns[K]["type"] extends NotWritableDatabaseColumnType
+		? K
+		: never;
+}[keyof Columns];
+
+/**
+ * Row fields that can be passed to create/update: drops Notion-managed columns
+ * the API does not accept from this client.
+ */
+export type InferCreateSchema<Columns extends DatabaseColumns> = Simplify<
+	Omit<InferDatabaseSchema<Columns>, NonWritablePropertyKeys<Columns>>
+>;
+
 /** Bundles the row shape and property -> column-type map for one database. */
 export interface DatabaseDefinition<
 	Columns extends DatabaseColumns = DatabaseColumns,
@@ -225,6 +254,13 @@ export interface DatabaseDefinition<
 		[Property in keyof Columns]: Columns[Property]["type"];
 	};
 }
+
+export type InferDatabaseColumns<Definition extends DatabaseDefinition> =
+	Definition extends DatabaseDefinition<infer Columns> ? Columns : never;
+
+/** Create/update payload row derived from a `DatabaseDefinition`. */
+export type CreateSchema<Definition extends DatabaseDefinition> =
+	InferCreateSchema<InferDatabaseColumns<Definition>>;
 
 /** Extracts the row shape from a `DatabaseDefinition`. */
 export type DatabaseSchema<
