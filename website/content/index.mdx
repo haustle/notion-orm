@@ -97,12 +97,35 @@ Learn more about [Custom Agents](https://www.notion.com/help/custom-agents) in t
 bun notion sync
 ```
 
+### Where sync writes files (`notion/`)
+
+`notion sync` writes **generated modules under `notion/`** at your **project root** (next to `notion.config.ts`)—your synced database schemas, registries, and agent factories. A full sync replaces the entire `notion/` tree so removed databases or agents do not linger.
+
+**Typical layout** (each `.ts` file has a matching transpiled `.js`; the root also emits declaration files for typed imports):
+
+```txt
+notion/
+├── index.ts              # NotionORM entry + re-exports
+├── index.js
+├── index.d.ts
+├── databases/
+│   ├── index.ts          # `databases` registry barrel
+│   ├── <Database>.ts     # one factory module per tracked database (PascalCase stem)
+│   └── metadata.json     # sync cache (ids + display names)
+└── agents/
+    ├── index.ts          # `agents` registry barrel
+    ├── <Agent>.ts        # one factory module per agent (PascalCase stem)
+    └── metadata.json
+```
+
+For the full tree (including declaration maps), how **camelCase** registry keys map to **PascalCase** files, and project-relative **import paths**, see **[Generated code layout](/api-reference#generated-code-layout)** in the API Reference.
+
 ### Initialization
 
 Create a single ORM instance with your Notion integration key:
 
 ```ts
-import NotionORM from "@haustle/notion-orm";
+import { NotionORM } from "./notion";
 
 const notion = new NotionORM({
   auth: process.env.NOTION_KEY!,
@@ -294,27 +317,5 @@ Runtime dependencies:
 - <a href="https://www.npmjs.com/package/@babel/parser" target="_blank" rel="noopener noreferrer"><code>@babel/parser</code></a> — Parses generated TypeScript/JavaScript source into AST nodes during codegen and sync flows.
 - <a href="https://www.npmjs.com/package/@babel/generator" target="_blank" rel="noopener noreferrer"><code>@babel/generator</code></a> — Emits formatted source code from AST transforms used by generated config/registry/type files.
 - <a href="https://www.npmjs.com/package/zod" target="_blank" rel="noopener noreferrer"><code>zod</code></a> — Validates config and untrusted boundary input with typed schemas and clear parse errors.
-
-## Project Structure
-
-```txt
-.
-├── src
-│   ├── cli              # notion init / add / sync / setup-agents-sdk
-│   ├── config           # config discovery, loading, and validation
-│   ├── client           # runtime DatabaseClient + AgentClient
-│   │   └── query        # typed filters + response simplification
-│   ├── ast              # code generation internals
-│   │   ├── database
-│   │   ├── agents
-│   │   └── shared
-│   └── types            # local type bridges
-├── tests                # runtime, codegen, types, and CLI coverage
-├── plugins              # lint/tooling helpers
-└── notion               # generated output (after notion sync)
-    ├── src
-    ├── databases
-    └── agents
-```
 
 </DocsProse>
