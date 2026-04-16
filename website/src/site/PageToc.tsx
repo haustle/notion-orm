@@ -77,23 +77,35 @@ const tocSectionBlockClass = css({
 	gap: "1",
 });
 
-const tocNestedRevealClass = css({
+/** Mutually exclusive with `tocNestedRevealExpandedClass` — do not merge (opacity would fight). */
+const tocNestedRevealCollapsedClass = css({
 	display: "grid",
 	gridTemplateRows: "0fr",
 	opacity: 0,
+	pointerEvents: "none",
+	alignSelf: "flex-start",
+	width: "100%",
 	transitionProperty: "grid-template-rows, opacity",
 	transitionDuration: "320ms",
 	transitionTimingFunction: "cubic-bezier(0.33, 1, 0.68, 1)",
-	pointerEvents: "none",
 	"@media (prefers-reduced-motion: reduce)": {
 		transitionDuration: "0.01ms",
 	},
 });
 
 const tocNestedRevealExpandedClass = css({
+	display: "grid",
 	gridTemplateRows: "1fr",
 	opacity: 1,
 	pointerEvents: "auto",
+	alignSelf: "flex-start",
+	width: "100%",
+	transitionProperty: "grid-template-rows, opacity",
+	transitionDuration: "320ms",
+	transitionTimingFunction: "cubic-bezier(0.33, 1, 0.68, 1)",
+	"@media (prefers-reduced-motion: reduce)": {
+		transitionDuration: "0.01ms",
+	},
 });
 
 const tocNestedRevealInnerClass = css({
@@ -353,10 +365,11 @@ export const PageToc: FC<PageTocProps> = ({ toc, className }) => {
 							</a>
 							{section.children.length > 0 && (
 								<div
-									className={cx(
-										tocNestedRevealClass,
-										showNested && tocNestedRevealExpandedClass,
-									)}
+									className={
+										showNested
+											? tocNestedRevealExpandedClass
+											: tocNestedRevealCollapsedClass
+									}
 									aria-hidden={!showNested}>
 									<div className={tocNestedRevealInnerClass}>
 										<div className={tocNestedListClass}>
@@ -374,7 +387,8 @@ export const PageToc: FC<PageTocProps> = ({ toc, className }) => {
 																childActive
 																	? tocLinkActiveClass
 																	: tocLinkInactiveClass,
-																child.depth >= 4 && tocNestedLinkH4IndentClass,
+																child.depth >= 4 &&
+																	tocNestedLinkH4IndentClass,
 															)}
 															aria-current={
 																childActive ? "location" : undefined
