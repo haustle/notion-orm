@@ -11,6 +11,7 @@ import {
 } from "./mdxHeading";
 import { extractText, isElement } from "./mdxTextUtils";
 import { NotionCubeLogo } from "./NotionCubeLogo";
+import { TryPlaygroundButton } from "./TryPlaygroundButton";
 
 function collectChildren(children: ReactNode): ReactNode[] {
 	return Children.toArray(children);
@@ -163,4 +164,5 @@ export const mdxComponents = {
 	DocsProse,
 	DemoEditorShortcutsCallout,
 	DemoPlayground: DemoPlaygroundLazy,
+	TryPlaygroundButton,
 };
