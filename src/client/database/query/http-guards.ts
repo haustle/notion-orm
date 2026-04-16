@@ -1,4 +1,4 @@
-export function hasStatus(error: unknown): error is { status: number } {
+function hasStatus(error: unknown): error is { status: number } {
 	return (
 		typeof error === "object" &&
 		error !== null &&

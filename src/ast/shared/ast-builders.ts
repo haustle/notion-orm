@@ -238,27 +238,6 @@ function createPropertyValuesElementType(arrayIdentifier: string) {
 }
 
 /**
- * Generate database ID variable
- * const id = "<database-id>"
- */
-export function createDatabaseIdVariable(databaseId: string) {
-  return ts.factory.createVariableStatement(
-    undefined,
-    ts.factory.createVariableDeclarationList(
-      [
-        ts.factory.createVariableDeclaration(
-          ts.factory.createIdentifier("id"),
-          undefined,
-          undefined,
-          ts.factory.createStringLiteral(databaseId)
-        ),
-      ],
-      ts.NodeFlags.Const
-    )
-  );
-}
-
-/**
  * Create import declaration
  */
 export function createNameImport(args: {

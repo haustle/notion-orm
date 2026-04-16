@@ -142,9 +142,6 @@ export function validateAndGetUndashedNotionId(id: string): string | undefined {
 	}
 }
 
-// Backward-compatible alias for existing consumers.
-export const validateAndGetUndashedUuid = validateAndGetUndashedNotionId;
-
 /** Applies a focused AST edit to one list property inside the user's config file. */
 function updateConfigListInFile(args: {
 	configPath: string;

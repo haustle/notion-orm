@@ -99,7 +99,7 @@ function getDataSourceDisplayName(args: {
 	return `Database ${args.normalizedDataSourceId.slice(0, 8)}`;
 }
 
-export interface DatabaseModuleBuildResult {
+interface DatabaseModuleBuildResult {
 	/** Statement groups printed with a blank line between groups for readability. */
 	statementSegments: readonly (readonly ts.Statement[])[];
 	databaseName: string;
@@ -140,7 +140,7 @@ function printAndTranspileDatabaseModule(args: {
  * Returns statement nodes and metadata without any filesystem side effects,
  * making it the primary seam for golden/snapshot tests.
  */
-export function buildDatabaseModuleNodes(
+function buildDatabaseModuleNodes(
 		dataSourceResponse: GetDataSourceResponse,
 	): DatabaseModuleBuildResult {
 		const { id: dataSourceId, properties } = dataSourceResponse;

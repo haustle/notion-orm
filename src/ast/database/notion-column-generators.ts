@@ -17,13 +17,13 @@ import {
 } from "../shared/ast-builders";
 import type { ZodMetaColumnPayload } from "./zod-schema";
 
-export interface PropertyASTResult {
+interface PropertyASTResult {
 	tsPropertySignature: ts.TypeElement;
 	zodMeta: ZodMetaColumnPayload;
 	enumConstStatement?: ts.Statement;
 }
 
-export interface PropertyASTContext {
+interface PropertyASTContext {
 		columnName: string;
 		camelizedName: string;
 		columnValue: SupportedNotionProperty;
@@ -33,7 +33,7 @@ export interface PropertyASTContext {
  * Per-property generator contract:
  * produce TS property AST and metadata needed to later build the Zod schema.
  */
-export type PropertyASTGenerator = (
+type PropertyASTGenerator = (
 	context: PropertyASTContext,
 ) => PropertyASTResult | null;
 

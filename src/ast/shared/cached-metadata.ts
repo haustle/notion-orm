@@ -74,7 +74,7 @@ export function parseMetadataArray(content: string): CachedEntityMetadata[] {
 }
 
 /** Reads metadata from disk; returns [] if file missing or unparseable. */
-export function readMetadataFromDisk(filePath: string): CachedEntityMetadata[] {
+function readMetadataFromDisk(filePath: string): CachedEntityMetadata[] {
 	try {
 		if (!fs.existsSync(filePath)) {
 			return [];

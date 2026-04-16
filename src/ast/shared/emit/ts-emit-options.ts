@@ -3,7 +3,7 @@ import * as ts from "typescript";
 /**
  * Shared compiler option shape used by AST emitters.
  */
-export interface TsEmitCompilerOptions {
+interface TsEmitCompilerOptions {
 	module: ts.ModuleKind;
 	target: ts.ScriptTarget;
 }

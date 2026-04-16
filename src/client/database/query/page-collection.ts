@@ -119,24 +119,6 @@ export async function collectPageIdsMatchingFilter<
 	return ids;
 }
 
-export async function findFirstQueryRowWithNotionPageId<
-	Definition extends DatabaseDefinition,
->(args: {
-	client: Client;
-	dataSourceId: string;
-	columns: DatabaseColumns;
-	where?: QueryFilter<Definition>;
-	sortBy?: QuerySort<Definition>;
-	validateSchema: (
-		result: Partial<DatabaseSchema<Definition>>,
-	) => void;
-}): Promise<{ id: string; data: Partial<DatabaseSchema<Definition>> } | null> {
-	return (await findMatchingQueryRowsWithNotionPageIds({
-		...args,
-		size: 1,
-	}))[0] ?? null;
-}
-
 export async function findMatchingQueryRowsWithNotionPageIds<
 	Definition extends DatabaseDefinition,
 >(args: {

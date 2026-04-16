@@ -12,10 +12,10 @@ import { toPascalCase } from "../../helpers";
  * in apps (directory import resolves to `index` — no need to spell `index`). Distinct from this package's
  * npm `outDir` (`build/`), which remains `@haustle/notion-orm/build/...`.
  */
-export const PROJECT_CODEGEN_DIR_NAME = "notion" as const;
+const PROJECT_CODEGEN_DIR_NAME = "notion" as const;
 
 /** Subdirectory under the codegen root for generated database modules. */
-export const PROJECT_DATABASES_DIR_NAME = "databases" as const;
+const PROJECT_DATABASES_DIR_NAME = "databases" as const;
 
 /**
  * Resolve generated artifact paths from the current project root, not from the
@@ -36,7 +36,6 @@ function getAgentsDir(): string {
 	return path.join(getProjectBuildDir(), "agents");
 }
 
-export const DATABASES_DIR = getDatabasesDir();
 export const AGENTS_DIR = getAgentsDir();
 
 /** Filesystem targets used by emitters. Getters stay lazy for testability. */
@@ -87,7 +86,7 @@ export const AST_FS_PATHS = {
 } as const;
 
 /** Shared filenames used across emitted artifacts. */
-export const AST_FS_FILENAMES = {
+const AST_FS_FILENAMES = {
 	METADATA: "metadata.json",
 	INDEX_TS: "index.ts",
 	INDEX_JS: "index.js",

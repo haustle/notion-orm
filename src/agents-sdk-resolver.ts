@@ -8,7 +8,7 @@ export const AGENTS_SDK_SETUP_COMMAND = "notion setup-agents-sdk";
 export const AGENTS_SDK_REPO_URL =
 	"https://github.com/makenotion/notion-agents-sdk-js.git";
 
-export const AGENTS_SDK_MISSING_MESSAGE =
+const AGENTS_SDK_MISSING_MESSAGE =
 	`Agent support requires the Notion Agents SDK (paid feature).\n` +
 	`Run \`${AGENTS_SDK_SETUP_COMMAND}\` to install it, then run \`notion sync\`.`;
 

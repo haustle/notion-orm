@@ -481,7 +481,7 @@ function createDeclarationClass(args: {
 /**
  * Produces runtime module statement groups for `notion/index.ts`, separated for readable spacing.
  */
-export function buildOrmIndexModuleStatementSegments(args: {
+function buildOrmIndexModuleStatementSegments(args: {
 	databases: OrmEntityMetadata[];
 	agents: OrmEntityMetadata[];
 	syncCommand: string;
@@ -569,7 +569,7 @@ export function buildOrmIndexModuleAst(args: {
 /**
  * Produces declaration module statement groups for `notion/index.d.ts`, separated for readable spacing.
  */
-export function buildOrmIndexDeclarationStatementSegments(args: {
+function buildOrmIndexDeclarationStatementSegments(args: {
 	databases: OrmEntityMetadata[];
 	agents: OrmEntityMetadata[];
 	/** Defaults to the CLI generate command from constants when omitted. */
@@ -731,7 +731,7 @@ export function updateSourceIndexFile(
 /**
  * Convenience wrapper targeting canonical build output paths.
  */
-export function emitOrmIndexBuildArtifacts(args: {
+function emitOrmIndexBuildArtifacts(args: {
 	databases: OrmEntityMetadata[];
 	agents: OrmEntityMetadata[];
 	context?: TsEmitContext;

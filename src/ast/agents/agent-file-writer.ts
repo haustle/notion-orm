@@ -16,7 +16,7 @@ import {
 } from "../shared/emit/ts-emit-core";
 import { TS_EMIT_OPTIONS_GENERATED } from "../shared/emit/ts-emit-options";
 
-export interface AgentModuleBuildResult {
+interface AgentModuleBuildResult {
 	statementSegments: readonly (readonly ts.Statement[])[];
 	agentId: string;
 	agentName: string;
@@ -70,7 +70,7 @@ function printAndTranspileAgentModule(args: {
 	return { tsCode, jsCode };
 }
 
-export function buildAgentModuleNodes(args: {
+function buildAgentModuleNodes(args: {
 	agentId: string;
 	agentName: string;
 	agentIcon: AgentIcon;

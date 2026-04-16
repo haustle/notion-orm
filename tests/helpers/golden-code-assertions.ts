@@ -8,7 +8,7 @@ import {
 } from "./codegen-file-names";
 
 /** Collapses whitespace; strips trailing commas before `}` / `]` for golden compares. */
-export function normalizeCode(content: string): string {
+function normalizeCode(content: string): string {
 	let normalized = content.trim().replace(/\s+/g, " ");
 	let previous: string;
 	do {

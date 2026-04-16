@@ -42,7 +42,7 @@ function parseNotionConfig(input: unknown): NotionConfigType {
  * - Works with Node.js (ESM and CJS)
  * - Supports .ts, .js, .mjs config files
  */
-export async function loadUserConfig(absolutePath: string): Promise<unknown> {
+async function loadUserConfig(absolutePath: string): Promise<unknown> {
 	const isBun = "Bun" in globalThis;
 
 	// 1) Try dynamic import first (works for Bun with .ts, Node with .js/.mjs)

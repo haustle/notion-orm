@@ -6,8 +6,6 @@ import type {
 	ProjectionSelection,
 } from "../types";
 
-export type { ProjectionSelection };
-
 export type NormalizedProjection<PropertyName extends string | number> = {
 	mode: "none" | "select" | "omit";
 	keys: Set<PropertyName>;
