@@ -1,6 +1,6 @@
 import type { TocEntry } from "./types";
 
-export interface TocSection {
+interface TocSection {
 	root: TocEntry;
 	children: TocEntry[];
 }

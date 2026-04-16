@@ -15,7 +15,7 @@ import {
 } from "../src/site/mdx-pipeline.js";
 import type { TocEntry } from "../src/site/types";
 
-export function assertMdastRoot(node: Node): asserts node is Root {
+function assertMdastRoot(node: Node): asserts node is Root {
 	if (node.type !== "root") {
 		throw new Error(`expected mdast root, got ${String(node.type)}`);
 	}

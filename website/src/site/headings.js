@@ -34,7 +34,7 @@ function setHeadingId(node, id) {
 	};
 }
 
-export function slugify(text) {
+function slugify(text) {
 	return text
 		.toLowerCase()
 		.replace(/[^a-z0-9\s-]/g, "")
@@ -42,7 +42,7 @@ export function slugify(text) {
 		.replace(/\s/g, "-");
 }
 
-export function createHeadingSlugFactory() {
+function createHeadingSlugFactory() {
 	const counts = new Map();
 	return (label) => {
 		const base = slugify(label);
