@@ -11,7 +11,7 @@ import {
 	printTsNodes,
 } from "../shared/emit/ts-emit-core";
 
-export type DemoOrmAllDatabasesEmitInput = {
+type DemoOrmAllDatabasesEmitInput = {
 	/** `./notion/` style path for the generated index import */
 	buildIndexImportPath: string;
 	/** `./notion/databases/Foo.ts` path for database module imports */

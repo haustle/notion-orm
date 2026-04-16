@@ -199,11 +199,9 @@ export const demoPlaygroundPanels = {
 	},
 } as const;
 
-export type DemoPlaygroundPanelId = keyof typeof demoPlaygroundPanels;
-
 /** Stable column order for the demo playground (labels alone are not unique keys across refactors). */
 export const demoPlaygroundPanelOrder = [
 	"databases",
 	"notionOrm",
 	"agents",
-] as const satisfies readonly DemoPlaygroundPanelId[];
+] as const satisfies readonly (keyof typeof demoPlaygroundPanels)[];
