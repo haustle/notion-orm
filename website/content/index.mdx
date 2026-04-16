@@ -15,12 +15,11 @@ A [Notion API](https://developers.notion.com/) TypeScript wrapper that leverages
 
 ## Key Features
 
-- **Full type inference when interacting with databases**, including `findMany`, `create`, `update`, `delete`, and more
+- Full type inference when interacting with databases, including `findMany`, `create`, `update`, `delete`, and more
 - Manage databases and agents in Notion
 - Sync remote schema changes in a single command
 - Quickly start/resume chat streams with your agents
 - Access exported property values, schemas, and types (ex. `zod` validators)
-- Validate config and other untrusted input with `zod`
 
 ## Setup
 
@@ -99,9 +98,7 @@ bun notion sync
 
 ### Where sync writes files (`notion/`)
 
-`notion sync` writes **generated modules under `notion/`** at your **project root** (next to `notion.config.ts`)—your synced database schemas, registries, and agent factories. A full sync replaces the entire `notion/` tree so removed databases or agents do not linger.
-
-**Typical layout** (each `.ts` file has a matching transpiled `.js`; the root also emits declaration files for typed imports):
+`notion sync` writes generated modules under `notion/` at your project root—your synced database schemas, registries, and agent factories. A full sync replaces the entire `notion/` tree so removed databases or agents do not linger.
 
 ```txt
 notion/
