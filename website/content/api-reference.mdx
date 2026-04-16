@@ -8,6 +8,8 @@ export const metadata = {
 
 Complete reference for the Notion ORM API. The sections follow a learning progression: start with runtime access, then databases, then agents, then advanced usage.
 
+[Try playground](/demo)
+
 ## Runtime access
 
 ```ts
@@ -17,10 +19,8 @@ const notion = new NotionORM({
   auth: process.env.NOTION_KEY!,
 });
 
-// DatabaseClient
-const db = notion.databases.yourDatabaseName;
-// AgentClient
-const agent = notion.agents.yourAgentName;
+// DatabaseClient — e.g. notion.booksDb (camelCase DB name from generation)
+// AgentClient — e.g. notion.agents.helpBot (camelCase agent name from generation)
 ```
 
 | Runtime Property   | Type                             | Description                                                    |
@@ -41,17 +41,17 @@ const agent = notion.agents.yourAgentName;
 
 | Method | Description |
 | ------ | ----------- |
-| `findUnique({ where: { id } })` | Retrieves a single page by its Notion ID |
-| `findFirst(args?)` | Returns the first matching row or `null` |
-| `findMany(args?)` | Query rows. Returns `Partial<Schema>[]` by default, `PaginateResult` with `after`, or `AsyncIterable` with `stream` |
-| `count(args?)` | Returns the total number of matching rows |
-| `create({ properties, icon?, cover?, markdown? })` | Creates a page with typed properties and optional [markdown body content](https://developers.notion.com/guides/data-apis/working-with-markdown-content#block-type-support) |
-| `createMany({ properties })` | Creates multiple pages sequentially |
-| `update({ where: { id }, properties })` | Updates a single page by ID |
-| `updateMany({ where, properties })` | Updates all pages matching a filter |
-| `upsert({ where, create, update })` | Creates or updates depending on whether a match exists |
-| `delete({ where: { id } })` | Archives a single page by ID |
-| `deleteMany({ where })` | Archives all pages matching a filter |
+| `findUnique({ where: { id } })` | Retrieves a single page by its Notion ID ([source](/api-reference#findunique)) |
+| `findFirst(args?)` | Returns the first matching row or `null` ([source](/api-reference#findfirst)) |
+| `findMany(args?)` | Query rows. Returns `Partial<Schema>[]` by default, `PaginateResult` with `after`, or `AsyncIterable` with `stream` ([source](/api-reference#findmany)) |
+| `count(args?)` | Returns the total number of matching rows ([source](/api-reference#count)) |
+| `create({ properties, icon?, cover?, markdown? })` | Creates a page with typed properties and optional markdown body content ([source](/api-reference#create)) |
+| `createMany({ properties })` | Creates multiple pages sequentially ([source](/api-reference#createmany)) |
+| `update({ where: { id }, properties })` | Updates a single page by ID ([source](/api-reference#update)) |
+| `updateMany({ where, properties })` | Updates all pages matching a filter ([source](/api-reference#updatemany)) |
+| `upsert({ where, create, update })` | Creates or updates depending on whether a match exists ([source](/api-reference#upsert)) |
+| `delete({ where: { id } })` | Archives a single page by ID ([source](/api-reference#delete)) |
+| `deleteMany({ where })` | Archives all pages matching a filter ([source](/api-reference#deletemany)) |
 
 ---
 
@@ -60,7 +60,7 @@ const agent = notion.agents.yourAgentName;
 Retrieves a single page by its Notion page ID, scoped to the current database client's data source. Returns `null` for missing, partial, or cross-data-source pages. Supports `select` / `omit` projection with the same semantics as `findMany`.
 
 ```ts
-const page = await db.findUnique({
+const page = await notion.booksDb.findUnique({
   where: { id: "page-id-here" },
   select: ["bookName", "status"],
 });
@@ -73,7 +73,7 @@ const page = await db.findUnique({
 Returns the first row matching the filter, or `null` if none match.
 
 ```ts
-const book = await db.findFirst({
+const book = await notion.booksDb.findFirst({
   where: { bookName: { equals: "Creativity, Inc." } },
 });
 ```
@@ -94,26 +94,26 @@ Queries the database with optional filtering, sorting, projection, pagination, a
 | `after: string \| null` | `Promise<PaginateResult<Schema>>` |
 | `stream: number` | `AsyncIterable<Partial<Schema>>` |
 
-**Args:**
+**Args:** All properties are optional.
 
-| Property | Type | Required | Description |
-| -------- | ---- | -------- | ----------- |
-| `where` | `QueryFilter` | no | Typed filter object (single or compound `and`/`or`) |
-| `sortBy` | `QuerySort<ColumnTypes>` | no | Array of schema-key sort descriptors (or timestamp sorts) |
-| `size` | `number` | no | Page size limit |
-| `select` | `readonly (keyof Schema & string)[]` | no | Include only specified fields |
-| `omit` | `readonly (keyof Schema & string)[]` | no | Exclude specified fields |
-| `stream` | `number` | no | Batch size for async iteration (mutually exclusive with `after`) |
-| `after` | `string \| null` | no | Cursor for pagination (mutually exclusive with `stream`) |
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `where` | `QueryFilter` | Limits rows to those matching the filter (per-column conditions and nested `and` / `or`). Omit to consider every page in this data source (still bounded by `size` and by list vs pagination vs streaming mode). |
+| `sortBy` | `QuerySort<ColumnTypes>` | Sort order: one or more column sorts and/or `created_time` / `last_edited_time`. Omit for the API’s default ordering. |
+| `size` | `number` | Notion `page_size` for this request. In default list mode, caps how many rows that single response returns. With `after`, caps each page. Omit to use the API default page size. |
+| `select` | `readonly (keyof Schema & string)[]` | Return only these properties on each row (narrows the partial row type). |
+| `omit` | `readonly (keyof Schema & string)[]` | Return all properties except those listed. |
+| `stream` | `number` | Enables async iteration: each underlying query requests up to this many rows until the cursor is exhausted. Omit `stream` for promise-based list or pagination. Cannot be used together with `after`. |
+| `after` | `string \| null` | Pagination cursor: pass `null` for the first page, then the previous page’s `nextCursor`. Cannot be used together with `stream`. |
 
 `select` and `omit` are mutually exclusive — providing both throws at runtime.
 
 ```ts
 // Simple query — returns all rows
-const allBooks = await db.findMany();
+const allBooks = await notion.booksDb.findMany();
 
 // Filtered + sorted + projected
-const recent = await db.findMany({
+const recent = await notion.booksDb.findMany({
   where: { publishDate: { on_or_after: "2025-01-01" } },
   sortBy: [{ property: "publishDate", direction: "descending" }],
   select: ["bookName", "publishDate"],
@@ -121,12 +121,12 @@ const recent = await db.findMany({
 });
 
 // Cursor pagination
-const firstPage = await db.findMany({ after: null, size: 10 });
-const secondPage = await db.findMany({ after: firstPage.nextCursor, size: 10 });
+const firstPage = await notion.booksDb.findMany({ after: null, size: 10 });
+const secondPage = await notion.booksDb.findMany({ after: firstPage.nextCursor, size: 10 });
 // firstPage.data, firstPage.hasMore, firstPage.nextCursor
 
 // Streaming large datasets
-for await (const row of db.findMany({ stream: 100 })) {
+for await (const row of notion.booksDb.findMany({ stream: 100 })) {
   console.log(row.bookName);
 }
 ```
@@ -143,6 +143,18 @@ Returned by `findMany` when `after` is provided.
 | `nextCursor` | `string \| null` | Pass to `after` for the next page, `null` when done |
 | `hasMore` | `boolean` | Whether more pages remain |
 
+```ts
+// Walk every page: start with after: null, then pass nextCursor until it is null
+let after: string | null = null;
+do {
+  const page = await notion.booksDb.findMany({ after, size: 10 });
+  for (const row of page.data) {
+    /* use row */
+  }
+  after = page.nextCursor;
+} while (after !== null);
+```
+
 ---
 
 ### Filtering
@@ -152,7 +164,7 @@ Filters are typed by your generated schema. Single-property filters and compound
 **Single filter:**
 
 ```ts
-await db.findMany({
+await notion.booksDb.findMany({
   where: { genre: { contains: "Sci-Fi" } },
 });
 ```
@@ -160,7 +172,7 @@ await db.findMany({
 **Compound filters:**
 
 ```ts
-await db.findMany({
+await notion.booksDb.findMany({
   where: {
     and: [
       { genre: { contains: "Sci-Fi" } },
@@ -185,8 +197,8 @@ Filter operators vary by property type — see the [Notion filter reference](htt
 Returns the total number of rows matching an optional filter. Paginates internally to count all results.
 
 ```ts
-const total = await db.count();
-const filtered = await db.count({
+const total = await notion.booksDb.count();
+const filtered = await notion.booksDb.count({
   where: { status: { equals: "Done" } },
 });
 ```
@@ -198,7 +210,7 @@ const filtered = await db.count({
 Creates a single page. Properties are typed to your generated schema.
 
 ```ts
-const result = await db.create({
+const result = await notion.booksDb.create({
   properties: {
     bookName: "The Dream Machine",
     genre: ["Non-fiction"],
@@ -212,7 +224,7 @@ const result = await db.create({
 Pass `markdown` to add body content to the page in a single call. This uses Notion's [enhanced markdown format](https://developers.notion.com/guides/data-apis/working-with-markdown-content#block-type-support) — headings, lists, code blocks, quotes, checklists, and more are all supported.
 
 ```ts
-await db.create({
+await notion.booksDb.create({
   properties: {
     bookName: "Reading Notes",
   },
@@ -229,7 +241,7 @@ await db.create({
 Creates multiple pages sequentially and returns all responses.
 
 ```ts
-const results = await db.createMany({
+const results = await notion.booksDb.createMany({
   properties: [
     { bookName: "Book A", genre: ["Sci-Fi"], numberOfPages: 300 },
     { bookName: "Book B", genre: ["Biography"], numberOfPages: 250 },
@@ -244,7 +256,7 @@ const results = await db.createMany({
 Updates a single page by ID. Requires at least one property.
 
 ```ts
-await db.update({
+await notion.booksDb.update({
   where: { id: "page-id" },
   properties: { status: "Done", numberOfPages: 512 },
 });
@@ -257,7 +269,7 @@ await db.update({
 Finds all pages matching a filter and applies the same property updates to each.
 
 ```ts
-await db.updateMany({
+await notion.booksDb.updateMany({
   where: { status: { equals: "Draft" } },
   properties: { status: "In progress" },
 });
@@ -270,7 +282,7 @@ await db.updateMany({
 Finds the first row matching `where`. If found, applies `update`; otherwise runs `create`.
 
 ```ts
-await db.upsert({
+await notion.booksDb.upsert({
   where: { bookName: { equals: "The Dream Machine" } },
   create: {
     bookName: "The Dream Machine",
@@ -288,7 +300,7 @@ await db.upsert({
 Archives a single page by ID (Notion does not hard-delete pages).
 
 ```ts
-await db.delete({ where: { id: "page-id" } });
+await notion.booksDb.delete({ where: { id: "page-id" } });
 ```
 
 ---
@@ -298,7 +310,7 @@ await db.delete({ where: { id: "page-id" } });
 Archives all pages matching a filter.
 
 ```ts
-await db.deleteMany({
+await notion.booksDb.deleteMany({
   where: { status: { equals: "Archived" } },
 });
 ```
@@ -354,14 +366,14 @@ Formula properties are therefore omitted from generated database modules and are
 
 | Member                                           | Description                                           | Example |
 | ------------------------------------------------ | ----------------------------------------------------- | ------- |
-| `chat({ message, threadId? })`                   | Sends a message and creates/resumes a thread          | `await agent.chat({ message: "Hello" })` |
-| `chatStream({ message, threadId?, onMessage? })` | Streams messages and returns final `ThreadInfo`       | `await agent.chatStream({ message: "Hi", onMessage: (m) => {} })` |
-| `pollThread(threadId, options?)`                 | Polls until thread processing completes               | `await agent.pollThread(threadId)` |
-| `getMessages(threadId, { role? })`                | Gets full (or role-filtered) message history          | `await agent.getMessages(threadId, { role: "agent" })` |
-| `AgentClient.getAgentResponse(threadInfo)`        | Joins every `agent` message in `ThreadInfo` into one string | `AgentClient.getAgentResponse(thread)` |
-| `listThreads()`                                  | Lists recent threads with `id`, `title`, and `status`  | `await agent.listThreads()` |
-| `getThreadInfo(threadId)`                         | Fetches a single thread record                        | `await agent.getThreadInfo(threadId)` |
-| `getThreadTitle(threadId)`                        | Convenience helper to fetch just the thread title     | `await agent.getThreadTitle(threadId)` |
+| `chat({ message, threadId? })`                   | Sends a message and creates/resumes a thread ([source](/api-reference#chat))          | `await notion.agents.helpBot.chat({ message: "Hello" })` |
+| `chatStream({ message, threadId?, onMessage? })` | Streams messages and returns final `ThreadInfo` ([source](/api-reference#chatstream))       | `await notion.agents.helpBot.chatStream({ message: "Hi", onMessage: (m) => {} })` |
+| `pollThread(threadId, options?)`                 | Polls until thread processing completes ([source](/api-reference#pollthread))               | `await notion.agents.helpBot.pollThread(threadId)` |
+| `getMessages(threadId, { role? })`                | Gets full (or role-filtered) message history ([source](/api-reference#getmessages))          | `await notion.agents.helpBot.getMessages(threadId, { role: "agent" })` |
+| `AgentClient.getAgentResponse(threadInfo)`        | Joins every `agent` message in `ThreadInfo` into one string ([source](/api-reference#agentclientgetagentresponse)) | `AgentClient.getAgentResponse(thread)` |
+| `listThreads()`                                  | Lists recent threads with `id`, `title`, and `status` ([source](/api-reference#listthreads))  | `await notion.agents.helpBot.listThreads()` |
+| `getThreadInfo(threadId)`                         | Fetches a single thread record ([source](/api-reference#getthreadinfo))                        | `await notion.agents.helpBot.getThreadInfo(threadId)` |
+| `getThreadTitle(threadId)`                        | Convenience helper to fetch just the thread title ([source](/api-reference#getthreadtitle))     | `await notion.agents.helpBot.getThreadTitle(threadId)` |
 
 ---
 
@@ -526,9 +538,8 @@ const title = await notion.agents.helpBot.getThreadTitle("thread-id-here");
 
 After `bun notion sync`:
 
-- **`notion/`** is created at the **project root** (next to `notion.config.ts`).
-- Those files are **not** in the npm package; they appear only after sync.
-- A full sync **replaces** the whole `notion/` tree so removed databases or agents do not leave stale files.
+- **`notion/`** is created at the **project root**.
+- A full sync **replaces** the whole `notion/` tree.
 
 ### Example: generated database module
 
@@ -610,35 +621,9 @@ export const InventoryItems = (auth: string) => {
 
 Select, status, and multi-select options drive **typed filters and writes** and match the generated Zod helpers. Relation columns point at other databases instead of option lists. A **`.js`** file is emitted next to **`.ts`** for plain JS imports.
 
-<TryPlaygroundButton />
-
-### Repo directory tree
-
-```txt
-notion/
-├── index.ts                 # NotionORM entry + re-exports from the ORM base module
-├── index.js                 # transpiled root (Node / plain JS consumers)
-├── index.d.ts               # declarations for the root module
-├── index.d.ts.map           # declaration source map (when emitted)
-├── databases/
-│   ├── index.ts             # `databases` registry barrel (all DB factories)
-│   ├── index.js
-│   ├── <Database>.ts        # one file per tracked database (e.g. CustomerOrders.ts)
-│   ├── <Database>.js
-│   └── metadata.json        # sync cache: ids + display names for incremental runs
-└── agents/
-    ├── index.ts             # `agents` registry barrel (all agent factories)
-    ├── index.js
-    ├── <Agent>.ts           # one file per agent (e.g. MealAgent.ts)
-    ├── <Agent>.js
-    └── metadata.json        # sync cache for agents
-```
-
-Each database and agent ships as **TypeScript and transpiled JavaScript**. Subfolder `index` files re-export factories for dynamic wiring.
-
 ### Import paths
 
-Prefer **project-relative** paths into `./notion/`. The same segments apply if your tooling aliases `@haustle/notion-orm/notion/*` → `./notion/*`.
+Use **project-relative** imports into `./notion/`. After sync, that directory holds `NotionORM`, per-database and per-agent modules, and barrels—import from these generated files rather than from elsewhere.
 
 | Import path | What you get | When to use |
 | ----------- | ------------ | ----------- |
@@ -647,3 +632,20 @@ Prefer **project-relative** paths into `./notion/`. The same segments apply if y
 | `./notion/agents/<Agent>` | `<Agent>(auth)` factory → `AgentClient` | Direct agent usage without the wrapper |
 | `./notion/databases` | `databases` barrel (all database factories) | Dynamic DB selection or custom wiring |
 | `./notion/agents` | `agents` barrel (all agent factories) | Dynamic agent selection or custom wiring |
+
+### Directory tree
+
+```txt
+notion/
+├── index.ts                 # NotionORM entry + re-exports
+├── databases/
+│   ├── index.ts             # `databases` registry barrel (all DB factories)
+│   ├── <Database>.ts        # one file per tracked database (e.g. CustomerOrders.ts)
+│   └── metadata.json        # sync cache: ids + display names for incremental runs
+└── agents/
+    ├── index.ts             # `agents` registry barrel (all agent factories)
+    ├── <Agent>.ts           # one file per agent (e.g. MealAgent.ts)
+    └── metadata.json        # sync cache for agents
+```
+
+Sync writes **`metadata.json`** cache files (not `metadata.js`). Your build may still emit `.js` and `.d.ts` next to the `.ts` modules above; they are omitted here for brevity.
