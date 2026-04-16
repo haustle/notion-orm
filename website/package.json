@@ -43,6 +43,7 @@
 	},
 	"dependencies": {
 		"@central-icons-react/round-filled-radius-2-stroke-1.5": "^1.1.173",
+		"@central-icons-react/round-filled-radius-3-stroke-2": "^1.1.173",
 		"@central-icons-react/round-outlined-radius-3-stroke-2": "^1.1.173",
 		"@codemirror/autocomplete": "^6.20.1",
 		"@codemirror/commands": "^6.10.3",

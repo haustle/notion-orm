@@ -19,7 +19,9 @@ import {
 	foldAll,
 	foldGutter,
 	foldKeymap,
+	foldedRanges,
 	indentOnInput,
+	unfoldEffect,
 } from "@codemirror/language";
 import { linter, lintGutter, lintKeymap } from "@codemirror/lint";
 import { Compartment, EditorState, type Extension } from "@codemirror/state";
@@ -36,8 +38,11 @@ import {
 } from "@codemirror/view";
 import type { VirtualTypeScriptEnvironment } from "@typescript/vfs";
 import { getLints, tsFacet, tsHover, tsSync } from "@valtown/codemirror-ts";
+import { IconSettingsToggle2 } from "@central-icons-react/round-filled-radius-3-stroke-2/IconSettingsToggle2";
+import { IconArrow } from "@central-icons-react/round-outlined-radius-3-stroke-2/IconArrow";
+import { IconToggle } from "@central-icons-react/round-outlined-radius-3-stroke-2/IconToggle";
 import Link from "next/link";
-import type { MutableRefObject, RefObject } from "react";
+import type { MutableRefObject, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { clouds } from "thememirror";
 import { cx } from "../../styled-system/css";
@@ -52,23 +57,31 @@ import {
 import { cmOneDarkTheme } from "./cmOneDarkTheme";
 import {
 	playgroundApiReferenceLinkClass as apiReferenceLinkClass,
-	demoPlaygroundPanelMeta,
+	demoPlaygroundPanels,
 	playgroundEditorContainerClass as editorContainerClass,
 	playgroundEditorContainerPlaceholderClass as editorContainerPlaceholderClass,
 	playgroundFileLabelClass as fileLabelClass,
 	playgroundHeaderActionsClass as headerActionsClass,
 	playgroundHeaderBulletClass as headerBulletClass,
 	playgroundHeaderClass as headerClass,
+	playgroundExampleSchemaModeLabelClass as exampleSchemaModeLabelClass,
+	playgroundExampleSchemaSwitchRowClass as exampleSchemaSwitchRowClass,
 	playgroundHeaderTitleGroupClass as headerTitleGroupClass,
 	playgroundLoadingOverlayClass as loadingOverlayClass,
+	playgroundNotionSchemaToggleButtonClass as notionSchemaToggleButtonClass,
 	playgroundResetButtonClass as resetButtonClass,
 	playgroundSectionGapClass as sectionGapClass,
 	playgroundWrapperClass as wrapperClass,
 } from "./demoPlaygroundChrome";
 import { ideLikeTsAutocomplete } from "./ideLikeTsAutocomplete";
 import {
+	isNotionDatabaseModuleVirtualPath,
+	NOTION_SCHEMA_VIEW_FILE_KEY,
+} from "./demoPlaygroundNotionSchemaFiles";
+import {
 	agentEntryFile,
 	databaseEntryFile,
+	ormAllDatabasesEntryFile,
 	playgroundFiles,
 } from "./playgroundFiles";
 
@@ -633,6 +646,53 @@ function foldAllFoldable(view: EditorView): void {
 	foldAll(view);
 }
 
+/** Start of `const columns = {` in generated database modules. */
+const COLUMNS_BLOCK_RE = /const\s+columns\s*=\s*\{/;
+
+/**
+ * After `foldAll`, unfold the generated `columns` object so the schema stays visible
+ * in Schema mode (Favorite Songs module).
+ *
+ * JS folds `ObjectExpression` with `foldInside`: the folded span is **between** `{` and `}`,
+ * so its `from` is the offset *after* `{`. Probing at `{` never intersects that span.
+ */
+function unfoldColumnsObjectInGeneratedDbModule(view: EditorView): void {
+	const config = view.state.facet(tsFacet);
+	if (!config?.path) {
+		return;
+	}
+	if (!isNotionDatabaseModuleVirtualPath(config.path)) {
+		return;
+	}
+
+	const docText = view.state.doc.toString();
+	const match = COLUMNS_BLOCK_RE.exec(docText);
+	if (!match) {
+		return;
+	}
+	const insideObjectPos = match.index + match[0].length;
+
+	const folded = foldedRanges(view.state);
+	let innermost: { from: number; to: number } | null = null;
+	folded.between(0, view.state.doc.length, (from, to) => {
+		if (from <= insideObjectPos && insideObjectPos < to) {
+			if (!innermost || from > innermost.from) {
+				innermost = { from, to };
+			}
+		}
+	});
+	if (innermost) {
+		view.dispatch({ effects: unfoldEffect.of(innermost) });
+	}
+}
+
+function foldDatabasesEditorThenUnfoldColumnsIfSchema(view: EditorView): void {
+	foldAllFoldable(view);
+	queueMicrotask(() => {
+		unfoldColumnsObjectInGeneratedDbModule(view);
+	});
+}
+
 function resetEditorToInitial(
 	view: EditorView,
 	entryFileKey: keyof typeof playgroundFiles,
@@ -643,6 +703,42 @@ function resetEditorToInitial(
 	});
 	queueMicrotask(() => {
 		foldAllFoldable(view);
+	});
+}
+
+function persistEditorBufferToVfs(
+	view: EditorView,
+	env: VirtualTypeScriptEnvironment,
+): void {
+	const config = view.state.facet(tsFacet);
+	if (!config?.path) {
+		return;
+	}
+	env.updateFile(config.path, view.state.doc.toString());
+}
+
+function readWorkspaceDocContent(
+	env: VirtualTypeScriptEnvironment,
+	fileKey: keyof typeof playgroundFiles,
+): string {
+	const path = toVirtualPath(fileKey);
+	const fromFs = env.sys.readFile(path);
+	return typeof fromFs === "string" ? fromFs : playgroundFiles[fileKey];
+}
+
+function resetEditorToPlaygroundSnapshot(
+	view: EditorView,
+	env: VirtualTypeScriptEnvironment,
+	fileKey: keyof typeof playgroundFiles,
+): void {
+	const path = toVirtualPath(fileKey);
+	const initial = playgroundFiles[fileKey];
+	env.updateFile(path, initial);
+	view.dispatch({
+		changes: { from: 0, to: view.state.doc.length, insert: initial },
+	});
+	queueMicrotask(() => {
+		foldDatabasesEditorThenUnfoldColumnsIfSchema(view);
 	});
 }
 
@@ -657,6 +753,8 @@ type DemoPlaygroundEditorChromeArgs = {
 	wrapperExtraClass?: string;
 	status: "loading" | "ready" | "error";
 	errorMessage: string | null;
+	headerActionsPrefixSlot?: ReactNode;
+	onResetClick?: () => void;
 };
 
 function demoPlaygroundEditorChrome(args: DemoPlaygroundEditorChromeArgs) {
@@ -676,18 +774,23 @@ function demoPlaygroundEditorChrome(args: DemoPlaygroundEditorChromeArgs) {
 					</Link>
 				</div>
 				<div className={headerActionsClass}>
+					{args.headerActionsPrefixSlot}
 					<button
 						type="button"
 						className={cx(resetButtonClass, DEMO_PLAYGROUND_RESET_BUTTON_CLASS)}
 						disabled={args.status !== "ready"}
 						aria-label={args.resetAriaLabel}
 						onClick={() => {
+							if (args.onResetClick) {
+								args.onResetClick();
+								return;
+							}
 							const view = args.viewRef.current;
 							if (view) {
 								resetEditorToInitial(view, args.entryFileKey);
 							}
 						}}>
-						Reset
+						<IconArrow aria-hidden />
 					</button>
 				</div>
 			</div>
@@ -715,13 +818,59 @@ function demoPlaygroundEditorChrome(args: DemoPlaygroundEditorChromeArgs) {
 
 export function DemoPlayground() {
 	const databasesContainerRef = useRef<HTMLDivElement>(null);
+	const ormAllDatabasesContainerRef = useRef<HTMLDivElement>(null);
 	const agentsContainerRef = useRef<HTMLDivElement>(null);
 	const databasesViewRef = useRef<EditorView | null>(null);
+	const ormAllDatabasesViewRef = useRef<EditorView | null>(null);
 	const agentsViewRef = useRef<EditorView | null>(null);
+	const envRef = useRef<VirtualTypeScriptEnvironment | null>(null);
+	const prevDatabasesActiveFileRef = useRef<string | null>(null);
 	const [status, setStatus] = useState<"loading" | "ready" | "error">(
 		"loading",
 	);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const [databasesViewMode, setDatabasesViewMode] = useState<
+		"demo" | "notion"
+	>("demo");
+
+	const databasesActiveFileKey: keyof typeof playgroundFiles =
+		databasesViewMode === "demo"
+			? databaseEntryFile
+			: NOTION_SCHEMA_VIEW_FILE_KEY;
+
+	useEffect(() => {
+		if (status !== "ready") {
+			return;
+		}
+		const view = databasesViewRef.current;
+		const env = envRef.current;
+		if (!view || !env) {
+			return;
+		}
+		const target = databasesActiveFileKey;
+		if (prevDatabasesActiveFileRef.current === null) {
+			prevDatabasesActiveFileRef.current = target;
+			return;
+		}
+		if (prevDatabasesActiveFileRef.current === target) {
+			return;
+		}
+		prevDatabasesActiveFileRef.current = target;
+
+		persistEditorBufferToVfs(view, env);
+		const path = toVirtualPath(target);
+		const doc = readWorkspaceDocContent(env, target);
+		const isDark = isDarkSiteColorMode();
+		view.setState(
+			EditorState.create({
+				doc,
+				extensions: createEditorExtensions(env, path, isDark),
+			}),
+		);
+		queueMicrotask(() => {
+			foldDatabasesEditorThenUnfoldColumnsIfSchema(view);
+		});
+	}, [databasesActiveFileKey, status]);
 
 	useEffect(() => {
 		let disposed = false;
@@ -729,8 +878,9 @@ export function DemoPlayground() {
 
 		async function mount() {
 			const databasesContainer = databasesContainerRef.current;
+			const ormAllDatabasesContainer = ormAllDatabasesContainerRef.current;
 			const agentsContainer = agentsContainerRef.current;
-			if (!databasesContainer || !agentsContainer) {
+			if (!databasesContainer || !ormAllDatabasesContainer || !agentsContainer) {
 				return;
 			}
 
@@ -741,7 +891,10 @@ export function DemoPlayground() {
 					return;
 				}
 
+				envRef.current = env;
+
 				const databasesPath = toVirtualPath(databaseEntryFile);
+				const ormAllDatabasesPath = toVirtualPath(ormAllDatabasesEntryFile);
 				const agentsPath = toVirtualPath(agentEntryFile);
 				let isDark = isDarkSiteColorMode();
 
@@ -751,6 +904,18 @@ export function DemoPlayground() {
 						extensions: createEditorExtensions(env, databasesPath, isDark),
 					}),
 					parent: databasesContainer,
+				});
+
+				const ormAllDatabasesView = new EditorView({
+					state: EditorState.create({
+						doc: playgroundFiles[ormAllDatabasesEntryFile],
+						extensions: createEditorExtensions(
+							env,
+							ormAllDatabasesPath,
+							isDark,
+						),
+					}),
+					parent: ormAllDatabasesContainer,
 				});
 
 				const agentsView = new EditorView({
@@ -768,6 +933,7 @@ export function DemoPlayground() {
 					}
 					isDark = nextIsDark;
 					reconfigureDemoThemes(databasesView, nextIsDark);
+					reconfigureDemoThemes(ormAllDatabasesView, nextIsDark);
 					reconfigureDemoThemes(agentsView, nextIsDark);
 				});
 				colorModeObserver.observe(document.documentElement, {
@@ -776,10 +942,12 @@ export function DemoPlayground() {
 				});
 
 				databasesViewRef.current = databasesView;
+				ormAllDatabasesViewRef.current = ormAllDatabasesView;
 				agentsViewRef.current = agentsView;
 				setStatus("ready");
 				queueMicrotask(() => {
-					foldAllFoldable(databasesView);
+					foldDatabasesEditorThenUnfoldColumnsIfSchema(databasesView);
+					foldAllFoldable(ormAllDatabasesView);
 					foldAllFoldable(agentsView);
 				});
 			} catch (error) {
@@ -801,15 +969,54 @@ export function DemoPlayground() {
 		return () => {
 			disposed = true;
 			colorModeObserver?.disconnect();
+			envRef.current = null;
+			prevDatabasesActiveFileRef.current = null;
 			databasesViewRef.current?.destroy();
+			ormAllDatabasesViewRef.current?.destroy();
 			agentsViewRef.current?.destroy();
 			databasesViewRef.current = null;
+			ormAllDatabasesViewRef.current = null;
 			agentsViewRef.current = null;
 		};
 	}, []);
 
-	const databasesPanel = demoPlaygroundPanelMeta[0];
-	const agentsPanel = demoPlaygroundPanelMeta[1];
+	const databasesPanel = demoPlaygroundPanels.databases;
+	const ormAllDatabasesPanel = demoPlaygroundPanels.notionOrm;
+	const agentsPanel = demoPlaygroundPanels.agents;
+
+	const databasesHeaderActionsPrefixSlot = (
+		<button
+			type="button"
+			className={cx(exampleSchemaSwitchRowClass, notionSchemaToggleButtonClass)}
+			disabled={status !== "ready"}
+			aria-pressed={databasesViewMode === "notion"}
+			aria-label={
+				databasesViewMode === "demo"
+					? "Show generated notion code"
+					: "Show example code"
+			}
+			onClick={() => {
+				setDatabasesViewMode((m) => (m === "demo" ? "notion" : "demo"));
+			}}>
+			<span className={exampleSchemaModeLabelClass} aria-live="polite">
+				{databasesViewMode === "demo" ? "Example" : "Schema"}
+			</span>
+			{databasesViewMode === "notion" ? (
+				<IconSettingsToggle2 aria-hidden />
+			) : (
+				<IconToggle aria-hidden />
+			)}
+		</button>
+	);
+
+	const handleDatabasesResetClick = () => {
+		const view = databasesViewRef.current;
+		const env = envRef.current;
+		if (!view || !env) {
+			return;
+		}
+		resetEditorToPlaygroundSnapshot(view, env, databasesActiveFileKey);
+	};
 
 	return (
 		<>
@@ -821,6 +1028,19 @@ export function DemoPlayground() {
 				entryFileKey: databaseEntryFile,
 				viewRef: databasesViewRef,
 				containerRef: databasesContainerRef,
+				status,
+				errorMessage,
+				headerActionsPrefixSlot: databasesHeaderActionsPrefixSlot,
+				onResetClick: handleDatabasesResetClick,
+			})}
+			{demoPlaygroundEditorChrome({
+				label: ormAllDatabasesPanel.label,
+				resetAriaLabel: ormAllDatabasesPanel.resetAriaLabel,
+				apiReferenceHref: ormAllDatabasesPanel.apiReferenceHref,
+				apiReferenceAriaLabel: ormAllDatabasesPanel.apiReferenceAriaLabel,
+				entryFileKey: ormAllDatabasesEntryFile,
+				viewRef: ormAllDatabasesViewRef,
+				containerRef: ormAllDatabasesContainerRef,
 				status,
 				errorMessage,
 			})}

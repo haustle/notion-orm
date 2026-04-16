@@ -1,17 +1,23 @@
+import { IconArrow } from "@central-icons-react/round-outlined-radius-3-stroke-2/IconArrow";
+import { IconToggle } from "@central-icons-react/round-outlined-radius-3-stroke-2/IconToggle";
 import Link from "next/link";
 import { cx } from "../../styled-system/css";
 import { DEMO_PLAYGROUND_RESET_BUTTON_CLASS } from "../siteClassNames";
 import {
-	demoPlaygroundPanelMeta,
+	demoPlaygroundPanelOrder,
+	demoPlaygroundPanels,
 	playgroundApiReferenceLinkClass,
 	playgroundEditorContainerClass,
 	playgroundEditorContainerPlaceholderClass,
+	playgroundExampleSchemaModeLabelClass,
+	playgroundExampleSchemaSwitchRowClass,
 	playgroundFileLabelClass,
 	playgroundHeaderActionsClass,
 	playgroundHeaderBulletClass,
 	playgroundHeaderClass,
 	playgroundHeaderTitleGroupClass,
 	playgroundLoadingOverlayClass,
+	playgroundNotionSchemaToggleButtonClass,
 	playgroundResetButtonClass,
 	playgroundSectionGapClass,
 	playgroundWrapperClass,
@@ -20,9 +26,11 @@ import {
 export function DemoPlaygroundSkeleton() {
 	return (
 		<>
-			{demoPlaygroundPanelMeta.map((panel) => (
+			{demoPlaygroundPanelOrder.map((panelId) => {
+				const panel = demoPlaygroundPanels[panelId];
+				return (
 				<div
-					key={panel.label}
+					key={panelId}
 					className={cx(
 						playgroundWrapperClass,
 						panel.sectionGap && playgroundSectionGapClass,
@@ -41,6 +49,22 @@ export function DemoPlaygroundSkeleton() {
 							</Link>
 						</div>
 						<div className={playgroundHeaderActionsClass}>
+							{panelId === "databases" && (
+								<button
+									type="button"
+									className={cx(
+										playgroundExampleSchemaSwitchRowClass,
+										playgroundNotionSchemaToggleButtonClass,
+									)}
+									disabled
+									tabIndex={-1}
+									aria-hidden>
+									<span className={playgroundExampleSchemaModeLabelClass}>
+										Example
+									</span>
+									<IconToggle aria-hidden />
+								</button>
+							)}
 							<button
 								type="button"
 								className={cx(
@@ -49,7 +73,7 @@ export function DemoPlaygroundSkeleton() {
 								)}
 								disabled
 								aria-label={panel.resetAriaLabel}>
-								Reset
+								<IconArrow aria-hidden />
 							</button>
 						</div>
 					</div>
@@ -63,7 +87,8 @@ export function DemoPlaygroundSkeleton() {
 						</div>
 					</div>
 				</div>
-			))}
+				);
+			})}
 		</>
 	);
 }
