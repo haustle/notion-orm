@@ -42,38 +42,14 @@ export interface DemoPlaygroundSpec {
 	agents: DemoAgentFixture[];
 	databaseEntryFile: string;
 	agentEntryFile: string;
+	/** Extra editor: `NotionORM` + exported helpers for the synced database. */
+	ormAllDatabasesEntryFile: string;
 	databaseScenario: DemoDatabaseScenario;
 	agentScenario: DemoAgentScenario;
 }
 
 export const DEMO_PLAYGROUND_SPEC: DemoPlaygroundSpec = {
 	databases: [
-		{
-			id: "b80f57aa-2f72-4f56-b89a-1d620e141111",
-			title: "Coffee Shop Directory",
-			properties: {
-				"Shop Name": { type: "title" },
-				"Has WiFi": { type: "checkbox" },
-				Website: { type: "url" },
-				"Last Visited": { type: "date" },
-				Vibes: {
-					type: "multi_select",
-					options: ["Quiet", "Lively", "Brunch"],
-				},
-				Neighborhood: {
-					type: "select",
-					options: ["West Village", "Soho", "Lower East Side"],
-				},
-				Notes: { type: "rich_text" },
-				"Visit Status": {
-					type: "status",
-					options: ["Want to Go", "Favorite", "Would Skip"],
-				},
-				Rating: { type: "number" },
-				Email: { type: "email" },
-				Phone: { type: "phone_number" },
-			},
-		},
 		{
 			id: "d32b4f70-52fd-4f80-b5d9-2e530cab2222",
 			title: "Favorite Songs",
@@ -106,6 +82,7 @@ export const DEMO_PLAYGROUND_SPEC: DemoPlaygroundSpec = {
 	],
 	databaseEntryFile: "demo-databases.ts",
 	agentEntryFile: "demo-agents.ts",
+	ormAllDatabasesEntryFile: "demo-orm-all-databases.ts",
 	databaseScenario: {
 		targetDatabase: "Favorite Songs",
 		create: {

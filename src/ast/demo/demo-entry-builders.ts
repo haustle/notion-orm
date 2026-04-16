@@ -1,6 +1,8 @@
 import { camelize } from "../../helpers";
+import { objectEntries } from "../../typeUtils";
 import { toPascalCase } from "../shared/ast-builders";
 import { AST_TYPE_NAMES, PLAYGROUND_PATHS } from "../shared/constants";
+import { emitDemoOrmAllDatabasesEntry } from "./emit-demo-orm-all-databases-entry";
 import type { DemoPlaygroundSpec } from "./demo-playground-spec";
 
 interface ResolvedDatabaseModule {
@@ -17,6 +19,44 @@ function resolvePropertyValueExportName(propertyName: string): string {
 	return `${toPascalCase(camelize(propertyName))}${AST_TYPE_NAMES.PROPERTY_VALUES_SUFFIX}`;
 }
 
+/** Index of an option label in a select / multi_select / status property from the fixture spec. */
+function optionIndexForSelectLikeProperty(
+	spec: DemoPlaygroundSpec,
+	databaseTitle: string,
+	propertyName: string,
+	optionLabel: string,
+): number {
+	const db = spec.databases.find((d) => d.title === databaseTitle);
+	if (!db) {
+		throw new Error(
+			`buildDemoOrmAllDatabasesEntry: database "${databaseTitle}" not in spec`,
+		);
+	}
+	const prop = db.properties[propertyName];
+	if (!prop) {
+		throw new Error(
+			`buildDemoOrmAllDatabasesEntry: property "${propertyName}" not on "${databaseTitle}"`,
+		);
+	}
+	if (
+		prop.type !== "select" &&
+		prop.type !== "multi_select" &&
+		prop.type !== "status"
+	) {
+		throw new Error(
+			`buildDemoOrmAllDatabasesEntry: "${propertyName}" is not select-like on "${databaseTitle}"`,
+		);
+	}
+	const options = prop.options ?? [];
+	const idx = options.indexOf(optionLabel);
+	if (idx < 0) {
+		throw new Error(
+			`buildDemoOrmAllDatabasesEntry: option "${optionLabel}" not found on "${propertyName}" (${databaseTitle})`,
+		);
+	}
+	return idx;
+}
+
 function findSelectLikeProperties(
 	spec: DemoPlaygroundSpec,
 	databaseTitle: string,
@@ -25,12 +65,13 @@ function findSelectLikeProperties(
 	if (!db) {
 		return [];
 	}
-	return Object.entries(db.properties)
+	return objectEntries(db.properties)
 		.filter(
 			([, prop]) =>
-				prop.type === "select" ||
-				prop.type === "multi_select" ||
-				prop.type === "status",
+				prop !== undefined &&
+				(prop.type === "select" ||
+					prop.type === "multi_select" ||
+					prop.type === "status"),
 		)
 		.map(([name]) => name);
 }
@@ -179,4 +220,81 @@ const { threadId: streamThreadId, agentId } = streamResult;
 const polled = await notion.agents.${streamModule.moduleName}.pollThread("mock-thread-id");
 const { threadId: polledThreadId, status: pollStatus } = polled;
 `;
+}
+
+/**
+ * Builds `demo-orm-all-databases.ts`: one `NotionORM` instance and exported
+ * helpers for the synced database (counts, queries, creates).
+ */
+export function buildDemoOrmAllDatabasesEntry(args: {
+	spec: DemoPlaygroundSpec;
+	databaseModules: ResolvedDatabaseModule[];
+}): string {
+	const { spec, databaseModules } = args;
+	if (databaseModules.length < 1) {
+		throw new Error(
+			"buildDemoOrmAllDatabasesEntry expects at least one database in the playground spec.",
+		);
+	}
+
+	const m = databaseModules[0]!;
+	const createAlias = `${toPascalCase(m.moduleName)}Create`;
+
+	const enumProps = findSelectLikeProperties(spec, m.databaseTitle);
+	const enumNames = enumProps.map(resolvePropertyValueExportName);
+	const resolveValueExportForProperty = (canonicalPropertyName: string) => {
+		const hit = enumProps.find(
+			(p) => p.toLowerCase() === canonicalPropertyName.toLowerCase(),
+		);
+		if (!hit) {
+			throw new Error(
+				`buildDemoOrmAllDatabasesEntry: no select-like property "${canonicalPropertyName}" on "${m.databaseTitle}"`,
+			);
+		}
+		return resolvePropertyValueExportName(hit);
+	};
+	const genreEnum = resolveValueExportForProperty("Genre");
+	const ratingEnum = resolveValueExportForProperty("Rating");
+
+	const idxGenreElectronic = optionIndexForSelectLikeProperty(
+		spec,
+		m.databaseTitle,
+		"Genre",
+		"Electronic",
+	);
+	const idxGenrePop = optionIndexForSelectLikeProperty(
+		spec,
+		m.databaseTitle,
+		"Genre",
+		"Pop",
+	);
+	const idxRatingFiveStars = optionIndexForSelectLikeProperty(
+		spec,
+		m.databaseTitle,
+		"Rating",
+		"★★★★★",
+	);
+	const idxRatingFourStars = optionIndexForSelectLikeProperty(
+		spec,
+		m.databaseTitle,
+		"Rating",
+		"★★★★☆",
+	);
+
+	return emitDemoOrmAllDatabasesEntry({
+		buildIndexImportPath: `./${PLAYGROUND_PATHS.BUILD_INDEX_DIR}`,
+		databaseModuleRelativeImport: `./${PLAYGROUND_PATHS.databaseModule(m.moduleName)}`,
+		authPlaceholder: PLAYGROUND_PATHS.DEMO_AUTH_PLACEHOLDER,
+		moduleName: m.moduleName,
+		databaseTitle: m.databaseTitle,
+		createSchemaTypeAlias: createAlias,
+		genrePropertyValuesId: genreEnum,
+		ratingPropertyValuesId: ratingEnum,
+		enumValueImportNames: enumNames,
+		idxGenreElectronic,
+		idxGenrePop,
+		idxRatingFiveStars,
+		idxRatingFourStars,
+		allModuleNames: databaseModules.map((mod) => mod.moduleName),
+	});
 }

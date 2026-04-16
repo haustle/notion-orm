@@ -10,6 +10,7 @@ import { createEmitContext, printTsNodes } from "../shared/emit/ts-emit-core";
 import {
 	buildDemoAgentEntry,
 	buildDemoDatabaseEntry,
+	buildDemoOrmAllDatabasesEntry,
 } from "./demo-entry-builders";
 import {
 	DEMO_PLAYGROUND_SPEC,
@@ -20,6 +21,7 @@ export interface DemoPlaygroundWorkspaceResult {
 	files: Record<string, string>;
 	databaseEntryFile: string;
 	agentEntryFile: string;
+	ormAllDatabasesEntryFile: string;
 }
 
 const PLAYGROUND_TSCONFIG = JSON.stringify(
@@ -109,9 +111,18 @@ export function buildDemoPlaygroundWorkspace(args: {
 		})),
 	});
 
+	const ormAllDatabasesEntry = buildDemoOrmAllDatabasesEntry({
+		spec,
+		databaseModules: databaseModules.map((m) => ({
+			moduleName: m.databaseModuleName,
+			databaseTitle: m.databaseName,
+		})),
+	});
+
 	const files: Record<string, string> = {
 		[spec.databaseEntryFile]: databaseEntry,
 		[spec.agentEntryFile]: agentEntry,
+		[spec.ormAllDatabasesEntryFile]: ormAllDatabasesEntry,
 		[PLAYGROUND_PATHS.BUILD_INDEX]: generatedIndexTs,
 		[PLAYGROUND_PATHS.MOCK_PACKAGE_INDEX]: mockPackageSource,
 		[PLAYGROUND_PATHS.MOCK_PACKAGE_NOTION_ID_PATTERNS]: notionIdPatternsSource,
@@ -132,5 +143,6 @@ export function buildDemoPlaygroundWorkspace(args: {
 		files,
 		databaseEntryFile: spec.databaseEntryFile,
 		agentEntryFile: spec.agentEntryFile,
+		ormAllDatabasesEntryFile: spec.ormAllDatabasesEntryFile,
 	};
 }

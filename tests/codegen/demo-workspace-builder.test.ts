@@ -30,6 +30,9 @@ describe("demo workspace builder", () => {
 			DEMO_PLAYGROUND_SPEC.databaseEntryFile,
 		);
 		expect(result.agentEntryFile).toBe(DEMO_PLAYGROUND_SPEC.agentEntryFile);
+		expect(result.ormAllDatabasesEntryFile).toBe(
+			DEMO_PLAYGROUND_SPEC.ormAllDatabasesEntryFile,
+		);
 	});
 
 	test("produces a file for every database in the spec", () => {
@@ -126,9 +129,24 @@ describe("demo workspace builder", () => {
 	test("file count matches expected total", () => {
 		const expectedDatabases = DEMO_PLAYGROUND_SPEC.databases.length;
 		const expectedAgents = DEMO_PLAYGROUND_SPEC.agents.length;
-		const staticFiles = 7;
+		const staticFiles = 8;
 		expect(Object.keys(result.files).length).toBe(
 			staticFiles + expectedDatabases + expectedAgents,
 		);
+	});
+
+	test("ORM demo entry references the synced database client", () => {
+		const entry = result.files[result.ormAllDatabasesEntryFile]!;
+		expect(entry).toContain(
+			`from "./${PLAYGROUND_PATHS.BUILD_INDEX_DIR}"`,
+		);
+		for (const db of DEMO_PLAYGROUND_SPEC.databases) {
+			const moduleName = camelize(db.title);
+			expect(entry).toContain(`notion.databases.${moduleName}.`);
+		}
+		expect(entry).toContain("export async function countRowsInDatabase");
+		expect(entry).toContain("export async function findElectronicFiveStarSongs");
+		expect(entry).toContain("export async function seedDemoTrack");
+		expect(entry).toContain("__playgroundReferencesEveryDatabaseClient");
 	});
 });
