@@ -11,10 +11,10 @@
 		"build:assets": "bun run build:demo-playground && bun run build:mdx-content && bun run build:panda:codegen && bun run build:panda:css",
 		"prebuild": "bun run build:assets",
 		"build": "next build --webpack",
-		"dev:next": "next dev --webpack --port 3000",
-		"dev:next:turbopack": "next dev --turbopack --port 3000",
+		"dev:next": "next dev --webpack --port ${PORT:-3000}",
+		"dev:next:turbopack": "next dev --turbopack --port ${PORT:-3000}",
 		"dev": "bun run build:assets && concurrently -n mdx,panda,next -c blue,magenta,green \"bun scripts/build-mdx-content.ts --watch\" \"bun x panda --watch\" \"bun run dev:next\"",
-		"start": "next start --port 3000",
+		"start": "next start --port ${PORT:-3000}",
 		"deploy": "bun run build",
 		"test": "bun test testing",
 		"typecheck": "bun run build:assets && bun run test && tsc --noEmit"
