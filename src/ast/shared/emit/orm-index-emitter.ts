@@ -13,10 +13,8 @@ import {
 	insertBlankLineAfterDoubleSlashBanner,
 	printTsNodeSegments,
 	type TsEmitContext,
-	transpileTsToJs,
 	writeTextArtifact,
 } from "./ts-emit-core";
-import { TS_EMIT_INTEROP, TS_EMIT_OPTIONS_DEFAULT } from "./ts-emit-options";
 
 /**
  * Minimal metadata needed to wire generated databases/agents into NotionORM.
@@ -654,17 +652,15 @@ export function emitOrmIndexArtifacts(args: {
 	databases: OrmEntityMetadata[];
 	agents: OrmEntityMetadata[];
 	buildIndexTsPath: string;
-	buildIndexJsPath: string;
 	buildIndexDtsPath: string;
 	buildIndexDtsMapPath?: string;
 	syncCommand: string;
 	context?: TsEmitContext;
-}): { tsCode: string; jsCode: string; dtsCode: string } {
+}): { tsCode: string; dtsCode: string } {
 	const {
 		databases,
 		agents,
 		buildIndexTsPath,
-		buildIndexJsPath,
 		buildIndexDtsPath,
 		buildIndexDtsMapPath,
 		syncCommand,
@@ -678,15 +674,7 @@ export function emitOrmIndexArtifacts(args: {
 	let tsCode = printTsNodeSegments({ segments: runtimeSegments, context });
 	tsCode = insertBlankLineAfterDoubleSlashBanner(tsCode);
 	tsCode = finalizeGeneratedSourceWithTrailingNewline(tsCode);
-	const jsCode = transpileTsToJs({
-		typescriptCode: tsCode,
-		module: TS_EMIT_OPTIONS_DEFAULT.module,
-		target: TS_EMIT_OPTIONS_DEFAULT.target,
-		esModuleInterop: TS_EMIT_INTEROP.esModuleInterop,
-		allowSyntheticDefaultImports: TS_EMIT_INTEROP.allowSyntheticDefaultImports,
-	});
 	writeTextArtifact({ filePath: buildIndexTsPath, content: tsCode });
-	writeTextArtifact({ filePath: buildIndexJsPath, content: jsCode });
 
 	const declarationSegments = buildOrmIndexDeclarationStatementSegments({
 		databases,
@@ -706,7 +694,7 @@ export function emitOrmIndexArtifacts(args: {
 		fs.unlinkSync(buildIndexDtsMapPath);
 	}
 
-	return { tsCode, jsCode, dtsCode };
+	return { tsCode, dtsCode };
 }
 
 /**
@@ -735,13 +723,12 @@ function emitOrmIndexBuildArtifacts(args: {
 	databases: OrmEntityMetadata[];
 	agents: OrmEntityMetadata[];
 	context?: TsEmitContext;
-}): { tsCode: string; jsCode: string; dtsCode: string } {
+}): { tsCode: string; dtsCode: string } {
 	const { databases, agents, context } = args;
 	return emitOrmIndexArtifacts({
 		databases,
 		agents,
 		buildIndexTsPath: AST_FS_PATHS.buildIndexTs,
-		buildIndexJsPath: AST_FS_PATHS.buildIndexJs,
 		buildIndexDtsPath: AST_FS_PATHS.buildIndexDts,
 		buildIndexDtsMapPath: AST_FS_PATHS.buildIndexDtsMap,
 		syncCommand: AST_RUNTIME_CONSTANTS.CLI_GENERATE_COMMAND,

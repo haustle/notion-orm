@@ -11,10 +11,8 @@ import {
 	finalizeGeneratedSourceWithTrailingNewline,
 	insertBlankLineAfterDoubleSlashBanner,
 	printTsNodes,
-	transpileTsToJs,
 	writeTextArtifact,
 } from "../shared/emit/ts-emit-core";
-import { TS_EMIT_OPTIONS_GENERATED } from "../shared/emit/ts-emit-options";
 
 interface AgentModuleBuildResult {
 	statementSegments: readonly (readonly ts.Statement[])[];
@@ -50,10 +48,10 @@ function addGeneratedAgentModuleBanner(
 	);
 }
 
-function printAndTranspileAgentModule(args: {
+function printAgentModule(args: {
 	statementSegments: readonly (readonly ts.Statement[])[];
 	agentFileBasename: string;
-}): { tsCode: string; jsCode: string } {
+}): { tsCode: string } {
 	const context = createEmitContext({
 		fileName: `${args.agentFileBasename}.ts`,
 	});
@@ -62,12 +60,7 @@ function printAndTranspileAgentModule(args: {
 		.join("\n\n");
 	let tsCode = insertBlankLineAfterDoubleSlashBanner(printed);
 	tsCode = finalizeGeneratedSourceWithTrailingNewline(tsCode);
-	const jsCode = transpileTsToJs({
-		typescriptCode: tsCode,
-		module: TS_EMIT_OPTIONS_GENERATED.module,
-		target: TS_EMIT_OPTIONS_GENERATED.target,
-	});
-	return { tsCode, jsCode };
+	return { tsCode };
 }
 
 function buildAgentModuleNodes(args: {
@@ -200,18 +193,17 @@ export function renderAgentModule(args: {
 	agentModuleName?: string;
 }): {
 	tsCode: string;
-	jsCode: string;
 	agentId: string;
 	agentName: string;
 	agentModuleName: string;
 } {
 	const { statementSegments, agentId, agentName, agentModuleName } =
 		buildAgentModuleNodes(args);
-	const { tsCode, jsCode } = printAndTranspileAgentModule({
+	const { tsCode } = printAgentModule({
 		statementSegments,
 		agentFileBasename: toPascalCase(agentModuleName),
 	});
-	return { tsCode, jsCode, agentId, agentName, agentModuleName };
+	return { tsCode, agentId, agentName, agentModuleName };
 }
 
 export async function createTypescriptFileForAgent(args: {
@@ -227,12 +219,10 @@ export async function createTypescriptFileForAgent(args: {
 	}
 
 	const agentFileBasename = toPascalCase(agentModuleName);
-	const { tsCode, jsCode } = printAndTranspileAgentModule({
+	const { tsCode } = printAgentModule({
 		statementSegments,
 		agentFileBasename,
 	});
 	const tsPath = path.resolve(AGENTS_DIR, `${agentFileBasename}.ts`);
-	const jsPath = path.resolve(AGENTS_DIR, `${agentFileBasename}.js`);
 	writeTextArtifact({ filePath: tsPath, content: tsCode });
-	writeTextArtifact({ filePath: jsPath, content: jsCode });
 }

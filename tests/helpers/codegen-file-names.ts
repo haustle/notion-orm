@@ -4,36 +4,34 @@ export const CODEGEN_GOLDEN_FILES = {
 	ormIndexDeclaration: "orm-index.d.ts",
 
 	dbCustomerOrdersTs: "databases/CustomerOrders.ts",
-	dbCustomerOrdersJs: "databases/CustomerOrders.js",
 	dbInventoryItemsTs: "databases/InventoryItems.ts",
-	dbInventoryItemsJs: "databases/InventoryItems.js",
 	dbEdgeCasesTs: "databases/EdgeCases.ts",
-	dbEdgeCasesJs: "databases/EdgeCases.js",
 } as const;
 
 export const CODEGEN_EMIT_PATHS = {
 	indexTs: "index.ts",
-	indexJs: "index.js",
 	indexDts: "index.d.ts",
 	notionConfigTs: "notion.config.ts",
 	notionConfigMjs: "notion.config.mjs",
 	databasesDir: "databases",
 	agentsDir: "agents",
-	baseModuleJs: "base.js",
-	taskDbModuleJs: "TaskDb.js",
-	mealAgentModuleJs: "MealAgent.js",
 	customerOrdersModuleTs: "CustomerOrders.ts",
 	inventoryItemsModuleTs: "InventoryItems.ts",
 	edgeCasesModuleTs: "EdgeCases.ts",
-	inventoryItemsModuleJs: "InventoryItems.js",
-	customerOrdersModuleJs: "CustomerOrders.js",
-	edgeCasesModuleJs: "EdgeCases.js",
+	taskDbModuleTs: "TaskDb.ts",
+	mealAgentModuleTs: "MealAgent.ts",
 } as const;
 
 export const CODEGEN_TEST_PATHS = {
 	goldenDir: "golden",
+	notionOrmPackageJson: "node_modules/@haustle/notion-orm/package.json",
+	notionOrmModuleIndexDts: "node_modules/@haustle/notion-orm/index.d.ts",
 	notionOrmModuleIndexJs: "node_modules/@haustle/notion-orm/index.js",
+	notionOrmBaseDts: "node_modules/@haustle/notion-orm/base.d.ts",
+	notionOrmBaseJs: "node_modules/@haustle/notion-orm/base.js",
+	zodModuleIndexDts: "node_modules/zod/index.d.ts",
 	zodModuleIndexJs: "node_modules/zod/index.js",
+	zodPackageJson: "node_modules/zod/package.json",
 } as const;
 
 export const CODEGEN_PARSE_VIRTUAL_FILENAMES = {

@@ -1,6 +1,5 @@
 import * as ts from "typescript";
-import { emitTsAndJsArtifacts, type TsEmitContext } from "./ts-emit-core";
-import { TS_EMIT_OPTIONS_DEFAULT } from "./ts-emit-options";
+import { emitTsArtifacts, type TsEmitContext } from "./ts-emit-core";
 
 /**
  * One exported item inside a generated registry module
@@ -67,24 +66,19 @@ export function buildRegistryModuleAst(args: {
 }
 
 /**
- * Emits TypeScript + JavaScript artifacts for a registry module.
- * This is used by both database and agent barrel generation.
+ * Emits the TypeScript registry module consumed by app-level builds.
  */
 export function emitRegistryModuleArtifacts(args: {
 	registryName: string;
 	entries: RegistryEntry[];
 	tsPath: string;
-	jsPath: string;
 	context?: TsEmitContext;
-}): { tsCode: string; jsCode: string } {
-	const { registryName, entries, tsPath, jsPath, context } = args;
+}): { tsCode: string } {
+	const { registryName, entries, tsPath, context } = args;
 	const nodes = buildRegistryModuleAst({ registryName, entries });
-	return emitTsAndJsArtifacts({
+	return emitTsArtifacts({
 		nodes,
 		tsPath,
-		jsPath,
 		context,
-		module: TS_EMIT_OPTIONS_DEFAULT.module,
-		target: TS_EMIT_OPTIONS_DEFAULT.target,
 	});
 }

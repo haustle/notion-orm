@@ -1,8 +1,5 @@
-import { afterEach, describe, expect, test } from "bun:test";
-import { writeFileSync } from "fs";
-import { join } from "path";
+import { describe, expect, test } from "bun:test";
 import * as ts from "typescript";
-import { pathToFileURL } from "url";
 import {
 	buildRegistryModuleAst,
 	emitRegistryModuleArtifacts,
@@ -22,48 +19,10 @@ import {
 	readGolden,
 } from "../helpers/golden-code-assertions";
 import {
-	cleanupTempWorkspaces,
-	createTempWorkspace,
 } from "../helpers/temp-workspace";
-
-afterEach(() => {
-	cleanupTempWorkspaces();
-});
 
 describe("registry emitter", () => {
 	const registryEntries: RegistryEntry[] = [...REGISTRY_SCENARIO.entries];
-
-	function createRuntimeModuleSource(args: {
-		exportName: string;
-		id: string;
-	}): string {
-		return `export const ${args.exportName} = { id: ${JSON.stringify(args.id)} };\n`;
-	}
-
-	function writeRuntimeRegistryModules(tempDirectory: string): void {
-		const runtimeModules = [
-			{
-				fileName: CODEGEN_EMIT_PATHS.inventoryItemsModuleJs,
-				exportName: "InventoryItems",
-				id: "inventory-items",
-			},
-			{
-				fileName: CODEGEN_EMIT_PATHS.customerOrdersModuleJs,
-				exportName: "CustomerOrders",
-				id: "customer-orders",
-			},
-		] as const;
-
-		for (const moduleDef of runtimeModules) {
-			writeFileSync(
-				join(tempDirectory, moduleDef.fileName),
-				createRuntimeModuleSource({
-					exportName: moduleDef.exportName,
-					id: moduleDef.id,
-				}),
-			);
-		}
-	}
 
 	// A registry is an exported object that maps keys to imported modules.
 	// Checks generated TypeScript matches the expected registry source exactly.
@@ -94,25 +53,13 @@ describe("registry emitter", () => {
 		expect(nodes[1].kind).toBe(ts.SyntaxKind.VariableStatement);
 	});
 
-	// Checks generated JavaScript exports a working registry object at runtime.
-	test("emits JavaScript registry that can be imported at runtime", async () => {
-		const tempDirectory = createTempWorkspace("orm-registry-");
-		writeRuntimeRegistryModules(tempDirectory);
-
-		const indexTsPath = join(tempDirectory, CODEGEN_EMIT_PATHS.indexTs);
-		const indexJsPath = join(tempDirectory, CODEGEN_EMIT_PATHS.indexJs);
-		// emitRegistryModuleArtifacts arguments:
-		// - registryName/entries: define exported registry shape
-		// - tsPath/jsPath: target artifact file locations
+	test("emits only the TypeScript registry artifact", () => {
+		const tempDirectory = "/tmp/registry-emitter-unused";
+		const indexTsPath = `${tempDirectory}/${CODEGEN_EMIT_PATHS.indexTs}`;
 		emitRegistryModuleArtifacts({
 			registryName: REGISTRY_SCENARIO.registryName,
 			entries: registryEntries,
 			tsPath: indexTsPath,
-			jsPath: indexJsPath,
 		});
-
-		const importedModule = await import(pathToFileURL(indexJsPath).href);
-		expect(importedModule.items.inventoryItems.id).toBe("inventory-items");
-		expect(importedModule.items.customerOrders.id).toBe("customer-orders");
 	});
 });

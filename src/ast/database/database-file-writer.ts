@@ -37,10 +37,8 @@ import {
 	createEmitContext,
 	finalizeGeneratedSourceWithTrailingNewline,
 	printTsNodes,
-	transpileTsToJs,
 	writeTextArtifact,
 } from "../shared/emit/ts-emit-core";
-import { TS_EMIT_OPTIONS_GENERATED } from "../shared/emit/ts-emit-options";
 import {
 	propertyASTGenerators,
 	type SupportedNotionProperty,
@@ -118,7 +116,7 @@ function insertBlankLineAfterGeneratedBanner(code: string): string {
 function printAndTranspileDatabaseModule(args: {
 	statementSegments: readonly (readonly ts.Statement[])[];
 	databaseFileBasename: string;
-}): { tsCode: string; jsCode: string } {
+}): { tsCode: string } {
 	const context = createEmitContext({
 		fileName: `${args.databaseFileBasename}.ts`,
 	});
@@ -127,12 +125,7 @@ function printAndTranspileDatabaseModule(args: {
 		.join("\n\n");
 	let tsCode = insertBlankLineAfterGeneratedBanner(printed);
 	tsCode = finalizeGeneratedSourceWithTrailingNewline(tsCode);
-	const jsCode = transpileTsToJs({
-		typescriptCode: tsCode,
-		module: TS_EMIT_OPTIONS_GENERATED.module,
-		target: TS_EMIT_OPTIONS_GENERATED.target,
-	});
-	return { tsCode, jsCode };
+	return { tsCode };
 }
 
 /**
@@ -319,18 +312,17 @@ export function renderDatabaseModule(
 	dataSourceResponse: GetDataSourceResponse,
 ): {
 	tsCode: string;
-	jsCode: string;
 	databaseName: string;
 	databaseModuleName: string;
 	databaseId: string;
 } {
 	const { statementSegments, databaseName, databaseModuleName, databaseId } =
 		buildDatabaseModuleNodes(dataSourceResponse);
-	const { tsCode, jsCode } = printAndTranspileDatabaseModule({
+	const { tsCode } = printAndTranspileDatabaseModule({
 		statementSegments,
 		databaseFileBasename: toPascalCase(databaseModuleName),
 	});
-	return { tsCode, jsCode, databaseName, databaseModuleName, databaseId };
+	return { tsCode, databaseName, databaseModuleName, databaseId };
 }
 
 /**
@@ -349,14 +341,12 @@ export async function createTypescriptFileForDatabase(
 	}
 
 	const databaseFileBasename = toPascalCase(databaseModuleName);
-	const { tsCode, jsCode } = printAndTranspileDatabaseModule({
+	const { tsCode } = printAndTranspileDatabaseModule({
 		statementSegments,
 		databaseFileBasename,
 	});
 	const tsPath = path.resolve(databasesDir, `${databaseFileBasename}.ts`);
-	const jsPath = path.resolve(databasesDir, `${databaseFileBasename}.js`);
 	writeTextArtifact({ filePath: tsPath, content: tsCode });
-	writeTextArtifact({ filePath: jsPath, content: jsCode });
 
 	return {
 		databaseName,

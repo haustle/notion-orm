@@ -10,7 +10,8 @@ import { toPascalCase } from "../../helpers";
  * Top-level directory name for CLI-generated artifacts in consuming projects
  * (`notion/` entry + `databases/`, `agents/`). Prefer **`import { NotionORM } from "./notion/"`**
  * in apps (directory import resolves to `index` — no need to spell `index`). Distinct from this package's
- * npm `outDir` (`build/`), which remains `@haustle/notion-orm/build/...`.
+ * npm `outDir` (`build/`), which is hidden behind stable package exports such as
+ * `@haustle/notion-orm/base`.
  */
 const PROJECT_CODEGEN_DIR_NAME = "notion" as const;
 
@@ -61,10 +62,6 @@ export const AST_FS_PATHS = {
 		return path.resolve(AST_FS_PATHS.CODEGEN_ROOT_DIR, AST_FS_FILENAMES.INDEX_TS);
 	},
 
-	get buildIndexJs(): string {
-		return path.resolve(AST_FS_PATHS.CODEGEN_ROOT_DIR, AST_FS_FILENAMES.INDEX_JS);
-	},
-
 	get buildIndexDts(): string {
 		return path.resolve(AST_FS_PATHS.CODEGEN_ROOT_DIR, AST_FS_FILENAMES.INDEX_DTS);
 	},
@@ -80,16 +77,12 @@ export const AST_FS_PATHS = {
 		return path.resolve(getDatabasesDir(), AST_FS_FILENAMES.INDEX_TS);
 	},
 
-	get databaseBarrelJs(): string {
-		return path.resolve(getDatabasesDir(), AST_FS_FILENAMES.INDEX_JS);
-	},
 } as const;
 
 /** Shared filenames used across emitted artifacts. */
 const AST_FS_FILENAMES = {
 	METADATA: "metadata.json",
 	INDEX_TS: "index.ts",
-	INDEX_JS: "index.js",
 	INDEX_DTS: "index.d.ts",
 	INDEX_DTS_MAP: "index.d.ts.map",
 } as const;
@@ -99,16 +92,16 @@ export const AST_IMPORT_PATHS = {
 	DATABASE_CLIENT: "@haustle/notion-orm",
 	AGENT_CLIENT: "@haustle/notion-orm",
 	QUERY_TYPES: "@haustle/notion-orm",
-	ORM_BASE: "@haustle/notion-orm/build/src/base",
+	ORM_BASE: "@haustle/notion-orm/base",
 
 	ZOD: "zod",
 
 	databaseClass(name: string): string {
-		return `./${PROJECT_DATABASES_DIR_NAME}/${toPascalCase(name)}`;
+		return `./${PROJECT_DATABASES_DIR_NAME}/${toPascalCase(name)}.js`;
 	},
 
 	agentClass(name: string): string {
-		return `./agents/${toPascalCase(name)}`;
+		return `./agents/${toPascalCase(name)}.js`;
 	},
 } as const;
 
@@ -170,7 +163,7 @@ export const PLAYGROUND_PATHS = {
 	MOCK_PACKAGE_INDEX: "playground_modules/haustle-notion-orm/index.ts",
 	MOCK_PACKAGE_NOTION_ID_PATTERNS:
 		"playground_modules/haustle-notion-orm/notion-id-patterns.ts",
-	MOCK_PACKAGE_BASE: "playground_modules/haustle-notion-orm/build/src/base.ts",
+	MOCK_PACKAGE_BASE: "playground_modules/haustle-notion-orm/base.ts",
 	MOCK_PACKAGE_PREFIX: "playground_modules/",
 
 	DEMO_AUTH_PLACEHOLDER: "my-notion-api-key",

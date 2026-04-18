@@ -8,9 +8,9 @@ import type { TaskDb } from "./databases/TaskDb";
 import type { MealAgent } from "./agents/MealAgent";
 
 // Package imports: NotionORMBase, config types, and client classes.
-import { NotionORMBase, AgentClient, DatabaseClient } from "@haustle/notion-orm/build/src/base";
-export type { NotionConfigType } from "@haustle/notion-orm/build/src/base";
-export { AgentClient, DatabaseClient } from "@haustle/notion-orm/build/src/base";
+import { NotionORMBase, AgentClient, DatabaseClient } from "@haustle/notion-orm/base";
+export type { NotionConfigType } from "@haustle/notion-orm/base";
+export { AgentClient, DatabaseClient } from "@haustle/notion-orm/base";
 
 /**
  * Generated Notion ORM entrypoint for this project.

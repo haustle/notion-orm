@@ -17,7 +17,7 @@ bun add @haustle/notion-orm
 
 After upgrading the package, run **`bun notion sync`** so generated files under **`notion/`** stay in sync with the version you installed (stale codegen can break at runtime when imports from the ORM package change). In app code, prefer **`import { NotionORM } from "./notion/"`** — the directory import resolves to `index.ts`, so you do not need to spell **`index`**.
 
-If you import agent factories directly from **`@haustle/notion-orm/notion/agents/<file>`** (instead of using `notion.agents.*` on `NotionORM`), the exported factory name is **PascalCase** (for example `MealAgent`), matching generated database modules. Update named imports after upgrading if you used a previous camelCase export.
+Generated database and agent modules live in your app's local **`./notion/`** folder after `notion sync`; import those relative files directly if you need a generated factory outside the `NotionORM` wrapper.
 
 # Quick start
 
@@ -381,10 +381,10 @@ See [API Reference](#api-reference) for full method signatures, `ThreadInfo` sha
 | import path                                    | what you get                                                                                                                                                                 | when to use                                                  |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
 | `./notion/` (relative)                         | `NotionORM` class (generated entry; same as `./notion/index` but shorter)                                                                                                    | Typical app code after **`notion sync`**                     |
-| `@haustle/notion-orm/notion/databases/<databaseName>`  | `<databaseName>(auth)` factory, `PageSchema`, `CreateSchema`, `QuerySchema`, generated Zod schema, generated option tuples (for select/status/multi-select), schema/type aliases | Script-level direct DB usage without the `NotionORM` wrapper |
-| `@haustle/notion-orm/notion/agents/<AgentName>` | `<AgentName>(auth)` factory that returns an `AgentClient` (PascalCase export; registry keys on `notion.agents` stay camelCase)                                                | Script-level direct agent usage                              |
-| `@haustle/notion-orm/notion/databases`                 | `databases` barrel object (all database factories)                                                                                                                           | Dynamic database selection or custom registry wiring         |
-| `@haustle/notion-orm/notion/agents`             | `agents` barrel object (all agent factories)                                                                                                                                 | Dynamic agent selection or custom registry wiring            |
+| `./notion/databases/<DatabaseName>.js`  | `<DatabaseName>(auth)` factory, `PageSchema`, `CreateSchema`, `QuerySchema`, generated Zod schema, generated option tuples (for select/status/multi-select), schema/type aliases | Script-level direct DB usage without the `NotionORM` wrapper |
+| `./notion/agents/<AgentName>.js` | `<AgentName>(auth)` factory that returns an `AgentClient` (PascalCase export; registry keys on `notion.agents` stay camelCase)                                                | Script-level direct agent usage                              |
+| `./notion/databases/index.js`                 | `databases` barrel object (all database factories)                                                                                                                           | Dynamic database selection or custom registry wiring         |
+| `./notion/agents/index.js`             | `agents` barrel object (all agent factories)                                                                                                                                 | Dynamic agent selection or custom registry wiring            |
 
 ## Thread response shapes
 

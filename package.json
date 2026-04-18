@@ -4,6 +4,26 @@
 	"type": "module",
 	"description": "tool to bring notion databases schemas/types to typescript",
 	"main": "build/src/index.js",
+	"types": "build/src/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./build/src/index.d.ts",
+			"default": "./build/src/index.js"
+		},
+		"./base": {
+			"types": "./build/src/base.d.ts",
+			"default": "./build/src/base.js"
+		},
+		"./build/src/base": {
+			"types": "./build/src/base.d.ts",
+			"default": "./build/src/base.js"
+		},
+		"./notion-id-patterns": {
+			"types": "./build/src/notion-id-patterns.d.ts",
+			"default": "./build/src/notion-id-patterns.js"
+		},
+		"./package.json": "./package.json"
+	},
 	"files": [
 		"/build"
 	],
@@ -13,7 +33,8 @@
 	"scripts": {
 		"prepare": "husky",
 		"start": "bun run build && bun build/src/index.js",
-		"build": "rm -rf build && bunx tsc && bun link",
+		"build": "rm -rf build && bunx tsc",
+		"build:link": "bun run build && bun link",
 		"test": "bun test",
 		"test:types": "bunx tsc -p tests/types/tsconfig.json --noEmit",
 		"lint": "bunx biome lint tests/runtime tests/cli tests/codegen tests/helpers tests/types --diagnostic-level=error",
@@ -23,7 +44,7 @@
 		"site:deploy": "bun run --cwd website  deploy",
 		"site:typecheck": "bun run --cwd website  typecheck",
 		"unpack-size": "npm pack --dry-run 2>&1 | grep 'unpacked size'",
-		"loop": "bun run build && cd ../orm-testing && bun link @haustle/notion-orm && bun notion sync && bun run smoke/coffee-shop/run.ts",
+		"loop": "bun run build:link && cd ../orm-testing && bun link @haustle/notion-orm && bun notion sync && bun run smoke/coffee-shop/run.ts",
 		"refresh": "rm -rf ./node_modules ./bun.lockb && bun install"
 	},
 	"author": "",

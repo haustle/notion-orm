@@ -116,7 +116,7 @@ export const createAgentTypes = async (
 	return { agentNames, skipped: false };
 };
 
-/** Emits `agents/index.ts|js` so generated clients can be imported as a registry. */
+/** Emits `agents/index.ts` so generated clients can be imported as a registry. */
 function createAgentBarrelFile(args: { agentInfo: Array<{ name: string }> }) {
 	const { agentInfo } = args;
 
@@ -124,11 +124,10 @@ function createAgentBarrelFile(args: { agentInfo: Array<{ name: string }> }) {
 		registryName: "agents",
 		entries: agentInfo.map(({ name }) => ({
 			importName: name,
-			importPath: `./${toPascalCase(name)}`,
+			importPath: `./${toPascalCase(name)}.js`,
 			registryKey: name,
 		})),
 		tsPath: path.resolve(AGENTS_DIR, "index.ts"),
-		jsPath: path.resolve(AGENTS_DIR, "index.js"),
 	});
 }
 

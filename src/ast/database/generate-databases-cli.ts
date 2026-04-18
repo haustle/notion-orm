@@ -121,7 +121,7 @@ export const createDatabaseTypes = async (
 	return { databaseNames, databaseKeys };
 };
 
-/** Emits `databases/index.ts|js` so generated databases can be addressed as a registry. */
+/** Emits `databases/index.ts` so generated databases can be addressed as a registry. */
 function createDatabaseBarrelFile(args: {
 	databaseInfo: Array<{ name: string }>;
 }) {
@@ -131,11 +131,10 @@ function createDatabaseBarrelFile(args: {
 		registryName: "databases",
 		entries: databaseInfo.map(({ name }) => ({
 			importName: toPascalCase(name),
-			importPath: `./${toPascalCase(name)}`,
+			importPath: `./${toPascalCase(name)}.js`,
 			registryKey: name,
 		})),
 		tsPath: AST_FS_PATHS.databaseBarrelTs,
-		jsPath: AST_FS_PATHS.databaseBarrelJs,
 	});
 }
 

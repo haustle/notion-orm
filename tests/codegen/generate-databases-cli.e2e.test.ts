@@ -122,7 +122,6 @@ describe("generate-databases-cli e2e orchestration", () => {
 			),
 		).toBe(true);
 		expect(existsSync(AST_FS_PATHS.databaseBarrelTs)).toBe(true);
-		expect(existsSync(AST_FS_PATHS.databaseBarrelJs)).toBe(true);
 	});
 
 	test("incremental generation emits a single db and updates source index when enabled", async () => {
@@ -152,7 +151,6 @@ describe("generate-databases-cli e2e orchestration", () => {
 			),
 		).toBe(true);
 		expect(existsSync(AST_FS_PATHS.buildIndexTs)).toBe(true);
-		expect(existsSync(AST_FS_PATHS.buildIndexJs)).toBe(true);
 		expect(existsSync(AST_FS_PATHS.buildIndexDts)).toBe(true);
 	});
 });
