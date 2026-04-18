@@ -4,8 +4,15 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
-import { buildOrmIndexModuleAst } from "../../src/ast/shared/emit/orm-index-emitter";
-import { createEmitContext, printTsNodes } from "../../src/ast/shared/emit/ts-emit-core";
+import {
+	buildOrmIndexModuleAst,
+	emitOrmIndexArtifacts,
+} from "../../src/ast/shared/emit/orm-index-emitter";
+import {
+	createEmitContext,
+	printTsNodes,
+	transpileTsToJs,
+} from "../../src/ast/shared/emit/ts-emit-core";
 import { AST_RUNTIME_CONSTANTS } from "../../src/ast/shared/constants";
 import { renderDatabaseModule } from "../../src/ast/database/database-file-writer";
 import {
@@ -63,9 +70,9 @@ describe("generated consumer install compatibility", () => {
 						dependencies: {
 							"@haustle/notion-orm": "file:/workspace",
 						},
-					devDependencies: {
-						typescript: "^5.6.3",
-					},
+						devDependencies: {
+							typescript: "^5.6.3",
+						},
 					},
 					null,
 					2,
@@ -142,5 +149,30 @@ describe("generated consumer install compatibility", () => {
 				rmSync(tempDir, { recursive: true, force: true });
 			}
 		}
+	});
+
+	test("generated JavaScript output can be imported directly in a JS consumer", () => {
+		const renderedDatabase = renderDatabaseModule(
+			buildMockDataSourceResponse(CUSTOMER_ORDERS_FIXTURE),
+		);
+		const databaseJs = transpileTsToJs({
+			typescriptCode: renderedDatabase.tsCode,
+		});
+		assert.match(databaseJs, /from "@haustle\/notion-orm"/);
+
+		const tempOutputDir = mkdtempSync(join(tmpdir(), "orm-generated-js-"));
+		tempDirs.push(tempOutputDir);
+		const emittedIndexPath = join(tempOutputDir, "index.js");
+		const emittedDtsPath = join(tempOutputDir, "index.d.ts");
+		const { code } = emitOrmIndexArtifacts({
+			databases: [{ name: renderedDatabase.databaseModuleName }],
+			agents: [],
+			buildIndexPath: emittedIndexPath,
+			buildIndexDtsPath: emittedDtsPath,
+			syncCommand: AST_RUNTIME_CONSTANTS.CLI_GENERATE_COMMAND,
+			environment: "javascript",
+		});
+		assert.match(code, /\.\/databases\/CustomerOrders\.js/);
+		assert.match(code, /from "@haustle\/notion-orm\/base"/);
 	});
 });

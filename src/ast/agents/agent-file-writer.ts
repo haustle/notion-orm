@@ -5,14 +5,20 @@ import type { AgentIcon } from "../../client/agent/AgentClient";
 import { camelize, toPascalCase } from "../../helpers";
 import { createNameImport } from "../shared/ast-builders";
 import { AGENTS_DIR, AST_IMPORT_PATHS, AST_RUNTIME_CONSTANTS } from "../shared/constants";
+import {
+	type CodegenEnvironment,
+	getCodegenArtifactExtension,
+} from "../shared/codegen-environment";
 import { emitValueAsExpression } from "../shared/emit/emit-value-as-expression";
 import {
 	createEmitContext,
 	finalizeGeneratedSourceWithTrailingNewline,
 	insertBlankLineAfterDoubleSlashBanner,
 	printTsNodes,
+	transpileTsToJs,
 	writeTextArtifact,
 } from "../shared/emit/ts-emit-core";
+import { TS_EMIT_OPTIONS_GENERATED } from "../shared/emit/ts-emit-options";
 
 interface AgentModuleBuildResult {
 	statementSegments: readonly (readonly ts.Statement[])[];
@@ -211,6 +217,7 @@ export async function createTypescriptFileForAgent(args: {
 	agentName: string;
 	agentModuleName: string;
 	agentIcon: AgentIcon;
+	environment: CodegenEnvironment;
 }): Promise<void> {
 	const { statementSegments, agentModuleName } = buildAgentModuleNodes(args);
 
@@ -223,6 +230,18 @@ export async function createTypescriptFileForAgent(args: {
 		statementSegments,
 		agentFileBasename,
 	});
-	const tsPath = path.resolve(AGENTS_DIR, `${agentFileBasename}.ts`);
-	writeTextArtifact({ filePath: tsPath, content: tsCode });
+	const artifactExtension = getCodegenArtifactExtension(args.environment);
+	const outputPath = path.resolve(
+		AGENTS_DIR,
+		`${agentFileBasename}.${artifactExtension}`,
+	);
+	const content =
+		args.environment === "javascript"
+			? transpileTsToJs({
+					typescriptCode: tsCode,
+					module: TS_EMIT_OPTIONS_GENERATED.module,
+					target: TS_EMIT_OPTIONS_GENERATED.target,
+				})
+			: tsCode;
+	writeTextArtifact({ filePath: outputPath, content });
 }

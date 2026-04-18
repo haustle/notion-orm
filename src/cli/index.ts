@@ -8,6 +8,7 @@ import {
 	initializeNotionConfigFile,
 	validateConfig,
 } from "../config/helpers";
+import { resolveCodegenEnvironment } from "../ast/shared/codegen-environment";
 import {
 	createAgentTypes,
 	type CreateAgentTypesResult,
@@ -198,7 +199,11 @@ async function runSync(): Promise<void> {
 		const agentsMetadata = agentsResult.skipped
 			? []
 			: readAgentMetadataFromDisk();
-		updateSourceIndexFile(readDatabaseMetadata(), agentsMetadata);
+		updateSourceIndexFile(
+			readDatabaseMetadata(),
+			agentsMetadata,
+			resolveCodegenEnvironment({ configRuntime: findConfigFile() }),
+		);
 
 		const { databaseNames, databaseKeys } = databasesResult;
 		if (databaseNames.length === 0) {

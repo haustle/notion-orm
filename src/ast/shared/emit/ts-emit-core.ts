@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import * as ts from "typescript";
+import type { CodegenEnvironment } from "../codegen-environment";
 import { TS_EMIT_SOURCE_TARGET } from "./ts-emit-options";
 
 /**
@@ -149,4 +150,93 @@ export function emitTsArtifacts(args: {
 	});
 	writeTextArtifact({ filePath: tsPath, content: tsCode });
 	return { tsCode };
+}
+
+/**
+ * End-to-end helper used by AST generators that emit runtime JavaScript files.
+ */
+export function emitJsArtifacts(args: {
+	nodes: readonly ts.Statement[];
+	jsPath: string;
+	context?: TsEmitContext;
+	listFormat?: ts.ListFormat;
+	module?: ts.ModuleKind;
+	target?: ts.ScriptTarget;
+	esModuleInterop?: boolean;
+	allowSyntheticDefaultImports?: boolean;
+}): { jsCode: string } {
+	const {
+		nodes,
+		jsPath,
+		context,
+		listFormat,
+		module,
+		target,
+		esModuleInterop,
+		allowSyntheticDefaultImports,
+	} = args;
+	const typescriptCode = printTsNodes({
+		nodes,
+		context,
+		listFormat,
+	});
+	const jsCode = transpileTsToJs({
+		typescriptCode,
+		module,
+		target,
+		esModuleInterop,
+		allowSyntheticDefaultImports,
+	});
+	writeTextArtifact({ filePath: jsPath, content: jsCode });
+	return { jsCode };
+}
+
+/**
+ * End-to-end helper used by AST generators that emit either TS or JS based on
+ * the consumer project's codegen environment.
+ */
+export function emitArtifactsForEnvironment(args: {
+	nodes: readonly ts.Statement[];
+	tsPath: string;
+	jsPath: string;
+	environment: CodegenEnvironment;
+	context?: TsEmitContext;
+	listFormat?: ts.ListFormat;
+	module?: ts.ModuleKind;
+	target?: ts.ScriptTarget;
+	esModuleInterop?: boolean;
+	allowSyntheticDefaultImports?: boolean;
+}): { sourceCode: string } {
+	const {
+		nodes,
+		tsPath,
+		jsPath,
+		environment,
+		context,
+		listFormat,
+		module,
+		target,
+		esModuleInterop,
+		allowSyntheticDefaultImports,
+	} = args;
+	if (environment === "typescript") {
+		const { tsCode } = emitTsArtifacts({
+			nodes,
+			tsPath,
+			context,
+			listFormat,
+		});
+		return { sourceCode: tsCode };
+	}
+	const { jsCode } = emitJsArtifacts({
+		nodes,
+		jsPath,
+		context,
+		listFormat,
+		module,
+		target,
+		esModuleInterop,
+		allowSyntheticDefaultImports,
+	});
+	return { sourceCode: jsCode };
 }

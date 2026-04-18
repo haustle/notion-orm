@@ -33,7 +33,7 @@
 	"scripts": {
 		"prepare": "husky",
 		"start": "bun run build && bun build/src/index.js",
-		"build": "rm -rf build && tsc",
+		"build": "rm -rf build && tsc && node ./scripts/patch-build-import-extensions.mjs",
 		"build:link": "npm run build && bun link",
 		"test": "bun test",
 		"test:types": "tsc -p tests/types/tsconfig.json --noEmit",

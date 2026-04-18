@@ -8,13 +8,20 @@ import {
 	AST_RUNTIME_CONSTANTS,
 } from "../constants";
 import {
+	type CodegenEnvironment,
+	getCodegenArtifactExtension,
+	getCodegenImportExtension,
+} from "../codegen-environment";
+import {
 	createEmitContext,
 	finalizeGeneratedSourceWithTrailingNewline,
 	insertBlankLineAfterDoubleSlashBanner,
 	printTsNodeSegments,
 	type TsEmitContext,
+	transpileTsToJs,
 	writeTextArtifact,
 } from "./ts-emit-core";
+import { TS_EMIT_INTEROP, TS_EMIT_OPTIONS_DEFAULT } from "./ts-emit-options";
 
 /**
  * Minimal metadata needed to wire generated databases/agents into NotionORM.
@@ -483,22 +490,39 @@ function buildOrmIndexModuleStatementSegments(args: {
 	databases: OrmEntityMetadata[];
 	agents: OrmEntityMetadata[];
 	syncCommand: string;
+	environment?: CodegenEnvironment;
 	importPaths?: {
 		databaseClass?: (name: string) => string;
 		agentClass?: (name: string) => string;
 	};
 }): readonly (readonly ts.Statement[])[] {
-	const { databases, agents, syncCommand, importPaths } = args;
+	const {
+		databases,
+		agents,
+		syncCommand,
+		environment = "typescript",
+		importPaths,
+	} = args;
 	const hasAgents = agents.length > 0;
+	const runtimeImportPathFactory = {
+		databaseClass:
+			importPaths?.databaseClass ??
+			((name: string) =>
+				`./databases/${toPascalCase(name)}.${getCodegenImportExtension()}`),
+		agentClass:
+			importPaths?.agentClass ??
+			((name: string) =>
+				`./agents/${toPascalCase(name)}.${getCodegenImportExtension()}`),
+	};
 	const databaseImports = createEntityImportStatements({
 		entities: databases,
-		pathFactory: importPaths?.databaseClass ?? AST_IMPORT_PATHS.databaseClass,
+		pathFactory: runtimeImportPathFactory.databaseClass,
 		factoryExportId: toPascalCase,
 	});
 	const agentImports = hasAgents
 		? createEntityImportStatements({
 				entities: agents,
-				pathFactory: importPaths?.agentClass ?? AST_IMPORT_PATHS.agentClass,
+				pathFactory: runtimeImportPathFactory.agentClass,
 				factoryExportId: toPascalCase,
 			})
 		: [];
@@ -556,6 +580,7 @@ export function buildOrmIndexModuleAst(args: {
 	databases: OrmEntityMetadata[];
 	agents: OrmEntityMetadata[];
 	syncCommand: string;
+	environment?: CodegenEnvironment;
 	importPaths?: {
 		databaseClass?: (name: string) => string;
 		agentClass?: (name: string) => string;
@@ -651,30 +676,44 @@ export function buildOrmIndexDeclarationAst(args: {
 export function emitOrmIndexArtifacts(args: {
 	databases: OrmEntityMetadata[];
 	agents: OrmEntityMetadata[];
-	buildIndexTsPath: string;
+	buildIndexPath: string;
 	buildIndexDtsPath: string;
 	buildIndexDtsMapPath?: string;
 	syncCommand: string;
+	environment: CodegenEnvironment;
 	context?: TsEmitContext;
-}): { tsCode: string; dtsCode: string } {
+}): { code: string; dtsCode: string } {
 	const {
 		databases,
 		agents,
-		buildIndexTsPath,
+		buildIndexPath,
 		buildIndexDtsPath,
 		buildIndexDtsMapPath,
 		syncCommand,
+		environment,
 		context = createEmitContext({ fileName: "index.ts" }),
 	} = args;
 	const runtimeSegments = buildOrmIndexModuleStatementSegments({
 		databases,
 		agents,
 		syncCommand,
+		environment,
 	});
-	let tsCode = printTsNodeSegments({ segments: runtimeSegments, context });
-	tsCode = insertBlankLineAfterDoubleSlashBanner(tsCode);
-	tsCode = finalizeGeneratedSourceWithTrailingNewline(tsCode);
-	writeTextArtifact({ filePath: buildIndexTsPath, content: tsCode });
+	let runtimeTsCode = printTsNodeSegments({ segments: runtimeSegments, context });
+	runtimeTsCode = insertBlankLineAfterDoubleSlashBanner(runtimeTsCode);
+	runtimeTsCode = finalizeGeneratedSourceWithTrailingNewline(runtimeTsCode);
+	const code =
+		environment === "javascript"
+			? transpileTsToJs({
+					typescriptCode: runtimeTsCode,
+					module: TS_EMIT_OPTIONS_DEFAULT.module,
+					target: TS_EMIT_OPTIONS_DEFAULT.target,
+					esModuleInterop: TS_EMIT_INTEROP.esModuleInterop,
+					allowSyntheticDefaultImports:
+						TS_EMIT_INTEROP.allowSyntheticDefaultImports,
+				})
+			: runtimeTsCode;
+	writeTextArtifact({ filePath: buildIndexPath, content: code });
 
 	const declarationSegments = buildOrmIndexDeclarationStatementSegments({
 		databases,
@@ -694,7 +733,7 @@ export function emitOrmIndexArtifacts(args: {
 		fs.unlinkSync(buildIndexDtsMapPath);
 	}
 
-	return { tsCode, dtsCode };
+	return { code, dtsCode };
 }
 
 /**
@@ -705,6 +744,7 @@ export function emitOrmIndexArtifacts(args: {
 export function updateSourceIndexFile(
 	databasesMetadata: CachedEntityMetadata[],
 	agentsMetadata: CachedEntityMetadata[],
+	environment: CodegenEnvironment,
 ): void {
 	if (!fs.existsSync(AST_FS_PATHS.CODEGEN_ROOT_DIR)) {
 		fs.mkdirSync(AST_FS_PATHS.CODEGEN_ROOT_DIR, { recursive: true });
@@ -713,6 +753,7 @@ export function updateSourceIndexFile(
 	emitOrmIndexBuildArtifacts({
 		databases: databasesMetadata.map((m) => ({ name: m.name })),
 		agents: agentsMetadata.map((m) => ({ name: m.name })),
+		environment,
 	});
 }
 
@@ -722,16 +763,22 @@ export function updateSourceIndexFile(
 function emitOrmIndexBuildArtifacts(args: {
 	databases: OrmEntityMetadata[];
 	agents: OrmEntityMetadata[];
+	environment: CodegenEnvironment;
 	context?: TsEmitContext;
-}): { tsCode: string; dtsCode: string } {
-	const { databases, agents, context } = args;
+}): { code: string; dtsCode: string } {
+	const { databases, agents, environment, context } = args;
+	const buildIndexPath =
+		environment === "typescript"
+			? AST_FS_PATHS.buildIndexTs
+			: AST_FS_PATHS.buildIndexJs;
 	return emitOrmIndexArtifacts({
 		databases,
 		agents,
-		buildIndexTsPath: AST_FS_PATHS.buildIndexTs,
+		buildIndexPath,
 		buildIndexDtsPath: AST_FS_PATHS.buildIndexDts,
 		buildIndexDtsMapPath: AST_FS_PATHS.buildIndexDtsMap,
 		syncCommand: AST_RUNTIME_CONSTANTS.CLI_GENERATE_COMMAND,
+		environment,
 		context,
 	});
 }

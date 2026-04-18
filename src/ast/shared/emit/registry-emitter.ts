@@ -1,5 +1,7 @@
 import * as ts from "typescript";
-import { emitTsArtifacts, type TsEmitContext } from "./ts-emit-core";
+import type { CodegenEnvironment } from "../codegen-environment";
+import { emitJsArtifacts, emitTsArtifacts, type TsEmitContext } from "./ts-emit-core";
+import { TS_EMIT_OPTIONS_DEFAULT } from "./ts-emit-options";
 
 /**
  * One exported item inside a generated registry module
@@ -66,19 +68,32 @@ export function buildRegistryModuleAst(args: {
 }
 
 /**
- * Emits the TypeScript registry module consumed by app-level builds.
+ * Emits the registry module in the format appropriate for the consumer project.
  */
 export function emitRegistryModuleArtifacts(args: {
 	registryName: string;
 	entries: RegistryEntry[];
 	tsPath: string;
+	jsPath: string;
+	environment: CodegenEnvironment;
 	context?: TsEmitContext;
-}): { tsCode: string } {
-	const { registryName, entries, tsPath, context } = args;
+}): { sourceCode: string } {
+	const { registryName, entries, tsPath, jsPath, environment, context } = args;
 	const nodes = buildRegistryModuleAst({ registryName, entries });
-	return emitTsArtifacts({
+	if (environment === "typescript") {
+		const { tsCode } = emitTsArtifacts({
+			nodes,
+			tsPath,
+			context,
+		});
+		return { sourceCode: tsCode };
+	}
+	const { jsCode } = emitJsArtifacts({
 		nodes,
-		tsPath,
+		jsPath,
 		context,
+		module: TS_EMIT_OPTIONS_DEFAULT.module,
+		target: TS_EMIT_OPTIONS_DEFAULT.target,
 	});
+	return { sourceCode: jsCode };
 }
