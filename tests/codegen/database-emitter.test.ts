@@ -23,7 +23,7 @@ import {
 	expectCodeToParseAsValidTs,
 	readGolden,
 } from "../helpers/golden-code-assertions";
-afterEach(() => undefined);
+afterEach((): void => undefined);
 
 function renderFixture(fixture: DataSourceFixtureSpec) {
 	return renderDatabaseModule(buildMockDataSourceResponse(fixture));
