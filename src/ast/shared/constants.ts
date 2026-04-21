@@ -84,7 +84,7 @@ const CODEGEN_INDEX_DIR_RESOLVERS = {
 	agents: getAgentsDir,
 } as const satisfies Record<string, () => string>;
 
-export type CodegenIndexScope = keyof typeof CODEGEN_INDEX_DIR_RESOLVERS;
+type CodegenIndexScope = keyof typeof CODEGEN_INDEX_DIR_RESOLVERS;
 
 /**
  * Canonical filesystem path for a generated `index.{ts,js}` source file.

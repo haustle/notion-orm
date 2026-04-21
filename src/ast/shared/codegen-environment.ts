@@ -24,7 +24,7 @@ import path from "path";
 
 export type CodegenEnvironment = "typescript" | "javascript";
 
-export type CodegenConfigRuntime = {
+type CodegenConfigRuntime = {
 	isTS: boolean;
 };
 
@@ -52,7 +52,7 @@ export function resolveCodegenEnvironment(args?: {
 	return hasTypeScriptConfig(projectRoot) ? "typescript" : "javascript";
 }
 
-export function getCodegenArtifactExtension(
+function getCodegenArtifactExtension(
 	environment: CodegenEnvironment,
 ): "ts" | "js" {
 	return environment === "typescript" ? "ts" : "js";

@@ -136,7 +136,7 @@ export function writeTextArtifact(args: {
 /**
  * End-to-end helper used by AST generators that only emit TypeScript source.
  */
-export function emitTsArtifacts(args: {
+function emitTsArtifacts(args: {
 	nodes: readonly ts.Statement[];
 	outputPath: string;
 	context?: TsEmitContext;
@@ -155,7 +155,7 @@ export function emitTsArtifacts(args: {
 /**
  * End-to-end helper used by AST generators that emit runtime JavaScript files.
  */
-export function emitJsArtifacts(args: {
+function emitJsArtifacts(args: {
 	nodes: readonly ts.Statement[];
 	outputPath: string;
 	context?: TsEmitContext;
