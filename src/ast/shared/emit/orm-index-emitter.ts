@@ -6,10 +6,10 @@ import {
 	AST_FS_PATHS,
 	AST_IMPORT_PATHS,
 	AST_RUNTIME_CONSTANTS,
+	codegenIndexSourcePath,
 } from "../constants";
 import {
 	type CodegenEnvironment,
-	getCodegenArtifactExtension,
 	getCodegenImportExtension,
 } from "../codegen-environment";
 import {
@@ -767,10 +767,10 @@ function emitOrmIndexBuildArtifacts(args: {
 	context?: TsEmitContext;
 }): { code: string; dtsCode: string } {
 	const { databases, agents, environment, context } = args;
-	const buildIndexPath =
-		environment === "typescript"
-			? AST_FS_PATHS.buildIndexTs
-			: AST_FS_PATHS.buildIndexJs;
+	const buildIndexPath = codegenIndexSourcePath({
+		scope: "codegenRoot",
+		environment,
+	});
 	return emitOrmIndexArtifacts({
 		databases,
 		agents,

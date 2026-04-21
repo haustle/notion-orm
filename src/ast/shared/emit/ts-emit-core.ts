@@ -138,17 +138,17 @@ export function writeTextArtifact(args: {
  */
 export function emitTsArtifacts(args: {
 	nodes: readonly ts.Statement[];
-	tsPath: string;
+	outputPath: string;
 	context?: TsEmitContext;
 	listFormat?: ts.ListFormat;
 }): { tsCode: string } {
-	const { nodes, tsPath, context, listFormat } = args;
+	const { nodes, outputPath, context, listFormat } = args;
 	const tsCode = printTsNodes({
 		nodes,
 		context,
 		listFormat,
 	});
-	writeTextArtifact({ filePath: tsPath, content: tsCode });
+	writeTextArtifact({ filePath: outputPath, content: tsCode });
 	return { tsCode };
 }
 
@@ -157,7 +157,7 @@ export function emitTsArtifacts(args: {
  */
 export function emitJsArtifacts(args: {
 	nodes: readonly ts.Statement[];
-	jsPath: string;
+	outputPath: string;
 	context?: TsEmitContext;
 	listFormat?: ts.ListFormat;
 	module?: ts.ModuleKind;
@@ -167,7 +167,7 @@ export function emitJsArtifacts(args: {
 }): { jsCode: string } {
 	const {
 		nodes,
-		jsPath,
+		outputPath,
 		context,
 		listFormat,
 		module,
@@ -187,18 +187,19 @@ export function emitJsArtifacts(args: {
 		esModuleInterop,
 		allowSyntheticDefaultImports,
 	});
-	writeTextArtifact({ filePath: jsPath, content: jsCode });
+	writeTextArtifact({ filePath: outputPath, content: jsCode });
 	return { jsCode };
 }
 
 /**
  * End-to-end helper used by AST generators that emit either TS or JS based on
- * the consumer project's codegen environment.
+ * the consumer project's codegen environment. Callers pass a single
+ * `outputPath` already resolved to the correct extension (see
+ * `codegenIndexSourcePath`); this keeps TS/JS filename selection in one place.
  */
 export function emitArtifactsForEnvironment(args: {
 	nodes: readonly ts.Statement[];
-	tsPath: string;
-	jsPath: string;
+	outputPath: string;
 	environment: CodegenEnvironment;
 	context?: TsEmitContext;
 	listFormat?: ts.ListFormat;
@@ -209,8 +210,7 @@ export function emitArtifactsForEnvironment(args: {
 }): { sourceCode: string } {
 	const {
 		nodes,
-		tsPath,
-		jsPath,
+		outputPath,
 		environment,
 		context,
 		listFormat,
@@ -222,7 +222,7 @@ export function emitArtifactsForEnvironment(args: {
 	if (environment === "typescript") {
 		const { tsCode } = emitTsArtifacts({
 			nodes,
-			tsPath,
+			outputPath,
 			context,
 			listFormat,
 		});
@@ -230,7 +230,7 @@ export function emitArtifactsForEnvironment(args: {
 	}
 	const { jsCode } = emitJsArtifacts({
 		nodes,
-		jsPath,
+		outputPath,
 		context,
 		listFormat,
 		module,

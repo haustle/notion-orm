@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 import {
 	buildOrmIndexModuleAst,
@@ -26,6 +27,10 @@ import {
 } from "../helpers/temp-workspace";
 
 const tempDirs: string[] = [];
+
+/** Repo root (for `file:` install of this package in temp consumers). */
+const ORM_REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
+const ORM_REPO_FILE_URL = pathToFileURL(ORM_REPO_ROOT).href;
 
 describe("generated consumer install compatibility", () => {
 	test("generated TypeScript resolves package exports in a consumer-style typecheck", () => {
@@ -68,7 +73,7 @@ describe("generated consumer install compatibility", () => {
 						private: true,
 						type: "module",
 						dependencies: {
-							"@haustle/notion-orm": "file:/workspace",
+							"@haustle/notion-orm": ORM_REPO_FILE_URL,
 						},
 						devDependencies: {
 							typescript: "^5.6.3",

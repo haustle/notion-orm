@@ -5,6 +5,10 @@
  */
 import path from "path";
 import { toPascalCase } from "../../helpers";
+import {
+	codegenArtifactFileName,
+	type CodegenEnvironment,
+} from "./codegen-environment";
 
 /**
  * Top-level directory name for CLI-generated artifacts in consuming projects
@@ -58,14 +62,6 @@ export const AST_FS_PATHS = {
 		return path.resolve(getAgentsDir(), AST_FS_FILENAMES.METADATA);
 	},
 
-	get buildIndexTs(): string {
-		return path.resolve(AST_FS_PATHS.CODEGEN_ROOT_DIR, AST_FS_FILENAMES.INDEX_TS);
-	},
-
-	get buildIndexJs(): string {
-		return path.resolve(AST_FS_PATHS.CODEGEN_ROOT_DIR, AST_FS_FILENAMES.INDEX_JS);
-	},
-
 	get buildIndexDts(): string {
 		return path.resolve(AST_FS_PATHS.CODEGEN_ROOT_DIR, AST_FS_FILENAMES.INDEX_DTS);
 	},
@@ -76,37 +72,37 @@ export const AST_FS_PATHS = {
 			AST_FS_FILENAMES.INDEX_DTS_MAP,
 		);
 	},
-
-	get databaseBarrelTs(): string {
-		return path.resolve(getDatabasesDir(), AST_FS_FILENAMES.INDEX_TS);
-	},
-
-	get databaseBarrelJs(): string {
-		return path.resolve(getDatabasesDir(), AST_FS_FILENAMES.INDEX_JS);
-	},
-
-	agentBarrel(environment: "typescript" | "javascript"): string {
-		return path.resolve(
-			getAgentsDir(),
-			environment === "typescript"
-				? AST_FS_FILENAMES.INDEX_TS
-				: AST_FS_FILENAMES.INDEX_JS,
-		);
-	},
-
-	databaseBarrel(environment: "typescript" | "javascript"): string {
-		return environment === "typescript"
-			? AST_FS_PATHS.databaseBarrelTs
-			: AST_FS_PATHS.databaseBarrelJs;
-	},
-
 } as const;
+
+/**
+ * Named locations where an environment-specific `index.ts` / `index.js` is emitted.
+ * Scopes are the keys of `CODEGEN_INDEX_DIR_RESOLVERS` only (AGENTS.md: derive unions from maps).
+ */
+const CODEGEN_INDEX_DIR_RESOLVERS = {
+	codegenRoot: getProjectBuildDir,
+	databases: getDatabasesDir,
+	agents: getAgentsDir,
+} as const satisfies Record<string, () => string>;
+
+export type CodegenIndexScope = keyof typeof CODEGEN_INDEX_DIR_RESOLVERS;
+
+/**
+ * Canonical filesystem path for a generated `index.{ts,js}` source file.
+ * Centralizes the "where does the environment-specific barrel live" rule so
+ * callers never branch on TS vs JS filenames directly.
+ */
+export function codegenIndexSourcePath(args: {
+	scope: CodegenIndexScope;
+	environment: CodegenEnvironment;
+}): string {
+	const { scope, environment } = args;
+	const dir = CODEGEN_INDEX_DIR_RESOLVERS[scope]();
+	return path.join(dir, codegenArtifactFileName("index", environment));
+}
 
 /** Shared filenames used across emitted artifacts. */
 const AST_FS_FILENAMES = {
 	METADATA: "metadata.json",
-	INDEX_TS: "index.ts",
-	INDEX_JS: "index.js",
 	INDEX_DTS: "index.d.ts",
 	INDEX_DTS_MAP: "index.d.ts.map",
 } as const;

@@ -9,6 +9,7 @@ import { objectKeys } from "../../src/typeUtils";
 import {
 	CODEGEN_EMIT_PATHS,
 	CODEGEN_GOLDEN_FILES,
+	codegenArtifactFileName,
 } from "../helpers/codegen-file-names";
 import {
 	ALL_DATABASE_FIXTURES,
@@ -51,7 +52,10 @@ describe("database module emitter", () => {
 		test("produces TypeScript output that parses successfully", () => {
 			expectCodeToParseAsValidTs({
 				code: rendered.tsCode,
-				fileName: CODEGEN_EMIT_PATHS.customerOrdersModuleTs,
+				fileName: codegenArtifactFileName(
+					CODEGEN_EMIT_PATHS.customerOrdersModule,
+					"typescript",
+				),
 			});
 		});
 	});
@@ -73,7 +77,10 @@ describe("database module emitter", () => {
 		test("produces TypeScript output that parses successfully", () => {
 			expectCodeToParseAsValidTs({
 				code: rendered.tsCode,
-				fileName: CODEGEN_EMIT_PATHS.inventoryItemsModuleTs,
+				fileName: codegenArtifactFileName(
+					CODEGEN_EMIT_PATHS.inventoryItemsModule,
+					"typescript",
+				),
 			});
 		});
 	});
@@ -95,7 +102,10 @@ describe("database module emitter", () => {
 		test("produces TypeScript output that parses successfully", () => {
 			expectCodeToParseAsValidTs({
 				code: rendered.tsCode,
-				fileName: CODEGEN_EMIT_PATHS.edgeCasesModuleTs,
+				fileName: codegenArtifactFileName(
+					CODEGEN_EMIT_PATHS.edgeCasesModule,
+					"typescript",
+				),
 			});
 		});
 

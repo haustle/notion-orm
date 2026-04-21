@@ -1,6 +1,6 @@
 import * as ts from "typescript";
 import type { CodegenEnvironment } from "../codegen-environment";
-import { emitJsArtifacts, emitTsArtifacts, type TsEmitContext } from "./ts-emit-core";
+import { emitArtifactsForEnvironment, type TsEmitContext } from "./ts-emit-core";
 import { TS_EMIT_OPTIONS_DEFAULT } from "./ts-emit-options";
 
 /**
@@ -69,31 +69,24 @@ export function buildRegistryModuleAst(args: {
 
 /**
  * Emits the registry module in the format appropriate for the consumer project.
+ * `outputPath` should already be extension-correct for `environment`
+ * (use `codegenIndexSourcePath` to build it).
  */
 export function emitRegistryModuleArtifacts(args: {
 	registryName: string;
 	entries: RegistryEntry[];
-	tsPath: string;
-	jsPath: string;
+	outputPath: string;
 	environment: CodegenEnvironment;
 	context?: TsEmitContext;
 }): { sourceCode: string } {
-	const { registryName, entries, tsPath, jsPath, environment, context } = args;
+	const { registryName, entries, outputPath, environment, context } = args;
 	const nodes = buildRegistryModuleAst({ registryName, entries });
-	if (environment === "typescript") {
-		const { tsCode } = emitTsArtifacts({
-			nodes,
-			tsPath,
-			context,
-		});
-		return { sourceCode: tsCode };
-	}
-	const { jsCode } = emitJsArtifacts({
+	return emitArtifactsForEnvironment({
 		nodes,
-		jsPath,
+		outputPath,
+		environment,
 		context,
 		module: TS_EMIT_OPTIONS_DEFAULT.module,
 		target: TS_EMIT_OPTIONS_DEFAULT.target,
 	});
-	return { sourceCode: jsCode };
 }

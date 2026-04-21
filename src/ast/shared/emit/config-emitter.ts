@@ -2,6 +2,8 @@ import generate from "@babel/generator";
 import * as parser from "@babel/parser";
 import * as t from "@babel/types";
 import * as ts from "typescript";
+import { NOTION_CONFIG_BASENAME } from "../../../config/notion-config-filenames";
+import { codegenArtifactFileName } from "../codegen-environment";
 import {
 	createEmitContext,
 	printTsNodes,
@@ -167,7 +169,9 @@ export function renderConfigTemplateModule(args: {
 }): string {
 	const {
 		isTS,
-		context = createEmitContext({ fileName: "notion.config.ts" }),
+		context = createEmitContext({
+			fileName: codegenArtifactFileName(NOTION_CONFIG_BASENAME, "typescript"),
+		}),
 	} = args;
 	return printTsNodes({
 		nodes: buildConfigTemplateModuleAst({ isTS }),

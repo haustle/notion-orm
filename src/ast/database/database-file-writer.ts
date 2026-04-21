@@ -42,7 +42,7 @@ import {
 } from "../shared/emit/ts-emit-core";
 import {
 	type CodegenEnvironment,
-	getCodegenArtifactExtension,
+	codegenArtifactFileName,
 } from "../shared/codegen-environment";
 import { TS_EMIT_OPTIONS_GENERATED } from "../shared/emit/ts-emit-options";
 import {
@@ -355,10 +355,9 @@ export async function createCodegenFileForDatabase(
 		statementSegments,
 		databaseFileBasename,
 	});
-	const artifactExtension = getCodegenArtifactExtension(environment);
 	const outputPath = path.resolve(
 		databasesDir,
-		`${databaseFileBasename}.${artifactExtension}`,
+		codegenArtifactFileName(databaseFileBasename, environment),
 	);
 	const content =
 		environment === "javascript"

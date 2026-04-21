@@ -7,7 +7,7 @@ import { createNameImport } from "../shared/ast-builders";
 import { AGENTS_DIR, AST_IMPORT_PATHS, AST_RUNTIME_CONSTANTS } from "../shared/constants";
 import {
 	type CodegenEnvironment,
-	getCodegenArtifactExtension,
+	codegenArtifactFileName,
 } from "../shared/codegen-environment";
 import { emitValueAsExpression } from "../shared/emit/emit-value-as-expression";
 import {
@@ -230,10 +230,9 @@ export async function createTypescriptFileForAgent(args: {
 		statementSegments,
 		agentFileBasename,
 	});
-	const artifactExtension = getCodegenArtifactExtension(args.environment);
 	const outputPath = path.resolve(
 		AGENTS_DIR,
-		`${agentFileBasename}.${artifactExtension}`,
+		codegenArtifactFileName(agentFileBasename, args.environment),
 	);
 	const content =
 		args.environment === "javascript"

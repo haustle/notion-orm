@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import * as ts from "typescript";
 import {
 	buildRegistryModuleAst,
@@ -18,8 +21,6 @@ import {
 	expectNormalizedCodeToMatch,
 	readGolden,
 } from "../helpers/golden-code-assertions";
-import {
-} from "../helpers/temp-workspace";
 
 describe("registry emitter", () => {
 	const registryEntries: RegistryEntry[] = [...REGISTRY_SCENARIO.entries];
@@ -54,12 +55,19 @@ describe("registry emitter", () => {
 	});
 
 	test("emits only the TypeScript registry artifact", () => {
-		const tempDirectory = "/tmp/registry-emitter-unused";
-		const indexTsPath = `${tempDirectory}/${CODEGEN_EMIT_PATHS.indexTs}`;
-		emitRegistryModuleArtifacts({
-			registryName: REGISTRY_SCENARIO.registryName,
-			entries: registryEntries,
-			tsPath: indexTsPath,
-		});
+		const tempDirectory = mkdtempSync(join(tmpdir(), "registry-emitter-ts-"));
+		try {
+			const indexTsPath = join(tempDirectory, CODEGEN_EMIT_PATHS.indexTs);
+			const { sourceCode } = emitRegistryModuleArtifacts({
+				registryName: REGISTRY_SCENARIO.registryName,
+				entries: registryEntries,
+				outputPath: indexTsPath,
+				environment: "typescript",
+			});
+			expect(existsSync(indexTsPath)).toBe(true);
+			expect(readFileSync(indexTsPath, "utf8")).toBe(sourceCode);
+		} finally {
+			rmSync(tempDirectory, { recursive: true, force: true });
+		}
 	});
 });

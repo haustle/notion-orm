@@ -17,11 +17,11 @@ import {
 	readDatabaseMetadata,
 } from "../shared/cached-metadata";
 import {
-	getCodegenArtifactExtension,
+	codegenArtifactFileName,
 	resolveCodegenEnvironment,
 	type CodegenEnvironment,
 } from "../shared/codegen-environment";
-import { AGENTS_DIR, AST_FS_PATHS } from "../shared/constants";
+import { AGENTS_DIR, AST_FS_PATHS, codegenIndexSourcePath } from "../shared/constants";
 import { updateSourceIndexFile } from "../shared/emit/orm-index-emitter";
 import { emitRegistryModuleArtifacts } from "../shared/emit/registry-emitter";
 import { createTypescriptFileForAgent } from "./agent-file-writer";
@@ -129,17 +129,15 @@ function createAgentBarrelFile(args: {
 	environment: CodegenEnvironment;
 }) {
 	const { agentInfo, environment } = args;
-	const artifactExtension = getCodegenArtifactExtension(environment);
 
 	emitRegistryModuleArtifacts({
 		registryName: "agents",
 		entries: agentInfo.map(({ name }) => ({
 			importName: name,
-			importPath: `./${toPascalCase(name)}.${artifactExtension}`,
+			importPath: `./${codegenArtifactFileName(toPascalCase(name), environment)}`,
 			registryKey: name,
 		})),
-		tsPath: AST_FS_PATHS.agentBarrel("typescript"),
-		jsPath: AST_FS_PATHS.agentBarrel("javascript"),
+		outputPath: codegenIndexSourcePath({ scope: "agents", environment }),
 		environment,
 	});
 }

@@ -2,10 +2,16 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { readDatabaseMetadata } from "../../src/ast/shared/cached-metadata";
-import { AST_FS_PATHS } from "../../src/ast/shared/constants";
+import {
+	AST_FS_PATHS,
+	codegenIndexSourcePath,
+} from "../../src/ast/shared/constants";
 import { clearConfigCache } from "../../src/config/loadConfig";
-import { inferCodegenEnvironment } from "../../src/ast/shared/codegen-environment";
-import { CODEGEN_EMIT_PATHS } from "../helpers/codegen-file-names";
+import { resolveCodegenEnvironment } from "../../src/ast/shared/codegen-environment";
+import {
+	CODEGEN_EMIT_PATHS,
+	codegenArtifactFileName,
+} from "../helpers/codegen-file-names";
 import {
 	buildMockDataSourceResponse,
 	CUSTOMER_ORDERS_FIXTURE,
@@ -37,7 +43,9 @@ function writeConfigFile(args: {
 	databases: string[];
 	agents?: string[];
 	auth?: string;
-	configFileName?: "notion.config.ts" | "notion.config.mjs";
+	configFileName?:
+		| typeof CODEGEN_EMIT_PATHS.notionConfigTs
+		| typeof CODEGEN_EMIT_PATHS.notionConfigMjs;
 }) {
 	writeWorkspaceFile({
 		workspacePath: args.workspacePath,
@@ -71,6 +79,12 @@ describe("generate-databases-cli e2e orchestration", () => {
 		writeConfigFile({
 			workspacePath,
 			databases: [CUSTOMER_ORDERS_FIXTURE.id, INVENTORY_ITEMS_FIXTURE.id],
+			configFileName: CODEGEN_EMIT_PATHS.notionConfigTs,
+		});
+		writeWorkspaceFile({
+			workspacePath,
+			relativePath: "tsconfig.json",
+			content: JSON.stringify({ compilerOptions: { target: "ES2022" } }, null, 2),
 		});
 
 		retrieveDataSourceMock.mockImplementation(async (args) => {
@@ -109,21 +123,31 @@ describe("generate-databases-cli e2e orchestration", () => {
 
 		expect(
 			existsSync(
-				join(
-					AST_FS_PATHS.DATABASES_DIR,
-					CODEGEN_EMIT_PATHS.customerOrdersModuleTs,
-				),
+				join(AST_FS_PATHS.DATABASES_DIR, codegenArtifactFileName(
+					CODEGEN_EMIT_PATHS.customerOrdersModule,
+					"typescript",
+				)),
 			),
 		).toBe(true);
 		expect(
 			existsSync(
 				join(
 					AST_FS_PATHS.DATABASES_DIR,
-					CODEGEN_EMIT_PATHS.inventoryItemsModuleTs,
+					codegenArtifactFileName(
+						CODEGEN_EMIT_PATHS.inventoryItemsModule,
+						"typescript",
+					),
 				),
 			),
 		).toBe(true);
-		expect(existsSync(AST_FS_PATHS.databaseBarrelTs)).toBe(true);
+		expect(
+			existsSync(
+				codegenIndexSourcePath({
+					scope: "databases",
+					environment: "typescript",
+				}),
+			),
+		).toBe(true);
 	});
 
 	test("typescript projects emit .ts generated modules", async () => {
@@ -133,7 +157,7 @@ describe("generate-databases-cli e2e orchestration", () => {
 		writeConfigFile({
 			workspacePath,
 			databases: [CUSTOMER_ORDERS_FIXTURE.id],
-			configFileName: "notion.config.ts",
+			configFileName: CODEGEN_EMIT_PATHS.notionConfigTs,
 		});
 		writeWorkspaceFile({
 			workspacePath,
@@ -149,29 +173,67 @@ describe("generate-databases-cli e2e orchestration", () => {
 			),
 		});
 
-		expect(inferCodegenEnvironment({ configRuntime: { isTS: true } })).toBe(
+		expect(resolveCodegenEnvironment({ configRuntime: { isTS: true } })).toBe(
 			"typescript",
+		);
+
+		retrieveDataSourceMock.mockImplementation(async () =>
+			buildMockDataSourceResponse(CUSTOMER_ORDERS_FIXTURE),
 		);
 
 		await createDatabaseTypes({
 			type: "all",
-			skipSourceIndexUpdate: true,
+			skipSourceIndexUpdate: false,
 		});
 
 		expect(
 			existsSync(
-				join(AST_FS_PATHS.DATABASES_DIR, CODEGEN_EMIT_PATHS.customerOrdersModuleTs),
+				join(AST_FS_PATHS.DATABASES_DIR, codegenArtifactFileName(
+					CODEGEN_EMIT_PATHS.customerOrdersModule,
+					"typescript",
+				)),
 			),
 		).toBe(true);
 		expect(
 			existsSync(
-				join(AST_FS_PATHS.DATABASES_DIR, CODEGEN_EMIT_PATHS.customerOrdersModuleJs),
+				join(AST_FS_PATHS.DATABASES_DIR, codegenArtifactFileName(
+					CODEGEN_EMIT_PATHS.customerOrdersModule,
+					"javascript",
+				)),
 			),
 		).toBe(false);
-		expect(existsSync(AST_FS_PATHS.databaseBarrelTs)).toBe(true);
-		expect(existsSync(AST_FS_PATHS.databaseBarrelJs)).toBe(false);
-		expect(existsSync(AST_FS_PATHS.buildIndexTs)).toBe(true);
-		expect(existsSync(AST_FS_PATHS.buildIndexJs)).toBe(false);
+		expect(
+			existsSync(
+				codegenIndexSourcePath({
+					scope: "databases",
+					environment: "typescript",
+				}),
+			),
+		).toBe(true);
+		expect(
+			existsSync(
+				codegenIndexSourcePath({
+					scope: "databases",
+					environment: "javascript",
+				}),
+			),
+		).toBe(false);
+		expect(
+			existsSync(
+				codegenIndexSourcePath({
+					scope: "codegenRoot",
+					environment: "typescript",
+				}),
+			),
+		).toBe(true);
+		expect(
+			existsSync(
+				codegenIndexSourcePath({
+					scope: "codegenRoot",
+					environment: "javascript",
+				}),
+			),
+		).toBe(false);
 		expect(existsSync(AST_FS_PATHS.buildIndexDts)).toBe(true);
 	});
 
@@ -182,8 +244,12 @@ describe("generate-databases-cli e2e orchestration", () => {
 		writeConfigFile({
 			workspacePath,
 			databases: [CUSTOMER_ORDERS_FIXTURE.id],
-			configFileName: "notion.config.mjs",
+			configFileName: CODEGEN_EMIT_PATHS.notionConfigMjs,
 		});
+
+		retrieveDataSourceMock.mockImplementation(async () =>
+			buildMockDataSourceResponse(CUSTOMER_ORDERS_FIXTURE),
+		);
 
 		await createDatabaseTypes({
 			type: "all",
@@ -192,18 +258,52 @@ describe("generate-databases-cli e2e orchestration", () => {
 
 		expect(
 			existsSync(
-				join(AST_FS_PATHS.DATABASES_DIR, CODEGEN_EMIT_PATHS.customerOrdersModuleJs),
+				join(AST_FS_PATHS.DATABASES_DIR, codegenArtifactFileName(
+					CODEGEN_EMIT_PATHS.customerOrdersModule,
+					"javascript",
+				)),
 			),
 		).toBe(true);
 		expect(
 			existsSync(
-				join(AST_FS_PATHS.DATABASES_DIR, CODEGEN_EMIT_PATHS.customerOrdersModuleTs),
+				join(AST_FS_PATHS.DATABASES_DIR, codegenArtifactFileName(
+					CODEGEN_EMIT_PATHS.customerOrdersModule,
+					"typescript",
+				)),
 			),
 		).toBe(false);
-		expect(existsSync(AST_FS_PATHS.databaseBarrelJs)).toBe(true);
-		expect(existsSync(AST_FS_PATHS.databaseBarrelTs)).toBe(false);
-		expect(existsSync(AST_FS_PATHS.buildIndexJs)).toBe(true);
-		expect(existsSync(AST_FS_PATHS.buildIndexTs)).toBe(false);
+		expect(
+			existsSync(
+				codegenIndexSourcePath({
+					scope: "databases",
+					environment: "javascript",
+				}),
+			),
+		).toBe(true);
+		expect(
+			existsSync(
+				codegenIndexSourcePath({
+					scope: "databases",
+					environment: "typescript",
+				}),
+			),
+		).toBe(false);
+		expect(
+			existsSync(
+				codegenIndexSourcePath({
+					scope: "codegenRoot",
+					environment: "javascript",
+				}),
+			),
+		).toBe(true);
+		expect(
+			existsSync(
+				codegenIndexSourcePath({
+					scope: "codegenRoot",
+					environment: "typescript",
+				}),
+			),
+		).toBe(false);
 		expect(existsSync(AST_FS_PATHS.buildIndexDts)).toBe(true);
 	});
 
@@ -214,6 +314,12 @@ describe("generate-databases-cli e2e orchestration", () => {
 		writeConfigFile({
 			workspacePath,
 			databases: [CUSTOMER_ORDERS_FIXTURE.id],
+			configFileName: CODEGEN_EMIT_PATHS.notionConfigTs,
+		});
+		writeWorkspaceFile({
+			workspacePath,
+			relativePath: "tsconfig.json",
+			content: JSON.stringify({ compilerOptions: { target: "ES2022" } }, null, 2),
 		});
 
 		retrieveDataSourceMock.mockImplementation(async () =>
@@ -230,10 +336,23 @@ describe("generate-databases-cli e2e orchestration", () => {
 		expect(output.databaseNames).toEqual(["Edge Cases"]);
 		expect(
 			existsSync(
-				join(AST_FS_PATHS.DATABASES_DIR, CODEGEN_EMIT_PATHS.edgeCasesModuleTs),
+				join(
+					AST_FS_PATHS.DATABASES_DIR,
+					codegenArtifactFileName(
+						CODEGEN_EMIT_PATHS.edgeCasesModule,
+						"typescript",
+					),
+				),
 			),
 		).toBe(true);
-		expect(existsSync(AST_FS_PATHS.buildIndexTs)).toBe(true);
+		expect(
+			existsSync(
+				codegenIndexSourcePath({
+					scope: "codegenRoot",
+					environment: "typescript",
+				}),
+			),
+		).toBe(true);
 		expect(existsSync(AST_FS_PATHS.buildIndexDts)).toBe(true);
 	});
 });

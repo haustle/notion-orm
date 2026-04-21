@@ -14,11 +14,15 @@ import {
 	readDatabaseMetadata,
 } from "../shared/cached-metadata";
 import {
-	getCodegenArtifactExtension,
+	codegenArtifactFileName,
 	resolveCodegenEnvironment,
 	type CodegenEnvironment,
 } from "../shared/codegen-environment";
-import { AST_FS_PATHS, AST_RUNTIME_CONSTANTS } from "../shared/constants";
+import {
+	AST_FS_PATHS,
+	AST_RUNTIME_CONSTANTS,
+	codegenIndexSourcePath,
+} from "../shared/constants";
 import { updateSourceIndexFile } from "../shared/emit/orm-index-emitter";
 import { emitRegistryModuleArtifacts } from "../shared/emit/registry-emitter";
 import { createCodegenFileForDatabase } from "./database-file-writer";
@@ -138,17 +142,15 @@ function createDatabaseBarrelFile(args: {
 	environment: CodegenEnvironment;
 }) {
 	const { databaseInfo, environment } = args;
-	const artifactExtension = getCodegenArtifactExtension(environment);
 
 	emitRegistryModuleArtifacts({
 		registryName: "databases",
 		entries: databaseInfo.map(({ name }) => ({
 			importName: toPascalCase(name),
-			importPath: `./${toPascalCase(name)}.${artifactExtension}`,
+			importPath: `./${codegenArtifactFileName(toPascalCase(name), environment)}`,
 			registryKey: name,
 		})),
-		tsPath: AST_FS_PATHS.databaseBarrelTs,
-		jsPath: AST_FS_PATHS.databaseBarrelJs,
+		outputPath: codegenIndexSourcePath({ scope: "databases", environment }),
 		environment,
 	});
 }

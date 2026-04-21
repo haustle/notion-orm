@@ -1,3 +1,11 @@
+import { NOTION_CONFIG_FILENAMES } from "../../src/config/notion-config-filenames";
+
+/** Re-export for tests that compose env-specific artifact names. */
+export {
+	codegenArtifactFileName,
+	type CodegenEnvironment,
+} from "../../src/ast/shared/codegen-environment";
+
 export const CODEGEN_GOLDEN_FILES = {
 	registryItems: "registry-items.ts",
 	configTemplate: "notion-config-template.ts",
@@ -11,15 +19,17 @@ export const CODEGEN_GOLDEN_FILES = {
 export const CODEGEN_EMIT_PATHS = {
 	indexTs: "index.ts",
 	indexDts: "index.d.ts",
-	notionConfigTs: "notion.config.ts",
-	notionConfigMjs: "notion.config.mjs",
+	notionConfigTs: NOTION_CONFIG_FILENAMES.ts,
+	notionConfigMjs: NOTION_CONFIG_FILENAMES.mjs,
 	databasesDir: "databases",
 	agentsDir: "agents",
-	customerOrdersModuleTs: "CustomerOrders.ts",
-	inventoryItemsModuleTs: "InventoryItems.ts",
-	edgeCasesModuleTs: "EdgeCases.ts",
-	taskDbModuleTs: "TaskDb.ts",
-	mealAgentModuleTs: "MealAgent.ts",
+	/**
+	 * PascalCase basenames for generated DB/agent modules in tests.
+	 * Build filenames with {@link codegenArtifactFileName}(basename, env).
+	 */
+	customerOrdersModule: "CustomerOrders",
+	inventoryItemsModule: "InventoryItems",
+	edgeCasesModule: "EdgeCases",
 } as const;
 
 export const CODEGEN_TEST_PATHS = {
