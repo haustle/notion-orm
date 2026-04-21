@@ -5,7 +5,16 @@ import {
 } from "../cli/helpers";
 import fs from "fs";
 import path from "path";
+import {
+	NOTION_CONFIG_CANDIDATE_FILENAMES,
+	NOTION_CONFIG_FILENAMES,
+} from "./notion-config-filenames";
 import { getNotionConfig } from "./loadConfig";
+
+/** Filename used by `notion init` when creating a new config file. */
+function getNotionConfigInitFilename(isTS: boolean): string {
+	return isTS ? NOTION_CONFIG_FILENAMES.ts : NOTION_CONFIG_FILENAMES.js;
+}
 
 export type NotionConfigType = {
 	auth: string;
@@ -45,7 +54,7 @@ export async function initializeNotionConfigFile(
 		const isTS =
 			options.force === "ts" ||
 			(options.force !== "js" && shouldUseTypeScript());
-		const filename = isTS ? "notion.config.ts" : "notion.config.js";
+		const filename = getNotionConfigInitFilename(isTS);
 		const configPath = path.join(process.cwd(), filename);
 
 		if (fs.existsSync(configPath)) {
@@ -85,18 +94,14 @@ export function findConfigFile():
 	  }
 	| undefined {
 	const projDir = process.cwd();
-	const notionConfigPathJS = path.join(projDir, "notion.config.js");
-	const notionConfigPathTS = path.join(projDir, "notion.config.ts");
-	const notionConfigPathMJS = path.join(projDir, "notion.config.mjs");
-
-	if (fs.existsSync(notionConfigPathJS)) {
-		return { path: notionConfigPathJS, isTS: false };
-	}
-	if (fs.existsSync(notionConfigPathTS)) {
-		return { path: notionConfigPathTS, isTS: true };
-	}
-	if (fs.existsSync(notionConfigPathMJS)) {
-		return { path: notionConfigPathMJS, isTS: false };
+	for (const filename of NOTION_CONFIG_CANDIDATE_FILENAMES) {
+		const candidatePath = path.join(projDir, filename);
+		if (fs.existsSync(candidatePath)) {
+			return {
+				path: candidatePath,
+				isTS: filename === NOTION_CONFIG_FILENAMES.ts,
+			};
+		}
 	}
 	return undefined;
 }

@@ -2,6 +2,7 @@ import { pathToFileURL } from "url";
 import { z } from "zod";
 import type { NotionConfigType } from "./helpers";
 import { findConfigFile } from "./helpers.js";
+import { NOTION_CONFIG_EXTENSION_LABELS } from "./notion-config-filenames.js";
 
 let cachedConfig: NotionConfigType | undefined;
 
@@ -98,7 +99,7 @@ export async function getNotionConfig(): Promise<NotionConfigType> {
 		}
 
 		throw new Error(
-			"No notion.config.js/ts/mjs file found and no NOTION_KEY environment variable set. " +
+			`No notion.config.${NOTION_CONFIG_EXTENSION_LABELS} file found and no NOTION_KEY environment variable set. ` +
 				"Please create a config file or set NOTION_KEY.",
 		);
 	}

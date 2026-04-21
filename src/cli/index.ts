@@ -8,6 +8,10 @@ import {
 	initializeNotionConfigFile,
 	validateConfig,
 } from "../config/helpers";
+import {
+	NOTION_CONFIG_BASENAME,
+	NOTION_CONFIG_EXTENSION_LABELS,
+} from "../config/notion-config-filenames";
 import { resolveCodegenEnvironment } from "../ast/shared/codegen-environment";
 import {
 	createAgentTypes,
@@ -247,7 +251,7 @@ async function runSync(): Promise<void> {
 		const configFile = findConfigFile();
 		if (configFile) {
 			const configFileName =
-				configFile.path.split(/[\\/]/).pop() ?? "notion.config";
+				configFile.path.split(/[\\/]/).pop() ?? NOTION_CONFIG_BASENAME;
 			console.log(
 				`📝 ${configFileName} contains the full list of connected databases and agents.`,
 			);
@@ -313,14 +317,14 @@ async function runAdd(input: string): Promise<void> {
 
 	if (!configFile) {
 		console.error(
-			"❌ No config file found. Could not find a notion.config.(ts|js) in project root",
+			`❌ No config file found. Could not find notion.config.(${NOTION_CONFIG_EXTENSION_LABELS}) in project root`,
 		);
 		console.error("Run 'notion init' to create a config file first");
 		process.exit(1);
 	}
 
 	console.log(
-		`🔍 Found config: notion.config.${configFile.isTS ? "ts" : "js"}`,
+		`🔍 Found config: ${configFile.path.split(/[\\/]/).pop() ?? NOTION_CONFIG_BASENAME}`,
 	);
 
 	clearConfigCache();
