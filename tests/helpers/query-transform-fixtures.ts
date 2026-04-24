@@ -11,6 +11,7 @@ import { buildQueryResponse } from "../../src/client/database/query";
 import type { NotionPropertyValue } from "../../src/client/database/query/types";
 import type {
 	DatabaseColumns,
+	DatabasePropertyValue,
 	QueryResponseWithoutRawResponse,
 	QueryResponseWithRawResponse,
 	SupportedNotionColumnType,
@@ -65,7 +66,7 @@ type SupportedTypeToHelperMethodName = {
  * by the runtime query pipeline, with optional raw-response passthrough.
  */
 export function runQueryScenario<
-	DatabaseSchemaType extends Record<string, unknown>,
+	DatabaseSchemaType extends Record<string, DatabasePropertyValue>,
 >(
 	args: ReturnType<typeof buildQueryScenario>,
 	options: {
@@ -74,7 +75,7 @@ export function runQueryScenario<
 	},
 ): QueryResponseWithRawResponse<DatabaseSchemaType>;
 export function runQueryScenario<
-	DatabaseSchemaType extends Record<string, unknown>,
+	DatabaseSchemaType extends Record<string, DatabasePropertyValue>,
 >(
 	args: ReturnType<typeof buildQueryScenario>,
 	options?: {
@@ -83,7 +84,7 @@ export function runQueryScenario<
 	},
 ): QueryResponseWithoutRawResponse<DatabaseSchemaType>;
 export function runQueryScenario<
-	DatabaseSchemaType extends Record<string, unknown>,
+	DatabaseSchemaType extends Record<string, DatabasePropertyValue>,
 >(
 	args: ReturnType<typeof buildQueryScenario>,
 	options?: {
