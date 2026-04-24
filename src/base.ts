@@ -1,7 +1,7 @@
 /**
  * Base exports for @haustle/notion-orm
  * This file contains the stable base classes that generated code extends.
- * The main index.ts is generated and re-exports from here plus adds generated types.
+ * Consumer-local `notion/index.ts` is generated and extends the classes exported here.
  */
 
 import type { NotionORMConfig } from "./config/resolveNotionAuth";
@@ -63,7 +63,7 @@ export {
 	toNotionPageId,
 	toNotionUserId,
 } from "./client/database/types";
-export type { NotionConfigType } from "./config/helpers";
+export type { NotionConfigType } from "./config/types";
 export type { NotionORMConfig } from "./config/resolveNotionAuth";
 export { resolveNotionAuth } from "./config/resolveNotionAuth";
 export type { Simplify } from "./typeUtils";

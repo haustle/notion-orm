@@ -1,16 +1,10 @@
 import { pathToFileURL } from "url";
-import { z } from "zod";
-import type { NotionConfigType } from "./helpers";
-import { findConfigFile } from "./helpers.js";
+import { findConfigFile } from "./findConfigFile.js";
+import { loadDotEnvFromCwd } from "./loadDotEnvFromCwd";
 import { NOTION_CONFIG_EXTENSION_LABELS } from "./notion-config-filenames.js";
+import { notionConfigSchema, type NotionConfigType } from "./types";
 
 let cachedConfig: NotionConfigType | undefined;
-
-const notionConfigSchema = z.object({
-	auth: z.string().min(1, "Missing 'auth' field in notion config"),
-	databases: z.array(z.string()),
-	agents: z.array(z.string()),
-});
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -38,17 +32,14 @@ function parseNotionConfig(input: unknown): NotionConfigType {
 }
 
 /**
- * Dynamically loads the user's notion.config file.
- * - Works with Bun (native TS support)
- * - Works with Node.js (ESM and CJS)
- * - Supports .ts, .js, .mjs config files
+ * Dynamically loads the user's notion.config file via `import()`.
+ * Use a `file://` URL so Node, Bun, and other ESM runtimes resolve the path consistently.
+ * Plain Node loads `.js`/`.mjs` natively; `.ts` requires a runtime that can execute TypeScript
+ * (or compile the config to JavaScript first).
  */
 async function loadUserConfig(absolutePath: string): Promise<unknown> {
-	const isBun = "Bun" in globalThis;
-
-	// 1) Try dynamic import first (works for Bun with .ts, Node with .js/.mjs)
 	try {
-		const importPath = isBun ? absolutePath : pathToFileURL(absolutePath).href;
+		const importPath = pathToFileURL(absolutePath).href;
 		const mod = await import(importPath);
 		return mod.default ?? mod;
 	} catch (error: unknown) {
@@ -59,16 +50,19 @@ async function loadUserConfig(absolutePath: string): Promise<unknown> {
 }
 
 /** Loads and validates a user config module from a known path. */
-export async function loadConfig(configPath: string): Promise<NotionConfigType> {
-		try {
-			const config = await loadUserConfig(configPath);
-			return parseNotionConfig(config);
-		} catch (error: unknown) {
-			throw new Error(
-				`Failed to load config from ${configPath}: ${getErrorMessage(error)}`,
-			);
-		}
+export async function loadConfig(
+	configPath: string,
+): Promise<NotionConfigType> {
+	try {
+		loadDotEnvFromCwd();
+		const config = await loadUserConfig(configPath);
+		return parseNotionConfig(config);
+	} catch (error: unknown) {
+		throw new Error(
+			`Failed to load config from ${configPath}: ${getErrorMessage(error)}`,
+		);
 	}
+}
 
 /**
  * Resolves config once per process, falling back to environment variables when
@@ -80,6 +74,8 @@ export async function getNotionConfig(): Promise<NotionConfigType> {
 		return cachedConfig;
 	}
 
+	loadDotEnvFromCwd();
+
 	// Try to find config file
 	const configFile = findConfigFile();
 
@@ -87,13 +83,11 @@ export async function getNotionConfig(): Promise<NotionConfigType> {
 		// Fallback to environment variable
 		const authFromEnv = process.env.NOTION_KEY;
 		if (authFromEnv) {
-			const databases: string[] = [];
-			const agents: string[] = [];
-			const config: NotionConfigType = {
+			const config = parseNotionConfig({
 				auth: authFromEnv,
-				databases,
-				agents,
-			};
+				databases: [],
+				agents: [],
+			});
 			cachedConfig = config;
 			return config;
 		}
