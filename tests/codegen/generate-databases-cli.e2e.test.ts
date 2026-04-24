@@ -17,7 +17,7 @@ import {
 	CUSTOMER_ORDERS_FIXTURE,
 	EDGE_CASES_FIXTURE,
 	INVENTORY_ITEMS_FIXTURE,
-} from "../helpers/datasource-fixture-builder";
+} from "../../src/ast/demo/datasource-fixture-builder";
 import { installCodegenRetrieveOnlyNotionClientMock } from "../helpers/notion-client-test-mock";
 import {
 	cleanupTempWorkspaces,

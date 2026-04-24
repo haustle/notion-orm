@@ -1,4 +1,4 @@
-import type { DataSourceFixtureSpec } from "../../../tests/helpers/datasource-fixture-builder";
+import type { DataSourceFixtureSpec } from "./datasource-fixture-builder";
 import type { AgentIcon } from "../../client/agent/AgentClient";
 
 export interface DemoAgentFixture {

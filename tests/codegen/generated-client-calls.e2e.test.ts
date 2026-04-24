@@ -19,7 +19,7 @@ import { renderDatabaseModule } from "../../src/ast/database/database-file-write
 import {
 	buildMockDataSourceResponse,
 	CUSTOMER_ORDERS_FIXTURE,
-} from "../helpers/datasource-fixture-builder";
+} from "../../src/ast/demo/datasource-fixture-builder";
 import {
 	cleanupTempWorkspaces,
 	createTempWorkspace,

@@ -1,4 +1,4 @@
-import { buildMockDataSourceResponse } from "../../../tests/helpers/datasource-fixture-builder";
+import { buildMockDataSourceResponse } from "./datasource-fixture-builder";
 import { renderAgentModule } from "../agents/agent-file-writer";
 import { renderDatabaseModule } from "../database/database-file-writer";
 import { AST_RUNTIME_CONSTANTS, PLAYGROUND_PATHS } from "../shared/constants";

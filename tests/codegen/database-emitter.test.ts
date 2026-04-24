@@ -19,7 +19,7 @@ import {
 	type DataSourceFixtureSpec,
 	EDGE_CASES_FIXTURE,
 	INVENTORY_ITEMS_FIXTURE,
-} from "../helpers/datasource-fixture-builder";
+} from "../../src/ast/demo/datasource-fixture-builder";
 import {
 	expectCodeToParseAsValidJs,
 	expectCodeToParseAsValidTs,
