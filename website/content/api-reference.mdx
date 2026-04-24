@@ -46,7 +46,7 @@ const notion = new NotionORM({
 | `findMany(args?)` | Query rows. Returns `Partial<Schema>[]` by default, `PaginateResult` with `after`, or `AsyncIterable` with `stream` ([source](/api-reference#findmany)) |
 | `count(args?)` | Returns the total number of matching rows ([source](/api-reference#count)) |
 | `create({ properties, icon?, cover?, markdown? })` | Creates a page with typed properties and optional markdown body content ([source](/api-reference#create)) |
-| `createMany({ properties })` | Creates multiple pages sequentially ([source](/api-reference#createmany)) |
+| `createMany([{ properties, icon?, cover?, markdown? }])` | Creates multiple pages sequentially ([source](/api-reference#createmany)) |
 | `update({ where: { id }, properties })` | Updates a single page by ID ([source](/api-reference#update)) |
 | `updateMany({ where, properties })` | Updates all pages matching a filter ([source](/api-reference#updatemany)) |
 | `upsert({ where, create, update })` | Creates or updates depending on whether a match exists ([source](/api-reference#upsert)) |
@@ -240,13 +240,21 @@ await notion.booksDb.create({
 
 Creates multiple pages sequentially and returns all responses.
 
+Accepts an array of `create(...)` payloads (`Array<{ properties; icon?; cover?; markdown? }>`), so every row can carry its own `icon`, `cover`, and `markdown` body in addition to `properties`.
+
 ```ts
-const results = await notion.booksDb.createMany({
-  properties: [
-    { bookName: "Book A", genre: ["Sci-Fi"], numberOfPages: 300 },
-    { bookName: "Book B", genre: ["Biography"], numberOfPages: 250 },
-  ],
-});
+const results = await notion.booksDb.createMany([
+  { properties: { bookName: "Book A", genre: ["Sci-Fi"], numberOfPages: 300 } },
+  { properties: { bookName: "Book B", genre: ["Biography"], numberOfPages: 250 } },
+  {
+    properties: { bookName: "Book C", genre: ["Fantasy"], numberOfPages: 420 },
+    icon: { type: "emoji", emoji: "📘" },
+  },
+  {
+    properties: { bookName: "Book D", genre: ["History"], numberOfPages: 380 },
+    markdown: "# Notes\n\n- Imported from archive",
+  },
+]);
 ```
 
 ---
