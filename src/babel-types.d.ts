@@ -26,7 +26,7 @@ declare module '@babel/generator' {
     rawMappings?: object;
   }
 
-  function generate(
+  export function generate(
     ast: Node,
     options?: GeneratorOptions,
     code?: string | { [filename: string]: string }

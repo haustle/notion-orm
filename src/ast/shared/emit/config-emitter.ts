@@ -1,4 +1,5 @@
-import generate from "@babel/generator";
+import * as babelGenerator from "@babel/generator";
+const generate = babelGenerator.generate;
 import * as parser from "@babel/parser";
 import * as t from "@babel/types";
 import * as ts from "typescript";
