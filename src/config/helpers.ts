@@ -8,7 +8,6 @@ import {
 } from "./init";
 import { NOTION_CONFIG_FILENAMES } from "./notion-config-filenames";
 import { getNotionConfig } from "./loadConfig";
-export type { NotionConfigType } from "./types";
 
 /** Filename used by `notion init` when creating a new config file. */
 function getNotionConfigInitFilename(isTS: boolean): string {

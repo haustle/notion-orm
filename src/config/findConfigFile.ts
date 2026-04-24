@@ -5,7 +5,7 @@ import {
 	NOTION_CONFIG_FILENAMES,
 } from "./notion-config-filenames";
 
-export type NotionConfigFile = {
+type NotionConfigFile = {
 	path: string;
 	isTS: boolean;
 };

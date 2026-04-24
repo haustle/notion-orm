@@ -43,7 +43,7 @@
 		"site": "bun run --cwd website  dev",
 		"site:deploy": "bun run --cwd website  deploy",
 		"site:typecheck": "bun run --cwd website  typecheck",
-		"unpack-size": "bun pm pack --dry-run 2>&1 | rg 'unpacked size'",
+		"unpack-size": "bun pm pack --dry-run",
 		"loop": "bun run build:link && cd ../orm-testing && bun link @haustle/notion-orm && bunx notion sync && bun run smoke/coffee-shop/run.ts",
 		"refresh": "rm -rf ./node_modules && bun install"
 	},
