@@ -1,13 +1,11 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
+// Node shebang: `notion` bin must run under Node (see `engines.node`) so `npx notion` works without Bun.
 
-import * as readline from "node:readline";
 import fs from "fs";
 import { Client } from "@notionhq/client";
-import {
-	findConfigFile,
-	initializeNotionConfigFile,
-	validateConfig,
-} from "../config/helpers";
+import { initializeNotionConfigFile, validateConfig } from "../config/helpers";
+import { findConfigFile } from "../config/findConfigFile";
+import { showSetupInstructions } from "../config/init";
 import {
 	NOTION_CONFIG_BASENAME,
 	NOTION_CONFIG_EXTENSION_LABELS,
@@ -23,143 +21,52 @@ import {
 	readAgentMetadataFromDisk,
 	readDatabaseMetadata,
 } from "../ast/shared/cached-metadata";
-import { AST_FS_PATHS, AST_RUNTIME_CONSTANTS } from "../ast/shared/constants";
+import { AST_FS_PATHS } from "../ast/shared/constants";
 import { updateSourceIndexFile } from "../ast/shared/emit/orm-index-emitter";
 import { clearConfigCache, loadConfig } from "../config/loadConfig";
 import { toDashedNotionId, toUndashedNotionId } from "../helpers";
+import { PACKAGE_RUNTIME_CONSTANTS } from "../runtime-constants";
 import {
 	isHelpCommand,
-	showSetupInstructions,
 	validateAndGetUndashedNotionId,
 	writeConfigFileWithAST,
 } from "./helpers";
-
-type ProgressRowState = "running" | "done" | "unavailable";
-type ProgressRowKey = "agents" | "databases";
-type ProgressRow = {
-	label: string;
-	completed: number;
-	total: number;
-	state: ProgressRowState;
-};
-
-/**
- * Small terminal renderer that keeps sync progress readable without interleaving
- * the agent and database generation logs.
- */
-class SyncProgressRenderer {
-	private readonly spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧"];
-	private spinnerIndex = 0;
-	private interval: ReturnType<typeof setInterval> | undefined;
-	private hasRendered = false;
-	private readonly rows: Record<ProgressRowKey, ProgressRow> = {
-		agents: {
-			label: "Agents",
-			completed: 0,
-			total: 0,
-			state: "running",
-		},
-		databases: {
-			label: "Databases",
-			completed: 0,
-			total: 0,
-			state: "running",
-		},
-	};
-
-	constructor(private readonly isTTY: boolean) {}
-
-	start(): void {
-		const header = this.isTTY
-			? "\x1b[1m📐 Updating static types\x1b[0m"
-			: "📐 Updating static types";
-		console.log(header);
-		if (this.isTTY) {
-			this.render();
-			this.interval = setInterval(() => {
-				this.spinnerIndex = (this.spinnerIndex + 1) % this.spinnerFrames.length;
-				this.render();
-			}, 90);
-		} else {
-			console.log(this.formatRow(this.rows.agents));
-			console.log(this.formatRow(this.rows.databases));
-		}
-	}
-
-	updateProgress(key: ProgressRowKey, completed: number, total: number): void {
-		const row = this.rows[key];
-		row.completed = completed;
-		row.total = total;
-		if (row.state !== "done") {
-			if (total === 0) {
-				row.state = "unavailable";
-			} else if (completed >= total) {
-				row.state = "done";
-			} else {
-				row.state = "running";
-			}
-		}
-		if (this.isTTY) {
-			this.render();
-		}
-	}
-
-	complete(key: ProgressRowKey): void {
-		const row = this.rows[key];
-		row.state = row.total === 0 ? "unavailable" : "done";
-		if (this.isTTY) {
-			this.render();
-		}
-	}
-
-	stop(): void {
-		if (this.interval) {
-			clearInterval(this.interval);
-			this.interval = undefined;
-		}
-		if (this.isTTY) {
-			this.render();
-			process.stdout.write("\n");
-		} else {
-			console.log(this.formatRow(this.rows.agents));
-			console.log(this.formatRow(this.rows.databases));
-		}
-	}
-
-	private formatRow(row: ProgressRow): string {
-		if (row.state === "unavailable") {
-			return `${row.label}: unavailable`;
-		}
-		const countLabel = `[${row.completed}/${row.total}]`;
-		const marker =
-			row.state === "done"
-				? "✔"
-				: this.isTTY
-					? this.spinnerFrames[this.spinnerIndex]
-					: "...";
-		return `${row.label}: ${marker} ${countLabel}`;
-	}
-
-	private render(): void {
-		const lines = [
-			this.formatRow(this.rows.agents),
-			this.formatRow(this.rows.databases),
-		];
-		if (this.hasRendered) {
-			readline.moveCursor(process.stdout, 0, -lines.length);
-		}
-		for (const line of lines) {
-			readline.clearLine(process.stdout, 0);
-			process.stdout.write(`${line}\n`);
-		}
-		this.hasRendered = true;
-	}
-}
+import { SyncProgressRenderer } from "./sync-progress-renderer";
 
 function exitWithError(message: string, error: unknown): never {
 	console.error(message);
 	console.error(error);
 	process.exit(1);
+}
+
+/** Short example of wiring the generated `notion` entry (printed after sync). */
+function logNotionEntrypointExample(args: {
+	databaseKey: string | undefined;
+	agentKey: string | undefined;
+	agentsSkipped: boolean;
+}): void {
+	const { databaseKey, agentKey, agentsSkipped } = args;
+	const body: string[] = [
+		'import { NotionORM } from "./notion";',
+		"const notion = new NotionORM({ auth: process.env.NOTION_KEY! });",
+	];
+	if (databaseKey) {
+		body.push(`notion.databases.${databaseKey};`);
+	} else {
+		body.push("// notion.databases.* — add a database in config, then sync");
+	}
+	if (agentsSkipped) {
+		body.push(
+			"// notion.agents.* — `notion setup-agents-sdk` then `notion sync`",
+		);
+	} else if (agentKey) {
+		body.push(`notion.agents.${agentKey};`);
+	} else {
+		body.push("// notion.agents.* — sync when your workspace has agents");
+	}
+	for (const line of body) {
+		console.log(line);
+	}
 }
 
 /** Runs agent and database generation in parallel, then refreshes the root index once. */
@@ -210,17 +117,25 @@ async function runSync(): Promise<void> {
 		);
 
 		const { databaseNames, databaseKeys } = databasesResult;
+		const firstDatabaseKey = databaseKeys[0];
+		const firstAgentKey = agentsResult.agentKeys[0];
+
+		console.log("");
+		logNotionEntrypointExample({
+			databaseKey: firstDatabaseKey,
+			agentKey: firstAgentKey,
+			agentsSkipped: agentsResult.skipped,
+		});
+		console.log("");
+
 		if (databaseNames.length === 0) {
-			console.log("📂 Databases: none in config (nothing generated under notion/databases).");
-		} else if (databaseNames.length === 1) {
 			console.log(
-				`📂 Databases (1): ${databaseNames[0]} → notion.databases.${databaseKeys[0]}`,
+				"📂 Databases: none in config (nothing generated under notion/databases).",
 			);
 		} else {
 			const lines = databaseNames
 				.map(
-					(title, i) =>
-						`   • ${title} → notion.databases.${databaseKeys[i]}`,
+					(title, i) => `   • ${title} → notion.databases.${databaseKeys[i]}`,
 				)
 				.join("\n");
 			console.log(`📂 Databases (${databaseNames.length}):\n${lines}`);
@@ -232,8 +147,6 @@ async function runSync(): Promise<void> {
 			);
 		} else if (agentsResult.agentNames.length === 0) {
 			console.log("🤖 Agents: none returned for this integration.");
-		} else if (agentsResult.agentNames.length === 1) {
-			console.log(`🤖 Agents (1): ${agentsResult.agentNames[0]}`);
 		} else {
 			const lines = agentsResult.agentNames.map((n) => `   • ${n}`).join("\n");
 			console.log(`🤖 Agents (${agentsResult.agentNames.length}):\n${lines}`);
@@ -277,7 +190,7 @@ async function fetchDatabaseName(args: {
 	try {
 		const client = new Client({
 			auth: args.auth,
-			notionVersion: AST_RUNTIME_CONSTANTS.NOTION_API_VERSION,
+			notionVersion: PACKAGE_RUNTIME_CONSTANTS.NOTION_API_VERSION,
 		});
 		const databaseObject = await client.dataSources.retrieve({
 			data_source_id: args.dataSourceId,
