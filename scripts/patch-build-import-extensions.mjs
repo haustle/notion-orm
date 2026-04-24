@@ -1,27 +1,32 @@
 import fs from "node:fs";
 import path from "node:path";
-import * as parser from "@babel/parser";
-import * as t from "@babel/types";
+import * as babelParser from "@babel/parser";
+import * as babelTypes from "@babel/types";
 
+/**
+ * Rewrites extensionless relative specifiers in emitted JS files to explicit
+ * `.js` or `/index.js` forms so Node ESM resolution is deterministic.
+ */
 const BUILD_ROOT = path.resolve(process.cwd(), "build");
-const PATCHABLE_EXTENSION = ".js";
+const JAVASCRIPT_EXTENSION = ".js";
+const INDEX_BASENAME = "index.js";
 
-function splitSpecifierSuffix(specifier) {
-	const suffixStart = specifier.search(/[?#]/);
+function splitImportPathAndSuffix(importPathText) {
+	const suffixStart = importPathText.search(/[?#]/);
 	if (suffixStart === -1) {
 		return {
-			pathname: specifier,
+			pathname: importPathText,
 			suffix: "",
 		};
 	}
 	return {
-		pathname: specifier.slice(0, suffixStart),
-		suffix: specifier.slice(suffixStart),
+		pathname: importPathText.slice(0, suffixStart),
+		suffix: importPathText.slice(suffixStart),
 	};
 }
 
-function shouldRewriteSpecifier(specifier) {
-	const { pathname } = splitSpecifierSuffix(specifier);
+function isRelativeImportPathWithoutExtension(importPathText) {
+	const { pathname } = splitImportPathAndSuffix(importPathText);
 	return (
 		(pathname.startsWith("./") || pathname.startsWith("../")) &&
 		!path.extname(pathname) &&
@@ -30,151 +35,178 @@ function shouldRewriteSpecifier(specifier) {
 }
 
 /**
- * TypeScript may emit `from "../dir"` when `../dir/index.ts` is the target.
- * Node ESM needs `../dir/index.js`, not `../dir.js`.
+ * TypeScript may emit an import path like `"../dir"` for a real
+ * `../dir/index.js` target.
+ * Node ESM requires fully specified directory indexes (`../dir/index.js`).
  */
-function rewriteSpecifier(specifier, importerPath) {
-	if (!shouldRewriteSpecifier(specifier)) {
-		return specifier;
+function rewriteRelativeImportPath(importPathText, importerFilePath) {
+	if (!isRelativeImportPathWithoutExtension(importPathText)) {
+		return importPathText;
 	}
-	const { pathname, suffix } = splitSpecifierSuffix(specifier);
-	if (!importerPath) {
-		return `${pathname}.js${suffix}`;
+	const { pathname, suffix } = splitImportPathAndSuffix(importPathText);
+	if (!importerFilePath) {
+		return `${pathname}${JAVASCRIPT_EXTENSION}${suffix}`;
 	}
-	const baseDir = path.dirname(importerPath);
-	const resolvedDir = path.resolve(baseDir, pathname);
-	const asFile = `${resolvedDir}.js`;
-	const asIndex = path.join(resolvedDir, "index.js");
-	let target = `${pathname}.js`;
-	if (!fs.existsSync(asFile) && fs.existsSync(asIndex)) {
-		target = `${pathname}/index.js`;
+
+	const importerDirectoryPath = path.dirname(importerFilePath);
+	const resolvedImportPath = path.resolve(importerDirectoryPath, pathname);
+	const resolvedFilePath = `${resolvedImportPath}${JAVASCRIPT_EXTENSION}`;
+	const resolvedIndexPath = path.join(resolvedImportPath, INDEX_BASENAME);
+
+	let rewrittenPathname = `${pathname}${JAVASCRIPT_EXTENSION}`;
+	if (!fs.existsSync(resolvedFilePath) && fs.existsSync(resolvedIndexPath)) {
+		rewrittenPathname = `${pathname}/${INDEX_BASENAME}`;
 	}
-	return `${target}${suffix}`;
+	return `${rewrittenPathname}${suffix}`;
 }
 
-function parseModuleSource(source) {
-	return parser.parse(source, {
+function parseModuleSource(moduleSourceText) {
+	return babelParser.parse(moduleSourceText, {
 		sourceType: "unambiguous",
 		plugins: ["importAttributes"],
 	});
 }
 
-function walkAst(node, visitor) {
-	if (!node || typeof node !== "object") {
+function visitAst(astNode, visitor) {
+	if (!astNode || typeof astNode !== "object") {
 		return;
 	}
-	visitor(node);
-	const childKeys = t.VISITOR_KEYS[node.type] ?? [];
-	for (const childKey of childKeys) {
-		const child = node[childKey];
-		if (Array.isArray(child)) {
-			for (const nestedChild of child) {
-				walkAst(nestedChild, visitor);
+	visitor(astNode);
+	const childPropertyNames = babelTypes.VISITOR_KEYS[astNode.type] ?? [];
+	for (const childPropertyName of childPropertyNames) {
+		const childNode = astNode[childPropertyName];
+		if (Array.isArray(childNode)) {
+			for (const nestedChildNode of childNode) {
+				visitAst(nestedChildNode, visitor);
 			}
 			continue;
 		}
-		walkAst(child, visitor);
+		visitAst(childNode, visitor);
 	}
 }
 
-function buildSpecifierEdit(args) {
-	const { literal, source, importerPath } = args;
-	if (literal.start == null || literal.end == null) {
+function createImportPathEdit(args) {
+	const { importPathLiteralNode, moduleSourceText, importerFilePath } = args;
+	if (importPathLiteralNode.start == null || importPathLiteralNode.end == null) {
 		return undefined;
 	}
-	const rewrittenSpecifier = rewriteSpecifier(literal.value, importerPath);
-	if (rewrittenSpecifier === literal.value) {
+	const rewrittenImportPathText = rewriteRelativeImportPath(
+		importPathLiteralNode.value,
+		importerFilePath,
+	);
+	if (rewrittenImportPathText === importPathLiteralNode.value) {
 		return undefined;
 	}
-	const rawLiteral = source.slice(literal.start, literal.end);
-	const quote = rawLiteral[0];
+	const originalLiteralSource = moduleSourceText.slice(
+		importPathLiteralNode.start,
+		importPathLiteralNode.end,
+	);
+	const quoteCharacter = originalLiteralSource[0];
 	const preservesOriginalQuotes =
-		(quote === '"' || quote === "'") && rawLiteral.at(-1) === quote;
+		(quoteCharacter === '"' || quoteCharacter === "'") &&
+		originalLiteralSource.at(-1) === quoteCharacter;
 	return {
-		start: literal.start,
-		end: literal.end,
+		start: importPathLiteralNode.start,
+		end: importPathLiteralNode.end,
 		replacement: preservesOriginalQuotes
-			? `${quote}${rewrittenSpecifier}${quote}`
-			: JSON.stringify(rewrittenSpecifier),
+			? `${quoteCharacter}${rewrittenImportPathText}${quoteCharacter}`
+			: JSON.stringify(rewrittenImportPathText),
 	};
 }
 
-function collectSpecifierEdits(source, importerPath) {
-	const ast = parseModuleSource(source);
-	const edits = [];
-	walkAst(ast.program, (node) => {
-		if (
-			(t.isImportDeclaration(node) ||
-				t.isExportNamedDeclaration(node) ||
-				t.isExportAllDeclaration(node)) &&
-			node.source &&
-			t.isStringLiteral(node.source)
-		) {
-			const edit = buildSpecifierEdit({
-				literal: node.source,
-				source,
-				importerPath,
-			});
-			if (edit) {
-				edits.push(edit);
-			}
+function getImportPathLiteralNode(astNode) {
+	const sourceLiteralNode =
+		babelTypes.isImportDeclaration(astNode) ||
+		babelTypes.isExportNamedDeclaration(astNode) ||
+		babelTypes.isExportAllDeclaration(astNode) ||
+		babelTypes.isImportExpression(astNode)
+			? astNode.source
+			: undefined;
+	if (sourceLiteralNode && babelTypes.isStringLiteral(sourceLiteralNode)) {
+		return sourceLiteralNode;
+	}
+	if (
+		babelTypes.isCallExpression(astNode) &&
+		babelTypes.isImport(astNode.callee) &&
+		astNode.arguments.length > 0 &&
+		babelTypes.isStringLiteral(astNode.arguments[0])
+	) {
+		return astNode.arguments[0];
+	}
+	return undefined;
+}
+
+function collectImportPathEdits(moduleSourceText, importerFilePath) {
+	let parsedModuleAst;
+	try {
+		parsedModuleAst = parseModuleSource(moduleSourceText);
+	} catch (error) {
+		const reason = error instanceof Error ? error.message : String(error);
+		const fileLabel = importerFilePath ?? "<unknown>";
+		console.warn(
+			`Warning: skipping import-path rewrite for ${fileLabel}: ${reason}`,
+		);
+		return [];
+	}
+
+	const importPathEdits = [];
+	visitAst(parsedModuleAst.program, (astNode) => {
+		const importPathLiteralNode = getImportPathLiteralNode(astNode);
+		if (!importPathLiteralNode) {
 			return;
 		}
-		if (t.isImportExpression(node) && t.isStringLiteral(node.source)) {
-			const edit = buildSpecifierEdit({
-				literal: node.source,
-				source,
-				importerPath,
-			});
-			if (edit) {
-				edits.push(edit);
-			}
-			return;
-		}
-		if (
-			t.isCallExpression(node) &&
-			t.isImport(node.callee) &&
-			node.arguments.length > 0 &&
-			t.isStringLiteral(node.arguments[0])
-		) {
-			const edit = buildSpecifierEdit({
-				literal: node.arguments[0],
-				source,
-				importerPath,
-			});
-			if (edit) {
-				edits.push(edit);
-			}
+		const edit = createImportPathEdit({
+			importPathLiteralNode,
+			moduleSourceText,
+			importerFilePath,
+		});
+		if (edit) {
+			importPathEdits.push(edit);
 		}
 	});
-	return edits.sort((left, right) => right.start - left.start);
+	return importPathEdits.sort(
+		(laterEdit, earlierEdit) => earlierEdit.start - laterEdit.start,
+	);
 }
 
-export function rewriteRelativeImportSpecifiers(source, importerPath) {
-	let updated = source;
-	for (const edit of collectSpecifierEdits(source, importerPath)) {
-		updated =
-			updated.slice(0, edit.start) + edit.replacement + updated.slice(edit.end);
+export function rewriteRelativeImportSpecifiers(
+	moduleSourceText,
+	importerFilePath,
+) {
+	let rewrittenModuleSourceText = moduleSourceText;
+	for (const importPathEdit of collectImportPathEdits(
+		moduleSourceText,
+		importerFilePath,
+	)) {
+		rewrittenModuleSourceText =
+			rewrittenModuleSourceText.slice(0, importPathEdit.start) +
+			importPathEdit.replacement +
+			rewrittenModuleSourceText.slice(importPathEdit.end);
 	}
-	return updated;
+	return rewrittenModuleSourceText;
 }
 
-function patchBuildDirectory(directory) {
-	for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-		const fullPath = path.join(directory, entry.name);
-		if (entry.isDirectory()) {
-			patchBuildDirectory(fullPath);
+function patchBuildDirectory(directoryPath) {
+	for (const directoryEntry of fs.readdirSync(directoryPath, {
+		withFileTypes: true,
+	})) {
+		const entryPath = path.join(directoryPath, directoryEntry.name);
+		if (directoryEntry.isDirectory()) {
+			patchBuildDirectory(entryPath);
 			continue;
 		}
 
-		if (path.extname(entry.name) !== PATCHABLE_EXTENSION) {
+		if (path.extname(directoryEntry.name) !== JAVASCRIPT_EXTENSION) {
 			continue;
 		}
 
-		const original = fs.readFileSync(fullPath, "utf8");
-		const updated = rewriteRelativeImportSpecifiers(original, fullPath);
-		if (updated !== original) {
-			fs.writeFileSync(fullPath, updated);
+		const originalFileSource = fs.readFileSync(entryPath, "utf8");
+		const rewrittenFileSource = rewriteRelativeImportSpecifiers(
+			originalFileSource,
+			entryPath,
+		);
+		if (rewrittenFileSource !== originalFileSource) {
+			fs.writeFileSync(entryPath, rewrittenFileSource);
 		}
 	}
 }
