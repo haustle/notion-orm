@@ -1,29 +1,38 @@
-import { describe, expect, test } from "bun:test";
-import { join } from "path";
+import { beforeAll, describe, expect, test } from "bun:test";
+import { execSync, spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
-const cliEntryPath = join(import.meta.dir, "../../src/cli/index.ts");
 const repoRoot = join(import.meta.dir, "../..");
+const builtCliPath = join(repoRoot, "build/src/cli/index.js");
+
+beforeAll(() => {
+	if (!existsSync(builtCliPath)) {
+		execSync("npm run build", { cwd: repoRoot, stdio: "pipe" });
+	}
+});
 
 function runCli(args: string[]) {
-	return Bun.spawnSync({
-		cmd: ["bun", cliEntryPath, ...args],
+	// Use the `node` binary explicitly: under `bun test`, `process.execPath` is Bun,
+	// which resolves the built CLI's imports differently than Node users.
+	return spawnSync("node", [builtCliPath, ...args], {
 		cwd: repoRoot,
-		stdout: "pipe",
-		stderr: "pipe",
+		encoding: "utf-8",
+		env: process.env,
 	});
 }
 
 describe("CLI index integration", () => {
 	test("prints help output for help command", () => {
 		const output = runCli(["help"]);
-		expect(output.exitCode).toBe(0);
-		expect(output.stdout.toString()).toContain("Notion ORM CLI");
+		expect(output.status).toBe(0);
+		expect(output.stdout).toContain("Notion ORM CLI");
 	});
 
 	test("help output includes setup-agents-sdk command", () => {
 		const output = runCli(["help"]);
-		expect(output.exitCode).toBe(0);
-		expect(output.stdout.toString()).toContain("setup-agents-sdk");
+		expect(output.status).toBe(0);
+		expect(output.stdout).toContain("setup-agents-sdk");
 	});
 
 	test("fails for invalid add type", () => {
@@ -33,16 +42,16 @@ describe("CLI index integration", () => {
 			"--type",
 			"agent",
 		]);
-		expect(output.exitCode).toBe(1);
-		expect(output.stderr.toString()).toContain(
+		expect(output.status).toBe(1);
+		expect(output.stderr).toContain(
 			"Invalid --type value. Must be 'database'",
 		);
 	});
 
 	test("fails when both --ts and --js are provided for init", () => {
 		const output = runCli(["init", "--ts", "--js"]);
-		expect(output.exitCode).toBe(1);
-		expect(output.stderr.toString()).toContain(
+		expect(output.status).toBe(1);
+		expect(output.stderr).toContain(
 			"Cannot use both --ts and --js flags together",
 		);
 	});
