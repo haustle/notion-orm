@@ -13,22 +13,17 @@ A lightweight TypeScript [Notion API](https://developers.notion.com/) wrapper th
 ## Installation
 
 ```bash
-npm install @haustle/notion-orm
-# or: pnpm add / yarn add / bun add @haustle/notion-orm
+bun add @haustle/notion-orm
 ```
 
-The CLI is installed as the `**notion**` binary and runs on **Node.js 18+** (the published shebang is `node`). After upgrading the package, run `**npx notion sync`** (or `**pnpm exec notion sync**`, `**yarn notion sync**`, `**bunx notion sync**`) so generated files under `**notion/**` stay in sync with the version you installed (stale codegen can break at runtime when imports from the ORM package change). In app code, prefer `**import { NotionORM } from "./notion/"**` — the directory import resolves to `index.ts`, so you do not need to spell `**index**`.
-
-**Config file:** use `**notion.config.js`** or `**notion.config.mjs**` if you run the CLI with plain Node. `**notion.config.ts**` is supported when your runtime can load TypeScript (for example Bun or a project using a TS loader); otherwise compile the config or use JavaScript.
-
-Generated database and agent modules live in your app's local `**./notion/**` folder after `notion sync`; import those relative files directly if you need a generated factory outside the `NotionORM` wrapper.
+(You can use npm, npx, pnpm, or yarn for the same flows—they work fine as well.)
 
 # Quick start
 
 Initialize config from your project root (recommended):
 
 ```bash
-npx notion init
+bunx notion init
 ```
 
 Generated config shape:
@@ -58,15 +53,15 @@ export default NotionConfig;
 Add new database to track and generate static types (ex. how to find ID [here](https://developers.notion.com/guides/data-apis/working-with-databases#adding-pages-to-a-database) )
 
 ```bash
-npx notion add <database-id>
+bunx notion add <database-id>
 ```
 
 ### Adding agents (paid feature)
 
-Agent support requires the [Notion Agents SDK](https://github.com/makenotion/notion-agents-sdk-js), which is **currently in alpha** and not published to npm. Because of this, a one-command setup handles the entire download-and-install flow for you:
+Agent support requires the [Notion Agents SDK](https://github.com/makenotion/notion-agents-sdk-js), which is **currently in alpha** and not yet installable with `bun add`. Because of this, a one-command setup handles the entire download-and-install flow for you:
 
 ```bash
-npx notion setup-agents-sdk
+bunx notion setup-agents-sdk
 ```
 
 **What this does:**
@@ -80,11 +75,11 @@ After setup, run `notion sync` to generate agent types. Agents linked to your in
 **Updating:** When the upstream SDK receives changes, rerun the same command. It pulls the latest from the cached clone, rebuilds, and reinstalls:
 
 ```bash
-npx notion setup-agents-sdk
-npx notion sync
+bunx notion setup-agents-sdk
+bunx notion sync
 ```
 
-If you have not run the setup command, `notion sync` will skip agent generation and only produce database types. Once the SDK is published to npm, this step will no longer be necessary.
+If you have not run the setup command, `notion sync` will skip agent generation and only produce database types. Once the SDK is published and installable with `bun add`, this step will no longer be necessary.
 
 Learn more about [Custom Agents](https://www.notion.com/help/custom-agents) in the Notion documentation.
 
@@ -93,7 +88,7 @@ Learn more about [Custom Agents](https://www.notion.com/help/custom-agents) in t
 Fetch/refresh database schemas. If the agents SDK is installed, also syncs custom agents.
 
 ```bash
-npx notion sync
+bunx notion sync
 ```
 
 ## Basic examples
