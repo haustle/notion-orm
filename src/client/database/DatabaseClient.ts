@@ -4,7 +4,7 @@ import type {
 	CreatePageResponse,
 	GetPageResponse,
 } from "@notionhq/client/build/src/api-endpoints";
-import { AST_RUNTIME_CONSTANTS } from "../../ast/shared/constants";
+import { PACKAGE_RUNTIME_CONSTANTS } from "../../runtime-constants";
 import { objectKeys } from "../../typeUtils";
 import {
 	buildCreatePageParametersForDataSource,
@@ -89,7 +89,7 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 
 		this.client = new Client({
 			auth: args.auth,
-			notionVersion: AST_RUNTIME_CONSTANTS.NOTION_API_VERSION,
+			notionVersion: PACKAGE_RUNTIME_CONSTANTS.NOTION_API_VERSION,
 			fetch: fetchImpl,
 		});
 		this.id = args.id;
@@ -120,7 +120,7 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 		});
 		if (!isFullPage(page) || !isPageInDataSource(page, this.id)) {
 			throw new Error(
-				`${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} ${args.operationName}(): page ${args.pageId} does not belong to database ${this.name ?? this.id}.`,
+				`${PACKAGE_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} ${args.operationName}(): page ${args.pageId} does not belong to database ${this.name ?? this.id}.`,
 			);
 		}
 		return page;
@@ -249,7 +249,7 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 		const projection = normalizeProjection(args);
 		if (!args.where.id) {
 			throw new Error(
-				`${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} findUnique(): where.id must be a non-empty string (Notion page id).`,
+				`${PACKAGE_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} findUnique(): where.id must be a non-empty string (Notion page id).`,
 			);
 		}
 		try {
@@ -316,11 +316,18 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 	}
 
 	public async createMany(
-		args: CreateMany<CreateSchema<Definition>>,
+		items: CreateMany<CreateSchema<Definition>>,
 	): Promise<CreatePageResponse[]> {
+		if (!Array.isArray(items)) {
+			throw new Error(
+				`${PACKAGE_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} createMany(): expected an array of create args (\`[{ properties, icon?, cover?, markdown? }]\`). The \`{ properties: [...] }\` and \`{ items: [...] }\` shapes were removed; pass the array directly.`,
+			);
+		}
+		// Sequential: no bulk endpoint, Notion rate-limits ~3 req/sec, and this
+		// preserves partial-failure order. Swap to bounded concurrency if needed.
 		const results: CreatePageResponse[] = [];
-		for (const properties of args.properties) {
-			results.push(await this.create({ properties }));
+		for (const item of items) {
+			results.push(await this.create(item));
 		}
 		return results;
 	}
@@ -330,12 +337,12 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 	): Promise<void> {
 		if (!args.where.id) {
 			throw new Error(
-				`${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} update(): where.id must be a non-empty string (Notion page id).`,
+				`${PACKAGE_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} update(): where.id must be a non-empty string (Notion page id).`,
 			);
 		}
 		if (!args.properties || objectKeys(args.properties).length === 0) {
 			throw new Error(
-				`${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} update(): pass at least one key in properties.`,
+				`${PACKAGE_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} update(): pass at least one key in properties.`,
 			);
 		}
 		const properties = mapDatabaseSchemaToNotionPropertyMap({
@@ -393,14 +400,14 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 		});
 		if (matches.length > 1) {
 			throw new Error(
-				`${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} upsert(): more than one row matches where. Tighten where, delete duplicates, or use updateMany/create explicitly.`,
+				`${PACKAGE_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} upsert(): more than one row matches where. Tighten where, delete duplicates, or use updateMany/create explicitly.`,
 			);
 		}
 		const existing = matches[0];
 		if (existing) {
 			if (!args.update || objectKeys(args.update).length === 0) {
 				throw new Error(
-					`${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} upsert(): when a matching row exists, pass at least one key in update.`,
+					`${PACKAGE_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} upsert(): when a matching row exists, pass at least one key in update.`,
 				);
 			}
 			const properties = mapDatabaseSchemaToNotionPropertyMap({
@@ -420,7 +427,7 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 	public async delete(args: Delete): Promise<void> {
 		if (!args.where.id) {
 			throw new Error(
-				`${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} delete(): where.id must be a non-empty string (Notion page id).`,
+				`${PACKAGE_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} delete(): where.id must be a non-empty string (Notion page id).`,
 			);
 		}
 		await this.retrievePageForCurrentDataSource({
