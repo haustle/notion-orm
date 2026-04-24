@@ -66,12 +66,6 @@ function createAuthVariableStatement(): ts.VariableStatement {
 		" [here](https://developers.notion.com)",
 		true,
 	);
-	ts.addSyntheticLeadingComment(
-		statement,
-		ts.SyntaxKind.SingleLineCommentTrivia,
-		" Agents are auto-populated by: notion sync",
-		true,
-	);
 	return statement;
 }
 
@@ -128,6 +122,7 @@ export function buildConfigTemplateModuleAst(args: {
 							}),
 							createConfigProperty({
 								name: "agents",
+								helpText: "Agents are auto-populated by: notion sync",
 							}),
 						],
 						true,
