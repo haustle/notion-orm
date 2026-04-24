@@ -5,6 +5,7 @@
  */
 import path from "path";
 import { toPascalCase } from "../../helpers";
+import { PACKAGE_RUNTIME_CONSTANTS } from "../../runtime-constants";
 import {
 	codegenArtifactFileName,
 	type CodegenEnvironment,
@@ -24,7 +25,7 @@ const PROJECT_DATABASES_DIR_NAME = "databases" as const;
 
 /**
  * Resolve generated artifact paths from the current project root, not from the
- * installed package location. This keeps `bun notion sync` writing into the
+ * installed package location. This keeps `notion sync` writing into the
  * consuming app when the package is linked locally.
  */
 function getProjectBuildDir(): string {
@@ -125,19 +126,11 @@ export const AST_IMPORT_PATHS = {
 	},
 } as const;
 
-/** Runtime constants shared by emitted clients and CLI flows. */
-export const AST_RUNTIME_CONSTANTS = {
-	NOTION_API_VERSION: "2026-03-11",
-
-	PACKAGE_LOG_PREFIX: "[@haustle/notion-orm]",
-
-	CLI_GENERATE_COMMAND: "notion sync",
-
-	SCHEMA_DRIFT_PREFIX: "Schema drift detected",
-
-	SCHEMA_DRIFT_HELP_MESSAGE:
-		"To easily fix this, please run `notion sync` to refresh all database schemas.",
-} as const;
+/**
+ * Backward-compatible alias for shared runtime constants.
+ * New runtime code should prefer importing from `src/runtime-constants.ts`.
+ */
+export const AST_RUNTIME_CONSTANTS = PACKAGE_RUNTIME_CONSTANTS;
 
 /** Canonical generated type names referenced across emitters. */
 export const AST_TYPE_NAMES = {
