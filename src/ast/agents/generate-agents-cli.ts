@@ -4,12 +4,11 @@
  * generated source index when requested.
  */
 import fs from "fs";
-import path from "path";
 import { z } from "zod";
 import { isAgentsSdkAvailable, loadAgentsSdk } from "../../agents-sdk-resolver";
 import { syncAgentsInConfigWithAST } from "../../cli/helpers";
 import type { AgentIcon } from "../../client/agent/AgentClient";
-import { findConfigFile } from "../../config/helpers";
+import { findConfigFile } from "../../config/findConfigFile";
 import { getNotionConfig } from "../../config/loadConfig";
 import { camelize, toPascalCase, toUndashedNotionId } from "../../helpers";
 import {
@@ -45,6 +44,8 @@ type CreateAgentTypesOptions = {
 
 export type CreateAgentTypesResult = {
 	agentNames: string[];
+	/** Module/registry keys (camelCase), parallel to `agentNames`. */
+	agentKeys: string[];
 	skipped: boolean;
 };
 
@@ -53,7 +54,7 @@ export const createAgentTypes = async (
 	options?: CreateAgentTypesOptions,
 ): Promise<CreateAgentTypesResult> => {
 	if (!isAgentsSdkAvailable()) {
-		return { agentNames: [], skipped: true };
+		return { agentNames: [], agentKeys: [], skipped: true };
 	}
 
 	const sdk = await loadAgentsSdk();
@@ -83,6 +84,7 @@ export const createAgentTypes = async (
 
 	const metadataMap = new Map<string, CachedAgentMetadata>();
 	const agentNames: string[] = [];
+	const agentKeys: string[] = [];
 	let completedCount = 0;
 
 	for (const agent of agentsList.results) {
@@ -96,6 +98,7 @@ export const createAgentTypes = async (
 			);
 			metadataMap.set(agentMetadata.id, agentMetadata);
 			agentNames.push(agentMetadata.displayName);
+			agentKeys.push(agentMetadata.name);
 			completedCount += 1;
 			options?.onProgress?.({
 				completed: completedCount,
@@ -120,7 +123,7 @@ export const createAgentTypes = async (
 		updateSourceIndexFile(databasesMetadata, agentsMetadata, environment);
 	}
 
-	return { agentNames, skipped: false };
+	return { agentNames, agentKeys, skipped: false };
 };
 
 /** Emits the environment-specific `agents/index` registry module. */
