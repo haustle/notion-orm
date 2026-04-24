@@ -56,7 +56,7 @@ Add new database to track and generate static types (ex. how to find ID [here](h
 bunx notion add <database-id>
 ```
 
-### Adding agents (paid feature)
+### Adding Custom Agents
 
 Agent support requires the [Notion Agents SDK](https://github.com/makenotion/notion-agents-sdk-js), which is **currently in alpha** and not yet installable with `bun add`. Because of this, a one-command setup handles the entire download-and-install flow for you:
 
@@ -91,7 +91,30 @@ Fetch/refresh database schemas. If the agents SDK is installed, also syncs custo
 bunx notion sync
 ```
 
-## Basic examples
+# Implementation
+
+### Client setup
+
+Create a single ORM instance with your Notion integration key. Import from the generated `**notion/**` folder (directory specifier → `index`):
+
+```ts
+import { NotionORM } from "./notion/";
+
+const notion = new NotionORM({
+  auth: process.env.NOTION_KEY!,
+});
+
+const db = notion.databases.yourDatabaseName; // DatabaseClient
+const agent = notion.agents.yourAgentName; // AgentClient
+```
+
+Generated database and agent names are camelCased and exposed on an instance of `NotionORM`.
+
+- Use `notion.databases.<camelCaseDatabaseName>` for typed CRUD + query operations (`findMany`, `findFirst`, `findUnique`, `create`, `update`, `delete`, and more).
+- Use `notion.agents.<camelCaseAgentName>` for `chat()`, `chatStream()`, thread helpers, and history APIs.
+- For full method signatures and response shapes, see [API Reference](#api-reference).
+
+# Basic examples
 
 ### Create page in a database
 
@@ -154,29 +177,6 @@ const thread = await notion.agents.helpBot.chatStream({
 });
 
 ```
-
-# Implementation
-
-### Client setup
-
-Create a single ORM instance with your Notion integration key. Import from the generated `**notion/**` folder (directory specifier → `index`):
-
-```ts
-import { NotionORM } from "./notion/";
-
-const notion = new NotionORM({
-  auth: process.env.NOTION_KEY!,
-});
-
-const db = notion.databases.yourDatabaseName; // DatabaseClient
-const agent = notion.agents.yourAgentName; // AgentClient
-```
-
-Generated database and agent names are camelCased and exposed on an instance of `NotionORM`.
-
-- Use `notion.databases.<camelCaseDatabaseName>` for typed CRUD + query operations (`findMany`, `findFirst`, `findUnique`, `create`, `update`, `delete`, and more).
-- Use `notion.agents.<camelCaseAgentName>` for `chat()`, `chatStream()`, thread helpers, and history APIs.
-- For full method signatures and response shapes, see [API Reference](#api-reference).
 
 # Available database operations
 
