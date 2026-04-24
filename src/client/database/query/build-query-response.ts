@@ -1,5 +1,6 @@
 import type { QueryDataSourceResponse } from "@notionhq/client/build/src/api-endpoints";
 import type { DatabaseColumns } from "../types";
+import type { DatabasePropertyValue } from "../types";
 import type {
 	QueryResponseWithoutRawResponse,
 	QueryResponseWithRawResponse,
@@ -14,7 +15,7 @@ import {
  * schema so drift is surfaced without paying a validation cost on every row.
  */
 function mapQueryResults<
-	DatabaseSchemaType extends Record<string, unknown>,
+	DatabaseSchemaType extends Record<string, DatabasePropertyValue>,
 >(args: {
 	results: QueryDataSourceResponse["results"];
 	columns: DatabaseColumns;
@@ -45,7 +46,7 @@ function mapQueryResults<
 }
 
 type BuildQueryResponseBase<
-	DatabaseSchemaType extends Record<string, unknown>,
+	DatabaseSchemaType extends Record<string, DatabasePropertyValue>,
 > = {
 	response: QueryDataSourceResponse;
 	columns: DatabaseColumns;
@@ -53,29 +54,29 @@ type BuildQueryResponseBase<
 };
 
 type BuildQueryResponseWithRawResponse<
-	DatabaseSchemaType extends Record<string, unknown>,
+	DatabaseSchemaType extends Record<string, DatabasePropertyValue>,
 > = BuildQueryResponseBase<DatabaseSchemaType> & {
 	options: { includeRawResponse: true };
 };
 
 type BuildQueryResponseInput<
-	DatabaseSchemaType extends Record<string, unknown>,
+	DatabaseSchemaType extends Record<string, DatabasePropertyValue>,
 > = BuildQueryResponseBase<DatabaseSchemaType> & {
 	options?: { includeRawResponse?: false | undefined };
 };
 
 export function buildQueryResponse<
-	DatabaseSchemaType extends Record<string, unknown>,
+	DatabaseSchemaType extends Record<string, DatabasePropertyValue>,
 >(
 	args: BuildQueryResponseWithRawResponse<DatabaseSchemaType>,
 ): QueryResponseWithRawResponse<DatabaseSchemaType>;
 export function buildQueryResponse<
-	DatabaseSchemaType extends Record<string, unknown>,
+	DatabaseSchemaType extends Record<string, DatabasePropertyValue>,
 >(
 	args: BuildQueryResponseInput<DatabaseSchemaType>,
 ): QueryResponseWithoutRawResponse<DatabaseSchemaType>;
 export function buildQueryResponse<
-	DatabaseSchemaType extends Record<string, unknown>,
+	DatabaseSchemaType extends Record<string, DatabasePropertyValue>,
 >(
 	args:
 		| BuildQueryResponseInput<DatabaseSchemaType>

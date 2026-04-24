@@ -1,5 +1,5 @@
 import type { CreatePageParameters } from "@notionhq/client/build/src/api-endpoints";
-import { AST_RUNTIME_CONSTANTS } from "../../../ast/shared/constants";
+import { PACKAGE_RUNTIME_CONSTANTS } from "../../../runtime-constants";
 import type { SupportedNotionColumnType } from "../types";
 import { toNotionPageId } from "../types/notion-page-id";
 import type { NotWritableDatabaseColumnType } from "../types/schema";
@@ -52,7 +52,7 @@ function describeRuntimeValue(value: unknown): string {
 
 function unsupportedAddTypeError(type: SupportedNotionColumnType): Error {
 	return new Error(
-		`${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} create() does not support property type '${type}'. This property type is readable in query responses but cannot be written via create().`,
+		`${PACKAGE_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} create() does not support property type '${type}'. This property type is readable in query responses but cannot be written via create().`,
 	);
 }
 
@@ -62,7 +62,7 @@ function invalidAddValueError(args: {
 }): Error {
 	const actual = describeRuntimeValue(args.value);
 	return new Error(
-		`${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} create() received invalid value for property type '${args.type}'. Received ${actual}.`,
+		`${PACKAGE_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} create() received invalid value for property type '${args.type}'. Received ${actual}.`,
 	);
 }
 
