@@ -16,14 +16,22 @@ import {
 	type CreateAgentTypesResult,
 } from "../ast/agents/generate-agents-cli";
 import { createDatabaseTypes } from "../ast/database/generate-databases-cli";
-import { AGENTS_SDK_SETUP_COMMAND } from "../agents-sdk-resolver";
+import { isAgentsSdkAvailable } from "../agents-sdk-resolver";
+import type {
+	CodegenDiagnostic,
+	CodegenDiagnosticSink,
+} from "../ast/shared/codegen-diagnostics";
 import {
 	readAgentMetadataFromDisk,
 	readDatabaseMetadata,
 } from "../ast/shared/cached-metadata";
 import { AST_FS_PATHS } from "../ast/shared/constants";
 import { updateSourceIndexFile } from "../ast/shared/emit/orm-index-emitter";
-import { clearConfigCache, loadConfig } from "../config/loadConfig";
+import {
+	clearConfigCache,
+	getNotionConfig,
+	loadConfig,
+} from "../config/loadConfig";
 import { toDashedNotionId, toUndashedNotionId } from "../helpers";
 import { PACKAGE_RUNTIME_CONSTANTS } from "../runtime-constants";
 import {
@@ -32,6 +40,8 @@ import {
 	writeConfigFileWithAST,
 } from "./helpers";
 import { SyncProgressRenderer } from "./sync-progress-renderer";
+import { SyncProgressState } from "./sync-progress";
+import { logSyncReport } from "./sync-report";
 
 function exitWithError(message: string, error: unknown): never {
 	console.error(message);
@@ -39,42 +49,33 @@ function exitWithError(message: string, error: unknown): never {
 	process.exit(1);
 }
 
-/** Short example of wiring the generated `notion` entry (printed after sync). */
-function logNotionEntrypointExample(args: {
-	databaseKey: string | undefined;
-	agentKey: string | undefined;
-	agentsSkipped: boolean;
-}): void {
-	const { databaseKey, agentKey, agentsSkipped } = args;
-	const body: string[] = [
-		'import { NotionORM } from "./notion";',
-		"const notion = new NotionORM({ auth: process.env.NOTION_KEY! });",
-	];
-	if (databaseKey) {
-		body.push(`notion.databases.${databaseKey};`);
-	} else {
-		body.push("// notion.databases.* — add a database in config, then sync");
-	}
-	if (agentsSkipped) {
-		body.push(
-			"// notion.agents.* — `notion setup-agents-sdk` then `notion sync`",
-		);
-	} else if (agentKey) {
-		body.push(`notion.agents.${agentKey};`);
-	} else {
-		body.push("// notion.agents.* — sync when your workspace has agents");
-	}
-	for (const line of body) {
-		console.log(line);
-	}
-}
-
 /** Runs agent and database generation in parallel, then refreshes the root index once. */
 async function runSync(): Promise<void> {
-	const renderer = new SyncProgressRenderer(Boolean(process.stdout.isTTY));
+	const diagnostics: CodegenDiagnostic[] = [];
+	const onDiagnostic: CodegenDiagnosticSink = (d) => {
+		diagnostics.push(d);
+	};
+
+	const progressState = new SyncProgressState();
+	const renderer = new SyncProgressRenderer(
+		Boolean(process.stdout.isTTY),
+		() => progressState.getSnapshot(),
+	);
 	let rendererStarted = false;
 	try {
 		await validateConfig();
+
+		const previousOnDisk = {
+			databases: readDatabaseMetadata(),
+			agents: readAgentMetadataFromDisk(),
+		};
+
+		const config = await getNotionConfig();
+		progressState.bootstrap({
+			databaseCount: config.databases.length,
+			agentsSdkSkipped: !isAgentsSdkAvailable(),
+		});
+
 		renderer.start();
 		rendererStarted = true;
 		// Full sync replaces the entire generated tree so removed DBs/agents and stray
@@ -84,24 +85,32 @@ async function runSync(): Promise<void> {
 		const agentsPromise: Promise<CreateAgentTypesResult> = createAgentTypes({
 			skipSourceIndexUpdate: true,
 			onProgress: ({ completed, total }) => {
-				renderer.updateProgress("agents", completed, total);
+				progressState.applyAgentsProgress(completed, total);
 			},
+			onDiagnostic,
 		});
 
 		const databasesPromise = createDatabaseTypes({
 			type: "all",
 			skipSourceIndexUpdate: true,
 			onProgress: ({ completed, total }) => {
-				renderer.updateProgress("databases", completed, total);
+				progressState.applyDatabasesProgress(completed, total);
 			},
+			onDiagnostic,
 		});
 
 		const [agentsResult, databasesResult] = await Promise.all([
 			agentsPromise,
 			databasesPromise,
 		]);
-		renderer.complete("agents");
-		renderer.complete("databases");
+
+		progressState.finalizeAgents({
+			skipped: agentsResult.skipped,
+			successCount: agentsResult.agentNames.length,
+			totalListed: agentsResult.totalAgentsListed,
+			failureCount: agentsResult.generationFailureCount,
+		});
+
 		// Tear down the spinner before file writes and summary logs so TTY output
 		// is not interleaved with the progress interval.
 		renderer.stop();
@@ -116,63 +125,13 @@ async function runSync(): Promise<void> {
 			resolveCodegenEnvironment({ configRuntime: findConfigFile() }),
 		);
 
-		const { databaseNames, databaseKeys } = databasesResult;
-		const firstDatabaseKey = databaseKeys[0];
-		const firstAgentKey = agentsResult.agentKeys[0];
-
-		console.log("");
-		logNotionEntrypointExample({
-			databaseKey: firstDatabaseKey,
-			agentKey: firstAgentKey,
-			agentsSkipped: agentsResult.skipped,
+		logSyncReport({
+			databasesResult: databasesResult,
+			agentsResult,
+			diagnostics,
+			previousOnDisk,
+			configFile: findConfigFile(),
 		});
-		console.log("");
-
-		if (databaseNames.length === 0) {
-			console.log(
-				"📂 Databases: none in config (nothing generated under notion/databases).",
-			);
-		} else {
-			const lines = databaseNames
-				.map(
-					(title, i) => `   • ${title} → notion.databases.${databaseKeys[i]}`,
-				)
-				.join("\n");
-			console.log(`📂 Databases (${databaseNames.length}):\n${lines}`);
-		}
-
-		if (agentsResult.skipped) {
-			console.log(
-				`⚠️  Agents: skipped — Notion Agents SDK not installed. Run \`${AGENTS_SDK_SETUP_COMMAND}\` to generate clients (\`chat\`, \`getMessages\`, \`chatStream\`, thread helpers).`,
-			);
-		} else if (agentsResult.agentNames.length === 0) {
-			console.log("🤖 Agents: none returned for this integration.");
-		} else {
-			const lines = agentsResult.agentNames.map((n) => `   • ${n}`).join("\n");
-			console.log(`🤖 Agents (${agentsResult.agentNames.length}):\n${lines}`);
-		}
-
-		console.log("");
-		console.log("💡 Databases: use `notion.databases.*`");
-		if (!agentsResult.skipped) {
-			console.log(
-				"💡 Agents: use `notion.agents.*` (typed `chat`, `getMessages`, `chatStream`, …)",
-			);
-		}
-		console.log("");
-
-		const configFile = findConfigFile();
-		if (configFile) {
-			const configFileName =
-				configFile.path.split(/[\\/]/).pop() ?? NOTION_CONFIG_BASENAME;
-			console.log(
-				`📝 ${configFileName} contains the full list of connected databases and agents.`,
-			);
-		} else {
-			console.log(
-				"📝 No notion config file detected. Using NOTION_KEY from environment.",
-			);
-		}
 	} catch (error: unknown) {
 		exitWithError("❌ Error syncing types:", error);
 	} finally {

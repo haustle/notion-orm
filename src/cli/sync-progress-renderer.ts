@@ -1,40 +1,26 @@
 import * as readline from "node:readline";
-
-type ProgressRowState = "running" | "done" | "unavailable";
-type ProgressRowKey = "agents" | "databases";
-type ProgressRow = {
-	label: string;
-	completed: number;
-	total: number;
-	state: ProgressRowState;
-};
+import {
+	formatSyncLaneSegment,
+	isSyncLaneSpinnerTerminal,
+	type SyncProgressSnapshot,
+	syncProgressHasDoneWithErrors,
+} from "./sync-progress";
 
 /**
- * Small terminal renderer that keeps sync progress readable without interleaving
- * the agent and database generation logs. On TTY, redraws two rows (agents +
- * databases) with one shared spinner.
+ * Terminal painter for `notion sync`: reads a snapshot from `SyncProgressState`
+ * so rendering stays separate from progress semantics.
  */
 export class SyncProgressRenderer {
 	private readonly spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧"];
 	private spinnerIndex = 0;
 	private interval: ReturnType<typeof setInterval> | undefined;
 	private hasRendered = false;
-	private readonly rows: Record<ProgressRowKey, ProgressRow> = {
-		agents: {
-			label: "Agents",
-			completed: 0,
-			total: 0,
-			state: "running",
-		},
-		databases: {
-			label: "Databases",
-			completed: 0,
-			total: 0,
-			state: "running",
-		},
-	};
+	private lastRenderedLineCount = 0;
 
-	constructor(private readonly isTTY: boolean) {}
+	constructor(
+		private readonly isTTY: boolean,
+		private readonly getSnapshot: () => SyncProgressSnapshot,
+	) {}
 
 	start(): void {
 		const header = this.isTTY
@@ -48,33 +34,7 @@ export class SyncProgressRenderer {
 				this.render();
 			}, 90);
 		} else {
-			console.log(this.formatCombined());
-		}
-	}
-
-	updateProgress(key: ProgressRowKey, completed: number, total: number): void {
-		const row = this.rows[key];
-		row.completed = completed;
-		row.total = total;
-		if (row.state !== "done") {
-			if (total === 0) {
-				row.state = "unavailable";
-			} else if (completed >= total) {
-				row.state = "done";
-			} else {
-				row.state = "running";
-			}
-		}
-		if (this.isTTY) {
-			this.render();
-		}
-	}
-
-	complete(key: ProgressRowKey): void {
-		const row = this.rows[key];
-		row.state = row.total === 0 ? "unavailable" : "done";
-		if (this.isTTY) {
-			this.render();
+			console.log(this.formatCombined(this.getSnapshot()));
 		}
 	}
 
@@ -87,42 +47,43 @@ export class SyncProgressRenderer {
 			this.render();
 			process.stdout.write("\n");
 		} else {
-			console.log(this.formatCombined());
+			console.log(this.formatCombined(this.getSnapshot()));
 		}
 	}
 
-	private isRowTerminal(row: ProgressRow): boolean {
-		return row.state === "done" || row.state === "unavailable";
-	}
-
-	private formatSegmentBody(row: ProgressRow): string {
-		if (row.state === "unavailable") {
-			return "unavailable";
-		}
-		return `[${row.completed}/${row.total}]`;
-	}
-
-	private formatCombined(): string {
-		const d = this.rows.databases;
-		const a = this.rows.agents;
-		const left = `Databases: ${this.formatSegmentBody(d)}`;
-		const right = `Agents: ${this.formatSegmentBody(a)}`;
-		const allTerminal = this.isRowTerminal(d) && this.isRowTerminal(a);
+	private formatCombined(snapshot: SyncProgressSnapshot): string {
+		const d = snapshot.databases;
+		const a = snapshot.agents;
+		const left = `Databases: ${formatSyncLaneSegment(d)}`;
+		const right = `Agents: ${formatSyncLaneSegment(a)}`;
+		const allTerminal =
+			isSyncLaneSpinnerTerminal(d) && isSyncLaneSpinnerTerminal(a);
 		const marker = allTerminal
-			? "✔"
+			? syncProgressHasDoneWithErrors(snapshot)
+				? "⚠"
+				: "✔"
 			: this.isTTY
 				? this.spinnerFrames[this.spinnerIndex]
 				: "...";
-		return `${marker}  ${left}  ·  ${right}`;
+		const indent = " ".repeat(marker.length + 2);
+		return `${marker}  ${left}\n${indent}${right}`;
 	}
 
 	private render(): void {
-		const line = this.formatCombined();
+		const text = this.formatCombined(this.getSnapshot());
+		const lines = text.split("\n");
 		if (this.hasRendered) {
-			readline.moveCursor(process.stdout, 0, -1);
+			readline.moveCursor(process.stdout, 0, -this.lastRenderedLineCount);
 		}
-		readline.clearLine(process.stdout, 0);
-		process.stdout.write(`${line}\n`);
+		for (let i = 0; i < lines.length; i++) {
+			readline.clearLine(process.stdout, 0);
+			process.stdout.write(lines[i]!);
+			if (i < lines.length - 1) {
+				process.stdout.write("\n");
+			}
+		}
+		process.stdout.write("\n");
+		this.lastRenderedLineCount = lines.length;
 		this.hasRendered = true;
 	}
 }
