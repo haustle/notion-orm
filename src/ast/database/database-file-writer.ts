@@ -46,6 +46,11 @@ import {
 } from "../shared/codegen-environment";
 import { TS_EMIT_OPTIONS_GENERATED } from "../shared/emit/ts-emit-options";
 import {
+	type CodegenDiagnosticSink,
+	formatCodegenMissingOptionsIdentifierLine,
+	formatCodegenSkippedPropertyLine,
+} from "../shared/codegen-diagnostics";
+import {
 	propertyASTGenerators,
 	type SupportedNotionProperty,
 } from "./notion-column-generators";
@@ -134,14 +139,20 @@ function printDatabaseModule(args: {
 	return { tsCode };
 }
 
+type BuildDatabaseModuleOptions = {
+	onDiagnostic?: CodegenDiagnosticSink;
+};
+
 /**
  * Pure AST builder for a single database module.
  * Returns statement nodes and metadata without any filesystem side effects,
  * making it the primary seam for golden/snapshot tests.
  */
 function buildDatabaseModuleNodes(
-		dataSourceResponse: GetDataSourceResponse,
-	): DatabaseModuleBuildResult {
+	dataSourceResponse: GetDataSourceResponse,
+	options?: BuildDatabaseModuleOptions,
+): DatabaseModuleBuildResult {
+	const onDiagnostic = options?.onDiagnostic;
 		const { id: dataSourceId, properties } = dataSourceResponse;
 		const normalizedDataSourceId = toUndashedNotionId(dataSourceId);
 
@@ -156,11 +167,17 @@ function buildDatabaseModuleNodes(
 
 		const databaseModuleName = camelize(databaseName);
 
-		Object.entries(properties).forEach(([propertyName, value], index) => {
+		Object.entries(properties).forEach(([propertyName, value]) => {
 			const unsupportedPropertyType = value.type;
 			if (!isSupportedNotionProperty(value)) {
-				console.error(`${index === 0 ? "\n" : ""}
-				[${databaseModuleName}] Property '${propertyName}' with type '${unsupportedPropertyType}' is not supported and will be skipped.`);
+				onDiagnostic?.({
+					level: "warn",
+					message: formatCodegenSkippedPropertyLine({
+						databaseDisplayName: databaseName,
+						propertyName,
+						notionType: unsupportedPropertyType,
+					}),
+				});
 				return;
 			}
 
@@ -170,7 +187,14 @@ function buildDatabaseModuleNodes(
 
 			const handler = propertyASTGenerators[propertyType];
 			if (!handler) {
-				console.warn(`No handler found for column type '${propertyType}'`);
+				onDiagnostic?.({
+					level: "warn",
+					message: formatCodegenSkippedPropertyLine({
+						databaseDisplayName: databaseName,
+						propertyName,
+						notionType: propertyType,
+					}),
+				});
 				return;
 			}
 
@@ -195,9 +219,14 @@ function buildDatabaseModuleNodes(
 
 			if (isColumnTypesWithOptions(propertyType)) {
 				if (optionsIdentifier === undefined) {
-					console.warn(
-						`[${databaseModuleName}] Missing options identifier for '${propertyName}' (${propertyType}); skipping.`,
-					);
+					onDiagnostic?.({
+						level: "warn",
+						message: formatCodegenMissingOptionsIdentifierLine({
+							databaseModuleName,
+							propertyName,
+							propertyType,
+						}),
+					});
 					return;
 				}
 				columns[camelizedColumnName] = {
@@ -316,6 +345,7 @@ function buildDatabaseModuleNodes(
  */
 export function renderDatabaseModule(
 	dataSourceResponse: GetDataSourceResponse,
+	options?: BuildDatabaseModuleOptions,
 ): {
 	tsCode: string;
 	databaseName: string;
@@ -323,7 +353,7 @@ export function renderDatabaseModule(
 	databaseId: string;
 } {
 	const { statementSegments, databaseName, databaseModuleName, databaseId } =
-		buildDatabaseModuleNodes(dataSourceResponse);
+		buildDatabaseModuleNodes(dataSourceResponse, options);
 	const { tsCode } = printDatabaseModule({
 		statementSegments,
 		databaseFileBasename: toPascalCase(databaseModuleName),
@@ -339,11 +369,12 @@ export async function createCodegenFileForDatabase(
 	args: {
 		dataSourceResponse: GetDataSourceResponse;
 		environment: CodegenEnvironment;
+		onDiagnostic?: CodegenDiagnosticSink;
 	},
 ) {
-	const { dataSourceResponse, environment } = args;
+	const { dataSourceResponse, environment, onDiagnostic } = args;
 	const { statementSegments, databaseName, databaseModuleName, databaseId } =
-		buildDatabaseModuleNodes(dataSourceResponse);
+		buildDatabaseModuleNodes(dataSourceResponse, { onDiagnostic });
 
 	const databasesDir = AST_FS_PATHS.DATABASES_DIR;
 	if (!fs.existsSync(databasesDir)) {

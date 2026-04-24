@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import fs from "fs";
 import path from "path";
+import type { CodegenDiagnosticSink } from "../ast/shared/codegen-diagnostics";
 import {
 	type ConfigListItem,
 	type ConfigListKey,
@@ -65,7 +66,10 @@ function runFormatterForConfigFile(args: {
 }
 
 /** Format updated config files when local Prettier or Biome is available. */
-function formatConfigFileIfPossible(args: { configPath: string }): void {
+function formatConfigFileIfPossible(args: {
+	configPath: string;
+	onFormatWarning?: CodegenDiagnosticSink;
+}): void {
 	let hasFormatterFailure = false;
 	for (const formatter of CONFIG_FILE_FORMATTERS) {
 		const formatResult = runFormatterForConfigFile({
@@ -81,9 +85,13 @@ function formatConfigFileIfPossible(args: { configPath: string }): void {
 	}
 
 	if (hasFormatterFailure) {
-		console.warn(
-			"⚠️  Updated config but could not auto-format it with local prettier/biome.",
-		);
+		const message =
+			"Updated config but could not auto-format it with local prettier/biome.";
+		if (args.onFormatWarning) {
+			args.onFormatWarning({ level: "warn", message });
+		} else {
+			console.warn(`⚠️  ${message}`);
+		}
 	}
 }
 
@@ -102,6 +110,7 @@ function updateConfigListInFile(args: {
 	key: ConfigListKey;
 	items: ConfigListItem[];
 	strategy: ConfigListUpdateStrategy;
+	onFormatWarning?: CodegenDiagnosticSink;
 }): boolean {
 	try {
 		const originalContent = fs.readFileSync(args.configPath, "utf-8");
@@ -116,7 +125,10 @@ function updateConfigListInFile(args: {
 			return false;
 		}
 		fs.writeFileSync(args.configPath, output.code);
-		formatConfigFileIfPossible({ configPath: args.configPath });
+		formatConfigFileIfPossible({
+			configPath: args.configPath,
+			onFormatWarning: args.onFormatWarning,
+		});
 		return true;
 	} catch (error: unknown) {
 		console.error("❌ Error updating config file with AST:");
@@ -147,6 +159,7 @@ export async function syncAgentsInConfigWithAST(
 	configPath: string,
 	agents: Array<{ id: string; name: string }>,
 	isTS: boolean,
+	options?: { onFormatWarning?: CodegenDiagnosticSink },
 ): Promise<boolean> {
 	return updateConfigListInFile({
 		configPath,
@@ -157,6 +170,7 @@ export async function syncAgentsInConfigWithAST(
 			comment: agent.name,
 		})),
 		strategy: "replaceAll",
+		onFormatWarning: options?.onFormatWarning,
 	});
 }
 

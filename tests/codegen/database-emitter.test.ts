@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { renderDatabaseModule } from "../../src/ast/database/database-file-writer";
+import type { CodegenDiagnosticSink } from "../../src/ast/shared/codegen-diagnostics";
 import {
 	isSupportedPropertyType,
 	SUPPORTED_PROPERTY_TYPES,
@@ -28,6 +29,15 @@ afterEach((): void => undefined);
 
 function renderFixture(fixture: DataSourceFixtureSpec) {
 	return renderDatabaseModule(buildMockDataSourceResponse(fixture));
+}
+
+function renderFixtureWithDiagnostics(
+	fixture: DataSourceFixtureSpec,
+	onDiagnostic: CodegenDiagnosticSink,
+) {
+	return renderDatabaseModule(buildMockDataSourceResponse(fixture), {
+		onDiagnostic,
+	});
 }
 
 // ---------------------------------------------------------------------------
@@ -116,6 +126,16 @@ describe("database module emitter", () => {
 			expect(rendered.tsCode).not.toContain("summary");
 			expect(rendered.tsCode).not.toContain("Summary");
 			expect(rendered.tsCode).not.toContain("rollup");
+		});
+
+		test("reports skipped properties with standardized diagnostic lines when sink is provided", () => {
+			const messages: string[] = [];
+			renderFixtureWithDiagnostics(EDGE_CASES_FIXTURE, (d) => {
+				messages.push(d.message);
+			});
+			expect(messages).toContain(
+				"[Edge Cases] `Score` (formula) was skipped",
+			);
 		});
 	});
 

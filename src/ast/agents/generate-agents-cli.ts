@@ -11,6 +11,7 @@ import type { AgentIcon } from "../../client/agent/AgentClient";
 import { findConfigFile } from "../../config/findConfigFile";
 import { getNotionConfig } from "../../config/loadConfig";
 import { camelize, toPascalCase, toUndashedNotionId } from "../../helpers";
+import type { CodegenDiagnosticSink } from "../shared/codegen-diagnostics";
 import {
 	type CachedEntityMetadata,
 	readDatabaseMetadata,
@@ -40,13 +41,50 @@ type GenerationProgress = { completed: number; total: number };
 type CreateAgentTypesOptions = {
 	onProgress?: (progress: GenerationProgress) => void;
 	skipSourceIndexUpdate?: boolean;
+	onDiagnostic?: CodegenDiagnosticSink;
 };
+
+type AgentsListResponse = {
+	results: Array<{ id: string; name: string; icon: unknown }>;
+	has_more?: boolean;
+	next_cursor?: string | null;
+};
+
+async function listAllAgentsForSync(client: {
+	agents: {
+		list: (args: {
+			page_size: number;
+			start_cursor?: string;
+		}) => Promise<AgentsListResponse>;
+	};
+}): Promise<Array<{ id: string; name: string; icon: unknown }>> {
+	const out: Array<{ id: string; name: string; icon: unknown }> = [];
+	let cursor: string | undefined;
+	for (;;) {
+		const page = await client.agents.list({
+			page_size: 100,
+			...(cursor !== undefined ? { start_cursor: cursor } : {}),
+		});
+		for (const a of page.results) {
+			out.push({ id: a.id, name: a.name, icon: a.icon });
+		}
+		if (!page.has_more || !page.next_cursor) {
+			break;
+		}
+		cursor = page.next_cursor;
+	}
+	return out;
+}
 
 export type CreateAgentTypesResult = {
 	agentNames: string[];
 	/** Module/registry keys (camelCase), parallel to `agentNames`. */
 	agentKeys: string[];
 	skipped: boolean;
+	/** All agents returned by the API across pages (0 when `skipped`). */
+	totalAgentsListed: number;
+	/** Agents that failed during file generation (0 when `skipped`). */
+	generationFailureCount: number;
 };
 
 /** Returns `{ skipped: true }` when the agents SDK is not installed. */
@@ -54,7 +92,13 @@ export const createAgentTypes = async (
 	options?: CreateAgentTypesOptions,
 ): Promise<CreateAgentTypesResult> => {
 	if (!isAgentsSdkAvailable()) {
-		return { agentNames: [], agentKeys: [], skipped: true };
+		return {
+			agentNames: [],
+			agentKeys: [],
+			skipped: true,
+			totalAgentsListed: 0,
+			generationFailureCount: 0,
+		};
 	}
 
 	const sdk = await loadAgentsSdk();
@@ -66,12 +110,11 @@ export const createAgentTypes = async (
 	const configFile = findConfigFile();
 	const environment = resolveCodegenEnvironment({ configRuntime: configFile });
 
-	const agentsList = await client.agents.list({
-		page_size: 100,
-	});
-	options?.onProgress?.({ completed: 0, total: agentsList.results.length });
+	const agentsList = await listAllAgentsForSync(client);
+	const total = agentsList.length;
+	options?.onProgress?.({ completed: 0, total });
 	if (configFile) {
-		const agentsToSync = agentsList.results.map(({ id, name }) => ({
+		const agentsToSync = agentsList.map(({ id, name }) => ({
 			id,
 			name,
 		}));
@@ -79,6 +122,7 @@ export const createAgentTypes = async (
 			configFile.path,
 			agentsToSync,
 			configFile.isTS,
+			{ onFormatWarning: options?.onDiagnostic },
 		);
 	}
 
@@ -86,8 +130,9 @@ export const createAgentTypes = async (
 	const agentNames: string[] = [];
 	const agentKeys: string[] = [];
 	let completedCount = 0;
+	let generationFailureCount = 0;
 
-	for (const agent of agentsList.results) {
+	for (const agent of agentsList) {
 		try {
 			const normalizedIdForStorage = toUndashedNotionId(agent.id);
 			const agentMetadata = await generateAgentTypes(
@@ -102,11 +147,19 @@ export const createAgentTypes = async (
 			completedCount += 1;
 			options?.onProgress?.({
 				completed: completedCount,
-				total: agentsList.results.length,
+				total,
 			});
 		} catch (error: unknown) {
-			// biome-ignore lint/suspicious/noConsole: CLI
-			console.error(`❌ Error generating types for agent: ${agent.id}`, error);
+			generationFailureCount += 1;
+			const detail =
+				error instanceof Error ? error.message : String(error);
+			const message = `Error generating types for agent ${agent.id}: ${detail}`;
+			if (options?.onDiagnostic) {
+				options.onDiagnostic({ level: "error", message });
+			} else {
+				// biome-ignore lint/suspicious/noConsole: CLI fallback when no sink
+				console.error(`❌ ${message}`);
+			}
 		}
 	}
 
@@ -123,7 +176,13 @@ export const createAgentTypes = async (
 		updateSourceIndexFile(databasesMetadata, agentsMetadata, environment);
 	}
 
-	return { agentNames, agentKeys, skipped: false };
+	return {
+		agentNames,
+		agentKeys,
+		skipped: false,
+		totalAgentsListed: total,
+		generationFailureCount,
+	};
 };
 
 /** Emits the environment-specific `agents/index` registry module. */

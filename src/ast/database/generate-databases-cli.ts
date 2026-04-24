@@ -24,6 +24,7 @@ import {
 	codegenIndexSourcePath,
 } from "../shared/constants";
 import { updateSourceIndexFile } from "../shared/emit/orm-index-emitter";
+import type { CodegenDiagnosticSink } from "../shared/codegen-diagnostics";
 import { emitRegistryModuleArtifacts } from "../shared/emit/registry-emitter";
 import { createCodegenFileForDatabase } from "./database-file-writer";
 
@@ -45,6 +46,7 @@ type GenerationProgress = { completed: number; total: number };
 type CreateDatabaseTypesArgs = CreateDatabaseTypesOptions & {
 	onProgress?: (progress: GenerationProgress) => void;
 	skipSourceIndexUpdate?: boolean;
+	onDiagnostic?: CodegenDiagnosticSink;
 };
 
 /**
@@ -102,6 +104,7 @@ export const createDatabaseTypes = async (
 				client,
 				databaseId,
 				environment,
+				options.onDiagnostic,
 			);
 			metadataMap.set(databaseMetadata.id, databaseMetadata);
 			databaseNames.push(databaseMetadata.displayName);
@@ -172,6 +175,7 @@ async function generateDatabaseTypes(
 	client: Client,
 	databaseId: string,
 	environment: CodegenEnvironment,
+	onDiagnostic?: CodegenDiagnosticSink,
 ): Promise<CachedEntityMetadata> {
 	const databaseObject = await client.dataSources.retrieve({
 		data_source_id: databaseId,
@@ -181,6 +185,7 @@ async function generateDatabaseTypes(
 		await createCodegenFileForDatabase({
 			dataSourceResponse: databaseObject,
 			environment,
+			onDiagnostic,
 		});
 
 	return createMetadata(id, databaseModuleName, databaseName);
@@ -205,3 +210,7 @@ function prepareIncrementalMetadata(
 
 	return metadataMap;
 }
+
+export type DatabaseTypesCodegenResult = Awaited<
+	ReturnType<typeof createDatabaseTypes>
+>;
