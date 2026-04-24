@@ -32,9 +32,9 @@
 	},
 	"scripts": {
 		"prepare": "husky",
-		"start": "bun run build && bun build/src/index.js",
-		"build": "rm -rf build && tsc && node ./scripts/patch-build-import-extensions.mjs",
-		"build:link": "npm run build && bun link",
+		"start": "bun run build && node build/src/index.js",
+		"build": "rm -rf build && tsc && node ./scripts/patch-build-import-extensions.mjs && chmod +x build/src/cli/index.js",
+		"build:link": "bun run build && bun link",
 		"test": "bun test",
 		"test:types": "tsc -p tests/types/tsconfig.json --noEmit",
 		"lint": "biome lint tests/runtime tests/cli tests/codegen tests/helpers tests/types --diagnostic-level=error",
@@ -43,9 +43,9 @@
 		"site": "bun run --cwd website  dev",
 		"site:deploy": "bun run --cwd website  deploy",
 		"site:typecheck": "bun run --cwd website  typecheck",
-		"unpack-size": "npm pack --dry-run 2>&1 | grep 'unpacked size'",
-		"loop": "bun run build:link && cd ../orm-testing && bun link @haustle/notion-orm && bun notion sync && bun run smoke/coffee-shop/run.ts",
-		"refresh": "rm -rf ./node_modules ./bun.lockb && bun install"
+		"unpack-size": "bun pm pack --dry-run 2>&1 | rg 'unpacked size'",
+		"loop": "bun run build:link && cd ../orm-testing && bun link @haustle/notion-orm && bunx notion sync && bun run smoke/coffee-shop/run.ts",
+		"refresh": "rm -rf ./node_modules && bun install"
 	},
 	"author": "",
 	"license": "ISC",
@@ -62,6 +62,7 @@
 		"@babel/generator": "^7.28.0",
 		"@babel/parser": "^7.28.0",
 		"@notionhq/client": "^5.14.0",
+		"dotenv": "^17.4.2",
 		"zod": "^3.23.8"
 	},
 	"optionalDependencies": {
@@ -70,6 +71,9 @@
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/Haustle/notion-orm"
+	},
+	"engines": {
+		"node": ">=18"
 	},
 	"homepage": "https://github.com/Haustle/notion-orm#readme",
 	"keywords": [
