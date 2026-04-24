@@ -29,12 +29,27 @@ function shouldRewriteSpecifier(specifier) {
 	);
 }
 
-function rewriteSpecifier(specifier) {
+/**
+ * TypeScript may emit `from "../dir"` when `../dir/index.ts` is the target.
+ * Node ESM needs `../dir/index.js`, not `../dir.js`.
+ */
+function rewriteSpecifier(specifier, importerPath) {
 	if (!shouldRewriteSpecifier(specifier)) {
 		return specifier;
 	}
 	const { pathname, suffix } = splitSpecifierSuffix(specifier);
-	return `${pathname}.js${suffix}`;
+	if (!importerPath) {
+		return `${pathname}.js${suffix}`;
+	}
+	const baseDir = path.dirname(importerPath);
+	const resolvedDir = path.resolve(baseDir, pathname);
+	const asFile = `${resolvedDir}.js`;
+	const asIndex = path.join(resolvedDir, "index.js");
+	let target = `${pathname}.js`;
+	if (!fs.existsSync(asFile) && fs.existsSync(asIndex)) {
+		target = `${pathname}/index.js`;
+	}
+	return `${target}${suffix}`;
 }
 
 function parseModuleSource(source) {
@@ -63,11 +78,11 @@ function walkAst(node, visitor) {
 }
 
 function buildSpecifierEdit(args) {
-	const { literal, source } = args;
+	const { literal, source, importerPath } = args;
 	if (literal.start == null || literal.end == null) {
 		return undefined;
 	}
-	const rewrittenSpecifier = rewriteSpecifier(literal.value);
+	const rewrittenSpecifier = rewriteSpecifier(literal.value, importerPath);
 	if (rewrittenSpecifier === literal.value) {
 		return undefined;
 	}
@@ -84,7 +99,7 @@ function buildSpecifierEdit(args) {
 	};
 }
 
-function collectSpecifierEdits(source) {
+function collectSpecifierEdits(source, importerPath) {
 	const ast = parseModuleSource(source);
 	const edits = [];
 	walkAst(ast.program, (node) => {
@@ -98,6 +113,7 @@ function collectSpecifierEdits(source) {
 			const edit = buildSpecifierEdit({
 				literal: node.source,
 				source,
+				importerPath,
 			});
 			if (edit) {
 				edits.push(edit);
@@ -108,6 +124,7 @@ function collectSpecifierEdits(source) {
 			const edit = buildSpecifierEdit({
 				literal: node.source,
 				source,
+				importerPath,
 			});
 			if (edit) {
 				edits.push(edit);
@@ -123,6 +140,7 @@ function collectSpecifierEdits(source) {
 			const edit = buildSpecifierEdit({
 				literal: node.arguments[0],
 				source,
+				importerPath,
 			});
 			if (edit) {
 				edits.push(edit);
@@ -132,13 +150,11 @@ function collectSpecifierEdits(source) {
 	return edits.sort((left, right) => right.start - left.start);
 }
 
-export function rewriteRelativeImportSpecifiers(source) {
+export function rewriteRelativeImportSpecifiers(source, importerPath) {
 	let updated = source;
-	for (const edit of collectSpecifierEdits(source)) {
+	for (const edit of collectSpecifierEdits(source, importerPath)) {
 		updated =
-			updated.slice(0, edit.start) +
-			edit.replacement +
-			updated.slice(edit.end);
+			updated.slice(0, edit.start) + edit.replacement + updated.slice(edit.end);
 	}
 	return updated;
 }
@@ -156,7 +172,7 @@ function patchBuildDirectory(directory) {
 		}
 
 		const original = fs.readFileSync(fullPath, "utf8");
-		const updated = rewriteRelativeImportSpecifiers(original);
+		const updated = rewriteRelativeImportSpecifiers(original, fullPath);
 		if (updated !== original) {
 			fs.writeFileSync(fullPath, updated);
 		}
