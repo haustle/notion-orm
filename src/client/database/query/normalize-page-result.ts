@@ -5,7 +5,7 @@ import type {
 } from "@notionhq/client/build/src/api-endpoints";
 import { camelize } from "../../../helpers";
 import { objectEntries } from "../../../typeUtils";
-import type { DatabaseColumns } from "../types";
+import type { DatabaseColumns, DatabasePropertyValue } from "../types";
 import { getSimplifiedResult } from "./response";
 import type {
 	NormalizablePageResult,
@@ -37,11 +37,8 @@ export function isPageInDataSource(
 
 /** Converts a raw Notion page into the camelized shape exposed by the client. */
 export function normalizePageResult<
-	DatabaseSchemaType extends Record<string, unknown>,
->(args: {
-	result: NormalizablePageResult;
-	columns: DatabaseColumns;
-}) {
+	DatabaseSchemaType extends Record<string, DatabasePropertyValue>,
+>(args: { result: NormalizablePageResult; columns: DatabaseColumns }) {
 	const normalizedResult: Partial<DatabaseSchemaType> = {};
 	for (const [columnName, propertyValue] of objectEntries(
 		args.result.properties,

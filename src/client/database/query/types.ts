@@ -4,6 +4,7 @@ import type {
 	QueryDataSourceResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 import type {
+	DatabasePropertyValue,
 	DatabaseDefinition,
 	FilterableNotionColumnType,
 	QueryFilter,
@@ -28,7 +29,9 @@ export type NormalizablePageResult =
 	| QueryDataSourcePageResultWithProperties
 	| PageObjectResponse;
 
-export type ResponseResolver = (property: NotionPropertyValue) => unknown;
+export type ResponseResolver = (
+	property: NotionPropertyValue,
+) => DatabasePropertyValue;
 
 export type ResponseResolverRegistry = Record<
 	SupportedNotionColumnType,

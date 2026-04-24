@@ -40,6 +40,10 @@ import {
 	transpileTsToJs,
 	writeTextArtifact,
 } from "../shared/emit/ts-emit-core";
+import {
+	type CodegenEnvironment,
+	codegenArtifactFileName,
+} from "../shared/codegen-environment";
 import { TS_EMIT_OPTIONS_GENERATED } from "../shared/emit/ts-emit-options";
 import {
 	propertyASTGenerators,
@@ -115,10 +119,10 @@ function insertBlankLineAfterGeneratedBanner(code: string): string {
 	);
 }
 
-function printAndTranspileDatabaseModule(args: {
+function printDatabaseModule(args: {
 	statementSegments: readonly (readonly ts.Statement[])[];
 	databaseFileBasename: string;
-}): { tsCode: string; jsCode: string } {
+}): { tsCode: string } {
 	const context = createEmitContext({
 		fileName: `${args.databaseFileBasename}.ts`,
 	});
@@ -127,12 +131,7 @@ function printAndTranspileDatabaseModule(args: {
 		.join("\n\n");
 	let tsCode = insertBlankLineAfterGeneratedBanner(printed);
 	tsCode = finalizeGeneratedSourceWithTrailingNewline(tsCode);
-	const jsCode = transpileTsToJs({
-		typescriptCode: tsCode,
-		module: TS_EMIT_OPTIONS_GENERATED.module,
-		target: TS_EMIT_OPTIONS_GENERATED.target,
-	});
-	return { tsCode, jsCode };
+	return { tsCode };
 }
 
 /**
@@ -311,7 +310,7 @@ function buildDatabaseModuleNodes(
 	}
 
 /**
- * Renders the generated database module to TS and JS source text without
+ * Renders the generated database module to TypeScript source text without
  * writing to disk. Used by golden tests and any caller that needs the
  * emitted code as strings.
  */
@@ -319,27 +318,30 @@ export function renderDatabaseModule(
 	dataSourceResponse: GetDataSourceResponse,
 ): {
 	tsCode: string;
-	jsCode: string;
 	databaseName: string;
 	databaseModuleName: string;
 	databaseId: string;
 } {
 	const { statementSegments, databaseName, databaseModuleName, databaseId } =
 		buildDatabaseModuleNodes(dataSourceResponse);
-	const { tsCode, jsCode } = printAndTranspileDatabaseModule({
+	const { tsCode } = printDatabaseModule({
 		statementSegments,
 		databaseFileBasename: toPascalCase(databaseModuleName),
 	});
-	return { tsCode, jsCode, databaseName, databaseModuleName, databaseId };
+	return { tsCode, databaseName, databaseModuleName, databaseId };
 }
 
 /**
  * Creates the generated module for a single database and writes it to disk.
  * Thin wrapper over the pure builders that adds filesystem I/O.
  */
-export async function createTypescriptFileForDatabase(
-	dataSourceResponse: GetDataSourceResponse,
+export async function createCodegenFileForDatabase(
+	args: {
+		dataSourceResponse: GetDataSourceResponse;
+		environment: CodegenEnvironment;
+	},
 ) {
+	const { dataSourceResponse, environment } = args;
 	const { statementSegments, databaseName, databaseModuleName, databaseId } =
 		buildDatabaseModuleNodes(dataSourceResponse);
 
@@ -349,14 +351,23 @@ export async function createTypescriptFileForDatabase(
 	}
 
 	const databaseFileBasename = toPascalCase(databaseModuleName);
-	const { tsCode, jsCode } = printAndTranspileDatabaseModule({
+	const { tsCode } = printDatabaseModule({
 		statementSegments,
 		databaseFileBasename,
 	});
-	const tsPath = path.resolve(databasesDir, `${databaseFileBasename}.ts`);
-	const jsPath = path.resolve(databasesDir, `${databaseFileBasename}.js`);
-	writeTextArtifact({ filePath: tsPath, content: tsCode });
-	writeTextArtifact({ filePath: jsPath, content: jsCode });
+	const outputPath = path.resolve(
+		databasesDir,
+		codegenArtifactFileName(databaseFileBasename, environment),
+	);
+	const content =
+		environment === "javascript"
+			? transpileTsToJs({
+					typescriptCode: tsCode,
+					module: TS_EMIT_OPTIONS_GENERATED.module,
+					target: TS_EMIT_OPTIONS_GENERATED.target,
+				})
+			: tsCode;
+	writeTextArtifact({ filePath: outputPath, content });
 
 	return {
 		databaseName,

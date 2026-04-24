@@ -493,7 +493,7 @@ function createWorkspaceFiles(): Record<string, string> {
 	const MOCK_PACKAGE_NOTION_ID_PATTERNS =
 		"playground_modules/haustle-notion-orm/notion-id-patterns.ts" as const;
 	const MOCK_PACKAGE_BASE =
-		"playground_modules/haustle-notion-orm/build/src/base.ts" as const;
+		"playground_modules/haustle-notion-orm/base.ts" as const;
 	const MOCK_PACKAGE_PREFIX = "playground_modules/" as const;
 
 	const hiddenSupportFiles = [
@@ -506,7 +506,7 @@ function createWorkspaceFiles(): Record<string, string> {
 			playgroundFiles[MOCK_PACKAGE_NOTION_ID_PATTERNS],
 		],
 		[
-			"/node_modules/@haustle/notion-orm/build/src/base.ts",
+			"/node_modules/@haustle/notion-orm/base.ts",
 			playgroundFiles[MOCK_PACKAGE_BASE],
 		],
 		[
@@ -517,7 +517,8 @@ function createWorkspaceFiles(): Record<string, string> {
 					type: "module",
 					exports: {
 						".": "./index.ts",
-						"./build/src/base": "./build/src/base.ts",
+						"./base": "./base.ts",
+						"./build/src/base": "./base.ts",
 					},
 				},
 				null,

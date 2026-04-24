@@ -19,9 +19,7 @@ export type Create<Y extends SchemaRecord> = {
 	markdown?: CreatePageParameters["markdown"];
 };
 
-export type CreateMany<Y extends SchemaRecord> = {
-	properties: Y[];
-};
+export type CreateMany<Y extends SchemaRecord> = ReadonlyArray<Create<Y>>;
 
 export type Update<Y extends SchemaRecord> = {
 	where: { id: string };

@@ -12,7 +12,7 @@ const AGENTS_SDK_MISSING_MESSAGE =
 	`Agent support requires the Notion Agents SDK (paid feature).\n` +
 	`Run \`${AGENTS_SDK_SETUP_COMMAND}\` to install it, then run \`notion sync\`.`;
 
-/** Filesystem probe instead of `createRequire` for Bun + Node compatibility. */
+/** Filesystem probe instead of `createRequire` so resolution works the same in Node and other runtimes. */
 export function isAgentsSdkAvailable(): boolean {
 	const sdkPackageJson = path.join(
 		process.cwd(),

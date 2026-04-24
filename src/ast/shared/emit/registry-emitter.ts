@@ -1,5 +1,6 @@
 import * as ts from "typescript";
-import { emitTsAndJsArtifacts, type TsEmitContext } from "./ts-emit-core";
+import type { CodegenEnvironment } from "../codegen-environment";
+import { emitArtifactsForEnvironment, type TsEmitContext } from "./ts-emit-core";
 import { TS_EMIT_OPTIONS_DEFAULT } from "./ts-emit-options";
 
 /**
@@ -67,22 +68,23 @@ export function buildRegistryModuleAst(args: {
 }
 
 /**
- * Emits TypeScript + JavaScript artifacts for a registry module.
- * This is used by both database and agent barrel generation.
+ * Emits the registry module in the format appropriate for the consumer project.
+ * `outputPath` should already be extension-correct for `environment`
+ * (use `codegenIndexSourcePath` to build it).
  */
 export function emitRegistryModuleArtifacts(args: {
 	registryName: string;
 	entries: RegistryEntry[];
-	tsPath: string;
-	jsPath: string;
+	outputPath: string;
+	environment: CodegenEnvironment;
 	context?: TsEmitContext;
-}): { tsCode: string; jsCode: string } {
-	const { registryName, entries, tsPath, jsPath, context } = args;
+}): { sourceCode: string } {
+	const { registryName, entries, outputPath, environment, context } = args;
 	const nodes = buildRegistryModuleAst({ registryName, entries });
-	return emitTsAndJsArtifacts({
+	return emitArtifactsForEnvironment({
 		nodes,
-		tsPath,
-		jsPath,
+		outputPath,
+		environment,
 		context,
 		module: TS_EMIT_OPTIONS_DEFAULT.module,
 		target: TS_EMIT_OPTIONS_DEFAULT.target,

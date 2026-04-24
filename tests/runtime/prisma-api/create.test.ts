@@ -64,14 +64,40 @@ describe("create", () => {
 
 	test("createMany calls pages.create N times", async () => {
 		const client = createClient();
-		const results = await client.createMany({
-			properties: [
-				{ shopName: "Shop A", rating: 3, hasWifi: true },
-				{ shopName: "Shop B", rating: 5, hasWifi: false },
-			],
-		});
+		const results = await client.createMany([
+			{ properties: { shopName: "Shop A", rating: 3, hasWifi: true } },
+			{ properties: { shopName: "Shop B", rating: 5, hasWifi: false } },
+		]);
 		expect(results).toHaveLength(2);
 		expect(pagesCreateMock).toHaveBeenCalledTimes(2);
+	});
+
+	test("createMany forwards per-item icon, cover, and markdown", async () => {
+		const client = createClient();
+		const icon = { type: "emoji" as const, emoji: "📚" as const };
+		const cover = { type: "external" as const, external: { url: "https://example.com/cover.jpg" } };
+		const markdown = "# Book notes";
+		const results = await client.createMany([
+			{
+				properties: { shopName: "Shop A", rating: 3, hasWifi: true },
+				icon,
+				cover,
+			},
+			{
+				properties: { shopName: "Shop B", rating: 5, hasWifi: false },
+				markdown,
+			},
+		]);
+		expect(results).toHaveLength(2);
+		expect(pagesCreateMock).toHaveBeenCalledTimes(2);
+		expect(pagesCreateMock).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({ icon, cover }),
+		);
+		expect(pagesCreateMock).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({ markdown }),
+		);
 	});
 
 	test("passes markdown content to API", async () => {

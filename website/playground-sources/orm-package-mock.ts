@@ -442,9 +442,7 @@ export type Create<Schema extends object> = {
 	markdown?: string;
 };
 
-export type CreateMany<Schema extends object> = {
-	properties: Schema[];
-};
+export type CreateMany<Schema extends object> = ReadonlyArray<Create<Schema>>;
 
 export type Update<Schema extends object> = {
 	where: { id: string };

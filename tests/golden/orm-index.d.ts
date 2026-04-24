@@ -2,15 +2,15 @@
 // Regenerate with `notion sync` (or your package script).
 // Database client factories (generated under ./databases/).
 
-import type { TaskDb } from "./databases/TaskDb";
+import type { TaskDb } from "./databases/TaskDb.js";
 
 // Agent client factories (generated under ./agents/).
-import type { MealAgent } from "./agents/MealAgent";
+import type { MealAgent } from "./agents/MealAgent.js";
 
 // Package imports: NotionORMBase, config types, and client classes.
-import { NotionORMBase, AgentClient, DatabaseClient } from "@haustle/notion-orm/build/src/base";
-export type { NotionConfigType } from "@haustle/notion-orm/build/src/base";
-export { AgentClient, DatabaseClient } from "@haustle/notion-orm/build/src/base";
+import { NotionORMBase, AgentClient, DatabaseClient } from "@haustle/notion-orm/base";
+export type { NotionConfigType } from "@haustle/notion-orm/base";
+export { AgentClient, DatabaseClient } from "@haustle/notion-orm/base";
 
 /**
  * Generated Notion ORM entrypoint for this project.

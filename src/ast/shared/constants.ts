@@ -5,12 +5,18 @@
  */
 import path from "path";
 import { toPascalCase } from "../../helpers";
+import { PACKAGE_RUNTIME_CONSTANTS } from "../../runtime-constants";
+import {
+	codegenArtifactFileName,
+	type CodegenEnvironment,
+} from "./codegen-environment";
 
 /**
  * Top-level directory name for CLI-generated artifacts in consuming projects
  * (`notion/` entry + `databases/`, `agents/`). Prefer **`import { NotionORM } from "./notion/"`**
  * in apps (directory import resolves to `index` — no need to spell `index`). Distinct from this package's
- * npm `outDir` (`build/`), which remains `@haustle/notion-orm/build/...`.
+ * npm `outDir` (`build/`), which is hidden behind stable package exports such as
+ * `@haustle/notion-orm/base`.
  */
 const PROJECT_CODEGEN_DIR_NAME = "notion" as const;
 
@@ -19,7 +25,7 @@ const PROJECT_DATABASES_DIR_NAME = "databases" as const;
 
 /**
  * Resolve generated artifact paths from the current project root, not from the
- * installed package location. This keeps `bun notion sync` writing into the
+ * installed package location. This keeps `notion sync` writing into the
  * consuming app when the package is linked locally.
  */
 function getProjectBuildDir(): string {
@@ -57,14 +63,6 @@ export const AST_FS_PATHS = {
 		return path.resolve(getAgentsDir(), AST_FS_FILENAMES.METADATA);
 	},
 
-	get buildIndexTs(): string {
-		return path.resolve(AST_FS_PATHS.CODEGEN_ROOT_DIR, AST_FS_FILENAMES.INDEX_TS);
-	},
-
-	get buildIndexJs(): string {
-		return path.resolve(AST_FS_PATHS.CODEGEN_ROOT_DIR, AST_FS_FILENAMES.INDEX_JS);
-	},
-
 	get buildIndexDts(): string {
 		return path.resolve(AST_FS_PATHS.CODEGEN_ROOT_DIR, AST_FS_FILENAMES.INDEX_DTS);
 	},
@@ -75,21 +73,37 @@ export const AST_FS_PATHS = {
 			AST_FS_FILENAMES.INDEX_DTS_MAP,
 		);
 	},
-
-	get databaseBarrelTs(): string {
-		return path.resolve(getDatabasesDir(), AST_FS_FILENAMES.INDEX_TS);
-	},
-
-	get databaseBarrelJs(): string {
-		return path.resolve(getDatabasesDir(), AST_FS_FILENAMES.INDEX_JS);
-	},
 } as const;
+
+/**
+ * Named locations where an environment-specific `index.ts` / `index.js` is emitted.
+ * Scopes are the keys of `CODEGEN_INDEX_DIR_RESOLVERS` only (AGENTS.md: derive unions from maps).
+ */
+const CODEGEN_INDEX_DIR_RESOLVERS = {
+	codegenRoot: getProjectBuildDir,
+	databases: getDatabasesDir,
+	agents: getAgentsDir,
+} as const satisfies Record<string, () => string>;
+
+type CodegenIndexScope = keyof typeof CODEGEN_INDEX_DIR_RESOLVERS;
+
+/**
+ * Canonical filesystem path for a generated `index.{ts,js}` source file.
+ * Centralizes the "where does the environment-specific barrel live" rule so
+ * callers never branch on TS vs JS filenames directly.
+ */
+export function codegenIndexSourcePath(args: {
+	scope: CodegenIndexScope;
+	environment: CodegenEnvironment;
+}): string {
+	const { scope, environment } = args;
+	const dir = CODEGEN_INDEX_DIR_RESOLVERS[scope]();
+	return path.join(dir, codegenArtifactFileName("index", environment));
+}
 
 /** Shared filenames used across emitted artifacts. */
 const AST_FS_FILENAMES = {
 	METADATA: "metadata.json",
-	INDEX_TS: "index.ts",
-	INDEX_JS: "index.js",
 	INDEX_DTS: "index.d.ts",
 	INDEX_DTS_MAP: "index.d.ts.map",
 } as const;
@@ -99,32 +113,24 @@ export const AST_IMPORT_PATHS = {
 	DATABASE_CLIENT: "@haustle/notion-orm",
 	AGENT_CLIENT: "@haustle/notion-orm",
 	QUERY_TYPES: "@haustle/notion-orm",
-	ORM_BASE: "@haustle/notion-orm/build/src/base",
+	ORM_BASE: "@haustle/notion-orm/base",
 
 	ZOD: "zod",
 
 	databaseClass(name: string): string {
-		return `./${PROJECT_DATABASES_DIR_NAME}/${toPascalCase(name)}`;
+		return `./${PROJECT_DATABASES_DIR_NAME}/${toPascalCase(name)}.js`;
 	},
 
 	agentClass(name: string): string {
-		return `./agents/${toPascalCase(name)}`;
+		return `./agents/${toPascalCase(name)}.js`;
 	},
 } as const;
 
-/** Runtime constants shared by emitted clients and CLI flows. */
-export const AST_RUNTIME_CONSTANTS = {
-	NOTION_API_VERSION: "2026-03-11",
-
-	PACKAGE_LOG_PREFIX: "[@haustle/notion-orm]",
-
-	CLI_GENERATE_COMMAND: "notion sync",
-
-	SCHEMA_DRIFT_PREFIX: "Schema drift detected",
-
-	SCHEMA_DRIFT_HELP_MESSAGE:
-		"To easily fix this, please run `notion sync` to refresh all database schemas.",
-} as const;
+/**
+ * Backward-compatible alias for shared runtime constants.
+ * New runtime code should prefer importing from `src/runtime-constants.ts`.
+ */
+export const AST_RUNTIME_CONSTANTS = PACKAGE_RUNTIME_CONSTANTS;
 
 /** Canonical generated type names referenced across emitters. */
 export const AST_TYPE_NAMES = {
@@ -170,7 +176,7 @@ export const PLAYGROUND_PATHS = {
 	MOCK_PACKAGE_INDEX: "playground_modules/haustle-notion-orm/index.ts",
 	MOCK_PACKAGE_NOTION_ID_PATTERNS:
 		"playground_modules/haustle-notion-orm/notion-id-patterns.ts",
-	MOCK_PACKAGE_BASE: "playground_modules/haustle-notion-orm/build/src/base.ts",
+	MOCK_PACKAGE_BASE: "playground_modules/haustle-notion-orm/base.ts",
 	MOCK_PACKAGE_PREFIX: "playground_modules/",
 
 	DEMO_AUTH_PLACEHOLDER: "my-notion-api-key",

@@ -1,10 +1,8 @@
 import fs from "fs";
 import path from "path";
 import * as ts from "typescript";
-import {
-	TS_EMIT_OPTIONS_DEFAULT,
-	TS_EMIT_SOURCE_TARGET,
-} from "./ts-emit-options";
+import type { CodegenEnvironment } from "../codegen-environment";
+import { TS_EMIT_SOURCE_TARGET } from "./ts-emit-options";
 
 /**
  * Shared emit context used by all AST-based codegen modules.
@@ -100,8 +98,8 @@ export function transpileTsToJs(args: {
 }): string {
 	const {
 		typescriptCode,
-		module = TS_EMIT_OPTIONS_DEFAULT.module,
-		target = TS_EMIT_OPTIONS_DEFAULT.target,
+		module = ts.ModuleKind.ES2020,
+		target = ts.ScriptTarget.ES2020,
 		esModuleInterop,
 		allowSyntheticDefaultImports,
 	} = args;
@@ -136,24 +134,40 @@ export function writeTextArtifact(args: {
 }
 
 /**
- * End-to-end helper used by AST generators:
- * print TS -> transpile JS -> write both files.
+ * End-to-end helper used by AST generators that only emit TypeScript source.
  */
-export function emitTsAndJsArtifacts(args: {
+function emitTsArtifacts(args: {
 	nodes: readonly ts.Statement[];
-	tsPath: string;
-	jsPath: string;
+	outputPath: string;
+	context?: TsEmitContext;
+	listFormat?: ts.ListFormat;
+}): { tsCode: string } {
+	const { nodes, outputPath, context, listFormat } = args;
+	const tsCode = printTsNodes({
+		nodes,
+		context,
+		listFormat,
+	});
+	writeTextArtifact({ filePath: outputPath, content: tsCode });
+	return { tsCode };
+}
+
+/**
+ * End-to-end helper used by AST generators that emit runtime JavaScript files.
+ */
+function emitJsArtifacts(args: {
+	nodes: readonly ts.Statement[];
+	outputPath: string;
 	context?: TsEmitContext;
 	listFormat?: ts.ListFormat;
 	module?: ts.ModuleKind;
 	target?: ts.ScriptTarget;
 	esModuleInterop?: boolean;
 	allowSyntheticDefaultImports?: boolean;
-}): { tsCode: string; jsCode: string } {
+}): { jsCode: string } {
 	const {
 		nodes,
-		tsPath,
-		jsPath,
+		outputPath,
 		context,
 		listFormat,
 		module,
@@ -161,19 +175,68 @@ export function emitTsAndJsArtifacts(args: {
 		esModuleInterop,
 		allowSyntheticDefaultImports,
 	} = args;
-	const tsCode = printTsNodes({
+	const typescriptCode = printTsNodes({
 		nodes,
 		context,
 		listFormat,
 	});
 	const jsCode = transpileTsToJs({
-		typescriptCode: tsCode,
+		typescriptCode,
 		module,
 		target,
 		esModuleInterop,
 		allowSyntheticDefaultImports,
 	});
-	writeTextArtifact({ filePath: tsPath, content: tsCode });
-	writeTextArtifact({ filePath: jsPath, content: jsCode });
-	return { tsCode, jsCode };
+	writeTextArtifact({ filePath: outputPath, content: jsCode });
+	return { jsCode };
+}
+
+/**
+ * End-to-end helper used by AST generators that emit either TS or JS based on
+ * the consumer project's codegen environment. Callers pass a single
+ * `outputPath` already resolved to the correct extension (see
+ * `codegenIndexSourcePath`); this keeps TS/JS filename selection in one place.
+ */
+export function emitArtifactsForEnvironment(args: {
+	nodes: readonly ts.Statement[];
+	outputPath: string;
+	environment: CodegenEnvironment;
+	context?: TsEmitContext;
+	listFormat?: ts.ListFormat;
+	module?: ts.ModuleKind;
+	target?: ts.ScriptTarget;
+	esModuleInterop?: boolean;
+	allowSyntheticDefaultImports?: boolean;
+}): { sourceCode: string } {
+	const {
+		nodes,
+		outputPath,
+		environment,
+		context,
+		listFormat,
+		module,
+		target,
+		esModuleInterop,
+		allowSyntheticDefaultImports,
+	} = args;
+	if (environment === "typescript") {
+		const { tsCode } = emitTsArtifacts({
+			nodes,
+			outputPath,
+			context,
+			listFormat,
+		});
+		return { sourceCode: tsCode };
+	}
+	const { jsCode } = emitJsArtifacts({
+		nodes,
+		outputPath,
+		context,
+		listFormat,
+		module,
+		target,
+		esModuleInterop,
+		allowSyntheticDefaultImports,
+	});
+	return { sourceCode: jsCode };
 }

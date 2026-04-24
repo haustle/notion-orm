@@ -1,6 +1,4 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { join } from "path";
-import { pathToFileURL } from "url";
 import { renderDatabaseModule } from "../../src/ast/database/database-file-writer";
 import {
 	isSupportedPropertyType,
@@ -11,7 +9,7 @@ import { objectKeys } from "../../src/typeUtils";
 import {
 	CODEGEN_EMIT_PATHS,
 	CODEGEN_GOLDEN_FILES,
-	CODEGEN_TEST_PATHS,
+	codegenArtifactFileName,
 } from "../helpers/codegen-file-names";
 import {
 	ALL_DATABASE_FIXTURES,
@@ -26,15 +24,7 @@ import {
 	expectCodeToParseAsValidTs,
 	readGolden,
 } from "../helpers/golden-code-assertions";
-import {
-	cleanupTempWorkspaces,
-	createTempWorkspace,
-	writeWorkspaceFile,
-} from "../helpers/temp-workspace";
-
-afterEach(() => {
-	cleanupTempWorkspaces();
-});
+afterEach((): void => undefined);
 
 function renderFixture(fixture: DataSourceFixtureSpec) {
 	return renderDatabaseModule(buildMockDataSourceResponse(fixture));
@@ -59,22 +49,13 @@ describe("database module emitter", () => {
 			expect(rendered.tsCode).toBe(golden);
 		});
 
-		test("emits JavaScript source that matches the customerOrders golden", () => {
-			const golden = readGolden(CODEGEN_GOLDEN_FILES.dbCustomerOrdersJs);
-			expect(rendered.jsCode).toBe(golden);
-		});
-
 		test("produces TypeScript output that parses successfully", () => {
 			expectCodeToParseAsValidTs({
 				code: rendered.tsCode,
-				fileName: CODEGEN_EMIT_PATHS.customerOrdersModuleTs,
-			});
-		});
-
-		test("produces JavaScript output that parses successfully", () => {
-			expectCodeToParseAsValidJs({
-				code: rendered.jsCode,
-				fileName: CODEGEN_EMIT_PATHS.customerOrdersModuleJs,
+				fileName: codegenArtifactFileName(
+					CODEGEN_EMIT_PATHS.customerOrdersModule,
+					"typescript",
+				),
 			});
 		});
 	});
@@ -93,22 +74,13 @@ describe("database module emitter", () => {
 			expect(rendered.tsCode).toBe(golden);
 		});
 
-		test("emits JavaScript source that matches the inventoryItems golden", () => {
-			const golden = readGolden(CODEGEN_GOLDEN_FILES.dbInventoryItemsJs);
-			expect(rendered.jsCode).toBe(golden);
-		});
-
 		test("produces TypeScript output that parses successfully", () => {
 			expectCodeToParseAsValidTs({
 				code: rendered.tsCode,
-				fileName: CODEGEN_EMIT_PATHS.inventoryItemsModuleTs,
-			});
-		});
-
-		test("produces JavaScript output that parses successfully", () => {
-			expectCodeToParseAsValidJs({
-				code: rendered.jsCode,
-				fileName: CODEGEN_EMIT_PATHS.inventoryItemsModuleJs,
+				fileName: codegenArtifactFileName(
+					CODEGEN_EMIT_PATHS.inventoryItemsModule,
+					"typescript",
+				),
 			});
 		});
 	});
@@ -127,22 +99,13 @@ describe("database module emitter", () => {
 			expect(rendered.tsCode).toBe(golden);
 		});
 
-		test("emits JavaScript source that matches the edgeCases golden", () => {
-			const golden = readGolden(CODEGEN_GOLDEN_FILES.dbEdgeCasesJs);
-			expect(rendered.jsCode).toBe(golden);
-		});
-
 		test("produces TypeScript output that parses successfully", () => {
 			expectCodeToParseAsValidTs({
 				code: rendered.tsCode,
-				fileName: CODEGEN_EMIT_PATHS.edgeCasesModuleTs,
-			});
-		});
-
-		test("produces JavaScript output that parses successfully", () => {
-			expectCodeToParseAsValidJs({
-				code: rendered.jsCode,
-				fileName: CODEGEN_EMIT_PATHS.edgeCasesModuleJs,
+				fileName: codegenArtifactFileName(
+					CODEGEN_EMIT_PATHS.edgeCasesModule,
+					"typescript",
+				),
 			});
 		});
 
@@ -156,53 +119,6 @@ describe("database module emitter", () => {
 		});
 	});
 
-	// -----------------------------------------------------------------------
-	// Runtime import tests -- emitted JS can actually be loaded
-	// -----------------------------------------------------------------------
-
-	describe("runtime import", () => {
-		function writeDependencyStubs(workspacePath: string): void {
-			writeWorkspaceFile({
-				workspacePath,
-				relativePath: CODEGEN_TEST_PATHS.notionOrmModuleIndexJs,
-				content:
-					"class DatabaseClient { constructor(args) { this.args = args; } }\nmodule.exports = { DatabaseClient };\n",
-			});
-			writeWorkspaceFile({
-				workspacePath,
-				relativePath: CODEGEN_TEST_PATHS.zodModuleIndexJs,
-				content: [
-					"const handler = { get(_, prop) { return prop === 'object' ? (o) => chain : (...a) => chain; }, };",
-					"const chain = new Proxy({}, handler);",
-					"module.exports = { z: new Proxy({}, handler) };",
-				].join("\n"),
-			});
-		}
-
-		test("loads emitted JavaScript and exposes the expected runtime exports", async () => {
-			const tempDir = createTempWorkspace("orm-db-golden-");
-			const rendered = renderFixture(CUSTOMER_ORDERS_FIXTURE);
-
-			writeDependencyStubs(tempDir);
-			writeWorkspaceFile({
-				workspacePath: tempDir,
-				relativePath: CODEGEN_EMIT_PATHS.customerOrdersModuleJs,
-				content: rendered.jsCode,
-			});
-
-			const jsPath = join(tempDir, CODEGEN_EMIT_PATHS.customerOrdersModuleJs);
-			const mod = await import(pathToFileURL(jsPath).href);
-
-			expect(typeof mod.CustomerOrders).toBe("function");
-			const client = mod.CustomerOrders("token");
-			expect(client.args).toMatchObject({
-				id: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4",
-				name: "Customer Orders",
-				auth: "token",
-			});
-			expect(client.args.columns).toBeDefined();
-		});
-	});
 });
 
 // ---------------------------------------------------------------------------

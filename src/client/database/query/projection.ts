@@ -1,9 +1,8 @@
-import { AST_RUNTIME_CONSTANTS } from "../../../ast/shared/constants";
+import { PACKAGE_RUNTIME_CONSTANTS } from "../../../runtime-constants";
 import type {
 	DatabasePropertyValue,
 	Projection,
 	ProjectionPropertyName,
-	ProjectionSelection,
 } from "../types";
 
 export type NormalizedProjection<PropertyName extends string | number> = {
@@ -22,7 +21,7 @@ export function normalizeProjection<
 	const hasOmit = omit != null && omit.length > 0;
 	if (hasSelect && hasOmit) {
 		throw new Error(
-			`${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} Projection: use either select or omit, not both.`,
+			`${PACKAGE_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} Projection: use either select or omit, not both.`,
 		);
 	}
 	if (hasSelect) {

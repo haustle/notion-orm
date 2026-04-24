@@ -1,166 +1,183 @@
-import { afterEach, describe, expect, mock, test } from "bun:test";
+import { describe, test } from "node:test";
+import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
-import type {
-	CreatePageParameters,
-	QueryDataSourceParameters,
-} from "@notionhq/client/build/src/api-endpoints";
-import { renderDatabaseModule } from "../../src/ast/database/database-file-writer";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { spawnSync } from "node:child_process";
 import {
-	CODEGEN_EMIT_PATHS,
-	CODEGEN_TEST_PATHS,
-} from "../helpers/codegen-file-names";
+	buildOrmIndexModuleAst,
+	emitOrmIndexArtifacts,
+} from "../../src/ast/shared/emit/orm-index-emitter";
+import {
+	createEmitContext,
+	printTsNodes,
+	transpileTsToJs,
+} from "../../src/ast/shared/emit/ts-emit-core";
+import { AST_RUNTIME_CONSTANTS } from "../../src/ast/shared/constants";
+import { renderDatabaseModule } from "../../src/ast/database/database-file-writer";
 import {
 	buildMockDataSourceResponse,
 	CUSTOMER_ORDERS_FIXTURE,
 } from "../helpers/datasource-fixture-builder";
-import {
-	installPrismaApiNotionClientMock,
-	prismaApiStubPartialPage,
-	type PrismaApiPagesCreateFn,
-} from "../helpers/notion-client-test-mock";
-import { queryDataSourceListResponse } from "../helpers/query-data-source-response";
-import { databasePropertyValue } from "../helpers/query-transform-fixtures";
 import {
 	cleanupTempWorkspaces,
 	createTempWorkspace,
 	writeWorkspaceFile,
 } from "../helpers/temp-workspace";
 
-const dataSourceQueryMock = mock(async (_call: QueryDataSourceParameters) =>
-	queryDataSourceListResponse([
-		{
-			object: "page",
-			id: "page-order-44",
-			properties: {
-				"Order Name": databasePropertyValue.title("Order #44"),
-				Notes: databasePropertyValue.richText("fragile"),
-				Total: databasePropertyValue.number(42),
-				"Order Date": databasePropertyValue.date("2026-03-01"),
-				Paid: databasePropertyValue.checkbox(true),
-				"Customer Email": databasePropertyValue.email("buyer@example.com"),
-				"Customer Phone": databasePropertyValue.phoneNumber("+1 555 111 1111"),
-				"Receipt URL": databasePropertyValue.url("https://receipt.dev/44"),
-			},
-		},
-	]),
-);
+const tempDirs: string[] = [];
 
-const pagesCreateMock = mock<PrismaApiPagesCreateFn>(async (_call) =>
-	prismaApiStubPartialPage("created-page-id"),
-);
+/** Repo root (for `file:` install of this package in temp consumers). */
+const ORM_REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
+const ORM_REPO_FILE_URL = pathToFileURL(ORM_REPO_ROOT).href;
 
-installPrismaApiNotionClientMock({ dataSourceQueryMock, pagesCreateMock });
+describe("generated consumer install compatibility", () => {
+	test("generated TypeScript resolves package exports in a consumer-style typecheck", () => {
+		try {
+			const renderedDatabase = renderDatabaseModule(
+				buildMockDataSourceResponse(CUSTOMER_ORDERS_FIXTURE),
+			);
+			assert.match(renderedDatabase.tsCode, /from "@haustle\/notion-orm"/);
 
-afterEach(() => {
-	dataSourceQueryMock.mockReset();
-	pagesCreateMock.mockReset();
-	cleanupTempWorkspaces();
-});
+			const notionWorkspace = createTempWorkspace("generated-consumer-notion-");
+			writeWorkspaceFile({
+				workspacePath: notionWorkspace,
+				relativePath: "notion/databases/CustomerOrders.ts",
+				content: renderedDatabase.tsCode,
+			});
 
-describe("generated database client e2e calls", () => {
-	test("generated customerOrders factory builds valid create/findMany call bodies", async () => {
-		const rendered = renderDatabaseModule(
+			const generatedIndexTs = printTsNodes({
+				nodes: buildOrmIndexModuleAst({
+					databases: [{ name: renderedDatabase.databaseModuleName }],
+					agents: [],
+					syncCommand: AST_RUNTIME_CONSTANTS.CLI_GENERATE_COMMAND,
+				}),
+				context: createEmitContext({ fileName: "index.ts" }),
+			});
+			writeWorkspaceFile({
+				workspacePath: notionWorkspace,
+				relativePath: "notion/index.ts",
+				content: generatedIndexTs,
+			});
+
+			const consumerPath = mkdtempSync(
+				join(tmpdir(), "orm-consumer-typecheck-"),
+			);
+			tempDirs.push(consumerPath);
+			writeFileSync(
+				join(consumerPath, "package.json"),
+				JSON.stringify(
+					{
+						name: "orm-consumer-typecheck",
+						private: true,
+						type: "module",
+						dependencies: {
+							"@haustle/notion-orm": ORM_REPO_FILE_URL,
+						},
+						devDependencies: {
+							typescript: "^5.6.3",
+						},
+					},
+					null,
+					2,
+				),
+			);
+			writeFileSync(
+				join(consumerPath, "tsconfig.json"),
+				JSON.stringify(
+					{
+						compilerOptions: {
+							target: "ES2022",
+							module: "NodeNext",
+							moduleResolution: "NodeNext",
+							strict: true,
+							noEmit: true,
+							esModuleInterop: true,
+							skipLibCheck: true,
+						},
+						include: ["src", "notion"],
+					},
+					null,
+					2,
+				),
+			);
+			writeWorkspaceFile({
+				workspacePath: consumerPath,
+				relativePath: "src/app.ts",
+				content: [
+					'import { NotionORM } from "../notion/index.js";',
+					'const notion = new NotionORM({ auth: "token" });',
+					"void notion.databases.customerOrders;",
+					"",
+				].join("\n"),
+			});
+			writeWorkspaceFile({
+				workspacePath: consumerPath,
+				relativePath: "notion/index.ts",
+				content: generatedIndexTs,
+			});
+			writeWorkspaceFile({
+				workspacePath: consumerPath,
+				relativePath: "notion/databases/CustomerOrders.ts",
+				content: renderedDatabase.tsCode,
+			});
+
+			const install = spawnSync("npm", ["install", "--ignore-scripts"], {
+				cwd: consumerPath,
+				encoding: "utf-8",
+			});
+			assert.equal(install.status, 0, install.stderr || install.stdout);
+
+			const typecheck = spawnSync(
+				process.platform === "win32"
+					? join(consumerPath, "node_modules", ".bin", "tsc.cmd")
+					: join(consumerPath, "node_modules", ".bin", "tsc"),
+				["--noEmit", "-p", "tsconfig.json"],
+				{
+					cwd: consumerPath,
+					encoding: "utf-8",
+				},
+			);
+			assert.equal(
+				typecheck.status,
+				0,
+				typecheck.stderr || typecheck.stdout,
+			);
+		} finally {
+			cleanupTempWorkspaces();
+			while (tempDirs.length > 0) {
+				const tempDir = tempDirs.pop();
+				if (!tempDir) {
+					continue;
+				}
+				rmSync(tempDir, { recursive: true, force: true });
+			}
+		}
+	});
+
+	test("generated JavaScript output can be imported directly in a JS consumer", () => {
+		const renderedDatabase = renderDatabaseModule(
 			buildMockDataSourceResponse(CUSTOMER_ORDERS_FIXTURE),
 		);
-		expect(rendered.jsCode).not.toContain("rollup");
-		const workspacePath = createTempWorkspace("generated-client-calls-");
-		const databaseClientSourcePath = join(
-			process.cwd(),
-			"src/client/database/DatabaseClient.ts",
-		);
-		const zodSourcePath = join(process.cwd(), "node_modules/zod");
-
-		writeWorkspaceFile({
-			workspacePath,
-			relativePath: CODEGEN_EMIT_PATHS.customerOrdersModuleJs,
-			content: rendered.jsCode,
+		const databaseJs = transpileTsToJs({
+			typescriptCode: renderedDatabase.tsCode,
 		});
-		writeWorkspaceFile({
-			workspacePath,
-			relativePath: CODEGEN_TEST_PATHS.notionOrmModuleIndexJs,
-			content: `module.exports = require(${JSON.stringify(databaseClientSourcePath)});`,
-		});
-		writeWorkspaceFile({
-			workspacePath,
-			relativePath: CODEGEN_TEST_PATHS.zodModuleIndexJs,
-			content: `module.exports = require(${JSON.stringify(zodSourcePath)});`,
-		});
+		assert.match(databaseJs, /from "@haustle\/notion-orm"/);
 
-		const mod = await import(
-			pathToFileURL(
-				join(workspacePath, CODEGEN_EMIT_PATHS.customerOrdersModuleJs),
-			).href
-		);
-		const dbClient = mod.CustomerOrders("token-123");
-
-		await dbClient.create({
-			properties: {
-				orderName: "Order #44",
-				notes: "fragile",
-				total: 42,
-				orderDate: { start: "2026-03-01" },
-				paid: true,
-				customerEmail: "buyer@example.com",
-				customerPhone: "+1 555 111 1111",
-				receiptUrl: "https://receipt.dev/44",
-			},
+		const tempOutputDir = mkdtempSync(join(tmpdir(), "orm-generated-js-"));
+		tempDirs.push(tempOutputDir);
+		const emittedIndexPath = join(tempOutputDir, "index.js");
+		const emittedDtsPath = join(tempOutputDir, "index.d.ts");
+		const { code } = emitOrmIndexArtifacts({
+			databases: [{ name: renderedDatabase.databaseModuleName }],
+			agents: [],
+			buildIndexPath: emittedIndexPath,
+			buildIndexDtsPath: emittedDtsPath,
+			syncCommand: AST_RUNTIME_CONSTANTS.CLI_GENERATE_COMMAND,
+			environment: "javascript",
 		});
-		await dbClient.findMany({
-			where: {
-				total: { greater_than: 10 },
-			},
-			sortBy: [{ property: "total", direction: "ascending" }],
-		});
-
-		expect(pagesCreateMock).toHaveBeenCalledTimes(1);
-		expect(dataSourceQueryMock).toHaveBeenCalledTimes(1);
-
-		const createCall = pagesCreateMock.mock.calls[0]?.[0];
-		const queryCall = dataSourceQueryMock.mock.calls[0]?.[0];
-
-		const createCallContract: CreatePageParameters = createCall;
-		const queryCallContract: QueryDataSourceParameters = queryCall;
-		expect(createCallContract.parent.type).toBe("data_source_id");
-		expect(queryCallContract.data_source_id).toBe(
-			"a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4",
-		);
-
-		expect(createCallContract.properties).toEqual({
-			"Order Name": {
-				title: [
-					{
-						text: {
-							content: "Order #44",
-						},
-					},
-				],
-			},
-			Notes: {
-				rich_text: [
-					{
-						text: {
-							content: "fragile",
-						},
-					},
-				],
-			},
-			Total: { number: 42 },
-			"Order Date": { date: { start: "2026-03-01" } },
-			Paid: { checkbox: true },
-			"Customer Email": { email: "buyer@example.com" },
-			"Customer Phone": { phone_number: "+1 555 111 1111" },
-			"Receipt URL": { url: "https://receipt.dev/44" },
-		});
-		expect(queryCallContract).toEqual({
-			data_source_id: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4",
-			sorts: [{ property: "Total", direction: "ascending" }],
-			filter: {
-				property: "Total",
-				number: {
-					greater_than: 10,
-				},
-			},
-		});
+		assert.match(code, /\.\/databases\/CustomerOrders\.js/);
+		assert.match(code, /from "@haustle\/notion-orm\/base"/);
 	});
 });

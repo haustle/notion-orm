@@ -8,6 +8,7 @@ import {
 	isColumnTypesWithOptions,
 	type ColumnDefinition,
 	type DatabaseColumns,
+	type DatabasePropertyValue,
 	type SupportedNotionColumnType,
 } from "../../../../src/client/database/types";
 import { queryDataSourceListResponse } from "../../../helpers/query-data-source-response";
@@ -37,13 +38,13 @@ function columnDefinitionForPipeline(
 }
 
 export interface PropertyPipelineCase {
-		propertyType: SupportedNotionColumnType;
-		validPropertyValue: NotionPropertyValue;
-		expectedValidValue: unknown;
-		mismatchedPropertyValue: NotionPropertyValue;
-		malformedPropertyValue: unknown;
-		expectedMalformedValue: unknown;
-	}
+	propertyType: SupportedNotionColumnType;
+	validPropertyValue: NotionPropertyValue;
+	expectedValidValue: DatabasePropertyValue;
+	mismatchedPropertyValue: NotionPropertyValue;
+	malformedPropertyValue: unknown;
+	expectedMalformedValue: unknown;
+}
 
 function buildSinglePageResponse(args: {
 	primaryValue: unknown;
@@ -71,7 +72,9 @@ function transformPrimaryValue(args: {
 	propertyValue: unknown;
 	includeRawResponse?: boolean;
 	includeUnmapped?: NotionPropertyValue;
-	validateSchema?: (result: Record<string, unknown>) => void;
+	validateSchema?: (
+		result: Partial<Record<string, DatabasePropertyValue>>,
+	) => void;
 }) {
 	let validateCalls = 0;
 	const rawResponse = buildSinglePageResponse({
@@ -92,7 +95,7 @@ function transformPrimaryValue(args: {
 	};
 
 	if (args.includeRawResponse) {
-		const output = buildQueryResponse<Record<string, unknown>>({
+		const output = buildQueryResponse<Record<string, DatabasePropertyValue>>({
 			response: rawResponse,
 			columns: pipelineColumns,
 			validateSchema,
@@ -101,7 +104,7 @@ function transformPrimaryValue(args: {
 		return { output, validateCalls, rawResponse };
 	}
 
-	const output = buildQueryResponse<Record<string, unknown>>({
+	const output = buildQueryResponse<Record<string, DatabasePropertyValue>>({
 		response: rawResponse,
 		columns: pipelineColumns,
 		validateSchema,
@@ -161,7 +164,8 @@ export function describePropertyPipelineCases(
 				propertyValue: testCase.malformedPropertyValue,
 			});
 
-			expect(output.results[0]).toEqual({
+			const malformedRow: unknown = output.results[0];
+			expect(malformedRow).toEqual({
 				[PRIMARY_CAMEL_COLUMN_NAME]: testCase.expectedMalformedValue,
 			});
 		});

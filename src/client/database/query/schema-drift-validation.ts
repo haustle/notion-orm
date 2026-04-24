@@ -1,4 +1,4 @@
-import { AST_RUNTIME_CONSTANTS } from "../../../ast/shared/constants";
+import { PACKAGE_RUNTIME_CONSTANTS } from "../../../runtime-constants";
 import { objectKeys } from "../../../typeUtils";
 import type { DatabaseColumns } from "../types";
 import type { DatabasePropertyValue } from "../types";
@@ -55,13 +55,13 @@ export function validateDatabaseQueryRow<
 			args.loggedSchemaValidationIssues.add(issueSignature);
 			// biome-ignore lint/suspicious/noConsole: surface schema drift
 			console.error(
-				`⚠️ ${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} ${
-					AST_RUNTIME_CONSTANTS.SCHEMA_DRIFT_PREFIX
+				`⚠️ ${PACKAGE_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} ${
+					PACKAGE_RUNTIME_CONSTANTS.SCHEMA_DRIFT_PREFIX
 				} for the following Notion database ${schemaLabel}
 					\nMissing properties: ${missingProperties
 						.map((prop) => `\`${prop}\``)
 						.join(", ")}
-					\n\n✅ ${AST_RUNTIME_CONSTANTS.SCHEMA_DRIFT_HELP_MESSAGE}
+					\n\n✅ ${PACKAGE_RUNTIME_CONSTANTS.SCHEMA_DRIFT_HELP_MESSAGE}
 					`,
 			);
 		}
@@ -78,9 +78,9 @@ export function validateDatabaseQueryRow<
 				args.loggedSchemaValidationIssues.add(issueSignature);
 				// biome-ignore lint/suspicious/noConsole: unexpected remote properties
 				console.error(
-					`⚠️ ${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} ${AST_RUNTIME_CONSTANTS.SCHEMA_DRIFT_PREFIX} for the following Notion database ${schemaLabel}
+					`⚠️ ${PACKAGE_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} ${PACKAGE_RUNTIME_CONSTANTS.SCHEMA_DRIFT_PREFIX} for the following Notion database ${schemaLabel}
 						\nUnexpected property found in remote data: \`${remoteColName}\`
-						\n\n✅ ${AST_RUNTIME_CONSTANTS.SCHEMA_DRIFT_HELP_MESSAGE}
+						\n\n✅ ${PACKAGE_RUNTIME_CONSTANTS.SCHEMA_DRIFT_HELP_MESSAGE}
 						`,
 				);
 			}
@@ -104,8 +104,8 @@ export function validateDatabaseQueryRow<
 		args.loggedSchemaValidationIssues.add(issueSignature);
 		// biome-ignore lint/suspicious/noConsole: schema validation failures
 		console.error(
-			`⚠️ ${AST_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} ${
-				AST_RUNTIME_CONSTANTS.SCHEMA_DRIFT_PREFIX
+			`⚠️ ${PACKAGE_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} ${
+				PACKAGE_RUNTIME_CONSTANTS.SCHEMA_DRIFT_PREFIX
 			} for the following Notion database ${schemaLabel}
 			\nValidation issues: ${parseError.issues
 				.map(
@@ -113,7 +113,7 @@ export function validateDatabaseQueryRow<
 						`\`${issue.path.join(".")}: ${issue.message}\``,
 				)
 				.join(", ")}
-			\n\n✅ ${AST_RUNTIME_CONSTANTS.SCHEMA_DRIFT_HELP_MESSAGE}
+			\n\n✅ ${PACKAGE_RUNTIME_CONSTANTS.SCHEMA_DRIFT_HELP_MESSAGE}
 			`,
 		);
 	}

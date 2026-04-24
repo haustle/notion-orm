@@ -4,19 +4,23 @@
  * generated source index when requested.
  */
 import fs from "fs";
-import path from "path";
 import { z } from "zod";
 import { isAgentsSdkAvailable, loadAgentsSdk } from "../../agents-sdk-resolver";
 import { syncAgentsInConfigWithAST } from "../../cli/helpers";
 import type { AgentIcon } from "../../client/agent/AgentClient";
-import { findConfigFile } from "../../config/helpers";
+import { findConfigFile } from "../../config/findConfigFile";
 import { getNotionConfig } from "../../config/loadConfig";
 import { camelize, toPascalCase, toUndashedNotionId } from "../../helpers";
 import {
 	type CachedEntityMetadata,
 	readDatabaseMetadata,
 } from "../shared/cached-metadata";
-import { AGENTS_DIR, AST_FS_PATHS } from "../shared/constants";
+import {
+	codegenArtifactFileName,
+	resolveCodegenEnvironment,
+	type CodegenEnvironment,
+} from "../shared/codegen-environment";
+import { AGENTS_DIR, AST_FS_PATHS, codegenIndexSourcePath } from "../shared/constants";
 import { updateSourceIndexFile } from "../shared/emit/orm-index-emitter";
 import { emitRegistryModuleArtifacts } from "../shared/emit/registry-emitter";
 import { createTypescriptFileForAgent } from "./agent-file-writer";
@@ -40,6 +44,8 @@ type CreateAgentTypesOptions = {
 
 export type CreateAgentTypesResult = {
 	agentNames: string[];
+	/** Module/registry keys (camelCase), parallel to `agentNames`. */
+	agentKeys: string[];
 	skipped: boolean;
 };
 
@@ -48,7 +54,7 @@ export const createAgentTypes = async (
 	options?: CreateAgentTypesOptions,
 ): Promise<CreateAgentTypesResult> => {
 	if (!isAgentsSdkAvailable()) {
-		return { agentNames: [], skipped: true };
+		return { agentNames: [], agentKeys: [], skipped: true };
 	}
 
 	const sdk = await loadAgentsSdk();
@@ -57,13 +63,13 @@ export const createAgentTypes = async (
 	const client = new sdk.NotionAgentsClient({
 		auth: config.auth,
 	});
+	const configFile = findConfigFile();
+	const environment = resolveCodegenEnvironment({ configRuntime: configFile });
 
 	const agentsList = await client.agents.list({
 		page_size: 100,
 	});
 	options?.onProgress?.({ completed: 0, total: agentsList.results.length });
-
-	const configFile = findConfigFile();
 	if (configFile) {
 		const agentsToSync = agentsList.results.map(({ id, name }) => ({
 			id,
@@ -78,6 +84,7 @@ export const createAgentTypes = async (
 
 	const metadataMap = new Map<string, CachedAgentMetadata>();
 	const agentNames: string[] = [];
+	const agentKeys: string[] = [];
 	let completedCount = 0;
 
 	for (const agent of agentsList.results) {
@@ -87,9 +94,11 @@ export const createAgentTypes = async (
 				normalizedIdForStorage,
 				agent.name,
 				parseAgentIcon(agent.icon),
+				environment,
 			);
 			metadataMap.set(agentMetadata.id, agentMetadata);
 			agentNames.push(agentMetadata.displayName);
+			agentKeys.push(agentMetadata.name);
 			completedCount += 1;
 			options?.onProgress?.({
 				completed: completedCount,
@@ -106,29 +115,33 @@ export const createAgentTypes = async (
 
 	createAgentBarrelFile({
 		agentInfo: agentsMetadata.map((agent) => ({ name: agent.name })),
+		environment,
 	});
 
 	if (!options?.skipSourceIndexUpdate) {
 		const databasesMetadata = readDatabaseMetadata();
-		updateSourceIndexFile(databasesMetadata, agentsMetadata);
+		updateSourceIndexFile(databasesMetadata, agentsMetadata, environment);
 	}
 
-	return { agentNames, skipped: false };
+	return { agentNames, agentKeys, skipped: false };
 };
 
-/** Emits `agents/index.ts|js` so generated clients can be imported as a registry. */
-function createAgentBarrelFile(args: { agentInfo: Array<{ name: string }> }) {
-	const { agentInfo } = args;
+/** Emits the environment-specific `agents/index` registry module. */
+function createAgentBarrelFile(args: {
+	agentInfo: Array<{ name: string }>;
+	environment: CodegenEnvironment;
+}) {
+	const { agentInfo, environment } = args;
 
 	emitRegistryModuleArtifacts({
 		registryName: "agents",
 		entries: agentInfo.map(({ name }) => ({
 			importName: name,
-			importPath: `./${toPascalCase(name)}`,
+			importPath: `./${codegenArtifactFileName(toPascalCase(name), environment)}`,
 			registryKey: name,
 		})),
-		tsPath: path.resolve(AGENTS_DIR, "index.ts"),
-		jsPath: path.resolve(AGENTS_DIR, "index.js"),
+		outputPath: codegenIndexSourcePath({ scope: "agents", environment }),
+		environment,
 	});
 }
 
@@ -190,6 +203,7 @@ async function generateAgentTypes(
 	agentId: string,
 	agentName: string,
 	agentIcon: AgentIcon,
+	environment: CodegenEnvironment,
 ): Promise<CachedAgentMetadata> {
 	const agentModuleName = camelize(agentName);
 
@@ -198,6 +212,7 @@ async function generateAgentTypes(
 		agentName,
 		agentModuleName,
 		agentIcon,
+		environment,
 	});
 
 	const agentMetadata = createMetadata(agentId, agentModuleName, agentName);

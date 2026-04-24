@@ -5,6 +5,10 @@ import type { AgentIcon } from "../../client/agent/AgentClient";
 import { camelize, toPascalCase } from "../../helpers";
 import { createNameImport } from "../shared/ast-builders";
 import { AGENTS_DIR, AST_IMPORT_PATHS, AST_RUNTIME_CONSTANTS } from "../shared/constants";
+import {
+	type CodegenEnvironment,
+	codegenArtifactFileName,
+} from "../shared/codegen-environment";
 import { emitValueAsExpression } from "../shared/emit/emit-value-as-expression";
 import {
 	createEmitContext,
@@ -50,10 +54,10 @@ function addGeneratedAgentModuleBanner(
 	);
 }
 
-function printAndTranspileAgentModule(args: {
+function printAgentModule(args: {
 	statementSegments: readonly (readonly ts.Statement[])[];
 	agentFileBasename: string;
-}): { tsCode: string; jsCode: string } {
+}): { tsCode: string } {
 	const context = createEmitContext({
 		fileName: `${args.agentFileBasename}.ts`,
 	});
@@ -62,12 +66,7 @@ function printAndTranspileAgentModule(args: {
 		.join("\n\n");
 	let tsCode = insertBlankLineAfterDoubleSlashBanner(printed);
 	tsCode = finalizeGeneratedSourceWithTrailingNewline(tsCode);
-	const jsCode = transpileTsToJs({
-		typescriptCode: tsCode,
-		module: TS_EMIT_OPTIONS_GENERATED.module,
-		target: TS_EMIT_OPTIONS_GENERATED.target,
-	});
-	return { tsCode, jsCode };
+	return { tsCode };
 }
 
 function buildAgentModuleNodes(args: {
@@ -200,18 +199,17 @@ export function renderAgentModule(args: {
 	agentModuleName?: string;
 }): {
 	tsCode: string;
-	jsCode: string;
 	agentId: string;
 	agentName: string;
 	agentModuleName: string;
 } {
 	const { statementSegments, agentId, agentName, agentModuleName } =
 		buildAgentModuleNodes(args);
-	const { tsCode, jsCode } = printAndTranspileAgentModule({
+	const { tsCode } = printAgentModule({
 		statementSegments,
 		agentFileBasename: toPascalCase(agentModuleName),
 	});
-	return { tsCode, jsCode, agentId, agentName, agentModuleName };
+	return { tsCode, agentId, agentName, agentModuleName };
 }
 
 export async function createTypescriptFileForAgent(args: {
@@ -219,6 +217,7 @@ export async function createTypescriptFileForAgent(args: {
 	agentName: string;
 	agentModuleName: string;
 	agentIcon: AgentIcon;
+	environment: CodegenEnvironment;
 }): Promise<void> {
 	const { statementSegments, agentModuleName } = buildAgentModuleNodes(args);
 
@@ -227,12 +226,21 @@ export async function createTypescriptFileForAgent(args: {
 	}
 
 	const agentFileBasename = toPascalCase(agentModuleName);
-	const { tsCode, jsCode } = printAndTranspileAgentModule({
+	const { tsCode } = printAgentModule({
 		statementSegments,
 		agentFileBasename,
 	});
-	const tsPath = path.resolve(AGENTS_DIR, `${agentFileBasename}.ts`);
-	const jsPath = path.resolve(AGENTS_DIR, `${agentFileBasename}.js`);
-	writeTextArtifact({ filePath: tsPath, content: tsCode });
-	writeTextArtifact({ filePath: jsPath, content: jsCode });
+	const outputPath = path.resolve(
+		AGENTS_DIR,
+		codegenArtifactFileName(agentFileBasename, args.environment),
+	);
+	const content =
+		args.environment === "javascript"
+			? transpileTsToJs({
+					typescriptCode: tsCode,
+					module: TS_EMIT_OPTIONS_GENERATED.module,
+					target: TS_EMIT_OPTIONS_GENERATED.target,
+				})
+			: tsCode;
+	writeTextArtifact({ filePath: outputPath, content });
 }

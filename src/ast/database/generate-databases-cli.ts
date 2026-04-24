@@ -13,10 +13,19 @@ import {
 	readAgentMetadataFromDisk,
 	readDatabaseMetadata,
 } from "../shared/cached-metadata";
-import { AST_FS_PATHS, AST_RUNTIME_CONSTANTS } from "../shared/constants";
+import {
+	codegenArtifactFileName,
+	resolveCodegenEnvironment,
+	type CodegenEnvironment,
+} from "../shared/codegen-environment";
+import {
+	AST_FS_PATHS,
+	AST_RUNTIME_CONSTANTS,
+	codegenIndexSourcePath,
+} from "../shared/constants";
 import { updateSourceIndexFile } from "../shared/emit/orm-index-emitter";
 import { emitRegistryModuleArtifacts } from "../shared/emit/registry-emitter";
-import { createTypescriptFileForDatabase } from "./database-file-writer";
+import { createCodegenFileForDatabase } from "./database-file-writer";
 
 function writeDatabaseMetadata(metadata: CachedEntityMetadata[]): void {
 	const databasesDir = AST_FS_PATHS.DATABASES_DIR;
@@ -46,6 +55,7 @@ export const createDatabaseTypes = async (
 	options: CreateDatabaseTypesArgs,
 ): Promise<{ databaseNames: string[]; databaseKeys: string[] }> => {
 	const config = await getNotionConfig();
+	const environment = resolveCodegenEnvironment();
 
 	const client = new Client({
 		auth: config.auth,
@@ -74,10 +84,10 @@ export const createDatabaseTypes = async (
 
 	if (targetIds.length === 0) {
 		writeDatabaseMetadata([]);
-		createDatabaseBarrelFile({ databaseInfo: [] });
+		createDatabaseBarrelFile({ databaseInfo: [], environment });
 		if (!options.skipSourceIndexUpdate) {
 			const agentsMetadata = readAgentMetadataFromDisk();
-			updateSourceIndexFile([], agentsMetadata);
+			updateSourceIndexFile([], agentsMetadata, environment);
 		}
 		return { databaseNames: [], databaseKeys: [] };
 	}
@@ -88,7 +98,11 @@ export const createDatabaseTypes = async (
 
 	for (const databaseId of targetIds) {
 		try {
-			const databaseMetadata = await generateDatabaseTypes(client, databaseId);
+			const databaseMetadata = await generateDatabaseTypes(
+				client,
+				databaseId,
+				environment,
+			);
 			metadataMap.set(databaseMetadata.id, databaseMetadata);
 			databaseNames.push(databaseMetadata.displayName);
 			databaseKeys.push(databaseMetadata.name);
@@ -111,31 +125,33 @@ export const createDatabaseTypes = async (
 
 	createDatabaseBarrelFile({
 		databaseInfo: databasesMetadata.map((db) => ({ name: db.name })),
+		environment,
 	});
 
 	if (!options.skipSourceIndexUpdate) {
 		const agentsMetadata = readAgentMetadataFromDisk();
-		updateSourceIndexFile(databasesMetadata, agentsMetadata);
+		updateSourceIndexFile(databasesMetadata, agentsMetadata, environment);
 	}
 
 	return { databaseNames, databaseKeys };
 };
 
-/** Emits `databases/index.ts|js` so generated databases can be addressed as a registry. */
+/** Emits `databases/index.ts` so generated databases can be addressed as a registry. */
 function createDatabaseBarrelFile(args: {
 	databaseInfo: Array<{ name: string }>;
+	environment: CodegenEnvironment;
 }) {
-	const { databaseInfo } = args;
+	const { databaseInfo, environment } = args;
 
 	emitRegistryModuleArtifacts({
 		registryName: "databases",
 		entries: databaseInfo.map(({ name }) => ({
 			importName: toPascalCase(name),
-			importPath: `./${toPascalCase(name)}`,
+			importPath: `./${codegenArtifactFileName(toPascalCase(name), environment)}`,
 			registryKey: name,
 		})),
-		tsPath: AST_FS_PATHS.databaseBarrelTs,
-		jsPath: AST_FS_PATHS.databaseBarrelJs,
+		outputPath: codegenIndexSourcePath({ scope: "databases", environment }),
+		environment,
 	});
 }
 
@@ -155,16 +171,17 @@ function createMetadata(
 async function generateDatabaseTypes(
 	client: Client,
 	databaseId: string,
+	environment: CodegenEnvironment,
 ): Promise<CachedEntityMetadata> {
 	const databaseObject = await client.dataSources.retrieve({
 		data_source_id: databaseId,
 	});
 
-	const {
-		databaseModuleName,
-		databaseName,
-		databaseId: id,
-	} = await createTypescriptFileForDatabase(databaseObject);
+	const { databaseModuleName, databaseName, databaseId: id } =
+		await createCodegenFileForDatabase({
+			dataSourceResponse: databaseObject,
+			environment,
+		});
 
 	return createMetadata(id, databaseModuleName, databaseName);
 }
