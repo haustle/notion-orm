@@ -4,6 +4,7 @@ import {
 	getNotionConfig,
 	loadConfig,
 } from "../../../src/config/loadConfig";
+import { createConfigTemplate } from "../../../src/config/init";
 import { CODEGEN_EMIT_PATHS } from "../../helpers/codegen-file-names";
 import {
 	MOCK_DATA_SOURCE_ID,
@@ -58,19 +59,15 @@ describe("config loading contracts", () => {
 		});
 	});
 
-	test("loadConfig parses a valid TypeScript config template under Node", async () => {
+	test("loadConfig parses the generated JS-compatible notion.config.ts template under Node", async () => {
 		const workspacePath = createTempWorkspace("config-load-valid-ts-");
 		const configPath = writeWorkspaceFile({
 			workspacePath,
 			relativePath: CODEGEN_EMIT_PATHS.notionConfigTs,
-			content: [
-				"const auth = process.env.NOTION_KEY || 'token-123';",
-				"export default {",
-				"  auth,",
-				`  databases: ['${MOCK_DATA_SOURCE_ID}'],`,
-				"  agents: ['agent-1'],",
-				"};",
-			].join("\n"),
+			content: createConfigTemplate(true)
+				.replace('"your-notion-api-key-here"', '"token-123"')
+				.replace("databases: []", `databases: ['${MOCK_DATA_SOURCE_ID}']`)
+				.replace("agents: []", "agents: ['agent-1']"),
 		});
 
 		const config = await loadConfig(configPath);
@@ -79,6 +76,31 @@ describe("config loading contracts", () => {
 			databases: [MOCK_DATA_SOURCE_ID],
 			agents: ["agent-1"],
 		});
+	});
+
+	test("loadConfig rejects notion.config.ts files that require real TypeScript transpilation", async () => {
+		const workspacePath = createTempWorkspace("config-load-invalid-ts-syntax-");
+		const configPath = writeWorkspaceFile({
+			workspacePath,
+			relativePath: CODEGEN_EMIT_PATHS.notionConfigTs,
+			content: [
+				"type NotionConfig = {",
+				"  auth: string;",
+				"  databases: string[];",
+				"  agents: string[];",
+				"};",
+				"const config: NotionConfig = {",
+				"  auth: 'token-123',",
+				`  databases: ['${MOCK_DATA_SOURCE_ID}'],`,
+				"  agents: [],",
+				"};",
+				"export default config;",
+			].join("\n"),
+		});
+
+		await expect(loadConfig(configPath)).rejects.toThrow(
+			"JS-compatible notion.config.ts files",
+		);
 	});
 
 	test("loadConfig rejects invalid config shapes with stable messages", async () => {
@@ -262,7 +284,7 @@ describe("config loading contracts", () => {
 		expect(config.agents).toEqual(["agent-1"]);
 	});
 
-	test("getNotionConfig loads .env before importing notion.config", async () => {
+	test("getNotionConfig loads .env before importing the generated notion.config.ts template", async () => {
 		const workspacePath = createTempWorkspace("config-dotenv-module-");
 		writeWorkspaceFile({
 			workspacePath,
@@ -272,21 +294,14 @@ describe("config loading contracts", () => {
 		writeWorkspaceFile({
 			workspacePath,
 			relativePath: CODEGEN_EMIT_PATHS.notionConfigTs,
-			content: [
-				"const auth = process.env.NOTION_KEY || 'fallback-placeholder';",
-				"export default {",
-				"  auth,",
-				`  databases: ['${MOCK_DATA_SOURCE_ID}'],`,
-				"  agents: [],",
-				"};",
-			].join("\n"),
+			content: createConfigTemplate(true),
 		});
 		process.chdir(workspacePath);
 		delete process.env.NOTION_KEY;
 
 		const config = await getNotionConfig();
 		expect(config.auth).toBe("dotenv-module-token");
-		expect(config.databases).toEqual([MOCK_DATA_SOURCE_ID]);
+		expect(config.databases).toEqual([]);
 		expect(config.agents).toEqual([]);
 	});
 });
