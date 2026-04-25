@@ -69,6 +69,9 @@ const sidebarClass = css({
 	gap: "5",
 	alignSelf: "start",
 	bg: "background",
+	maxH: "calc(100dvh - var(--spacing-8) - 40px)",
+	minH: "0",
+	overflow: "hidden",
 });
 
 const sidebarBrandClass = css({
@@ -81,6 +84,7 @@ const sidebarBrandClass = css({
 
 const sidebarBrandSectionClass = css({
 	px: "3",
+	flexShrink: "0",
 });
 
 const pagesNavClass = css({
@@ -90,11 +94,7 @@ const pagesNavClass = css({
 	bg: { _dark: "bgDark" },
 	rounded: "10",
 	p: "3",
-});
-
-const tocNavClass = css({
-	display: "flex",
-	flexDirection: "column",
+	flexShrink: "0",
 });
 
 const tocNavOffsetClass = css({
@@ -318,7 +318,7 @@ const Sidebar: FC<SidebarProps> = ({ sitePages, currentPath, toc }) => {
 			</nav>
 
 			{toc.length > 0 && (
-				<PageToc toc={toc} className={cx(tocNavClass, tocNavOffsetClass)} />
+				<PageToc toc={toc} className={tocNavOffsetClass} />
 			)}
 		</aside>
 	);

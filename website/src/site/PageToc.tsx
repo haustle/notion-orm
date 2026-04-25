@@ -27,10 +27,17 @@ const tocHeadingLabelClass = css({
 	letterSpacing: "wider",
 	mb: "2.5",
 	px: "3",
+	flexShrink: "0",
 });
 
 const tocRootClass = css({
 	width: "225px",
+	display: "flex",
+	flexDirection: "column",
+	flex: "1 1 0%",
+	minH: "0",
+	maxH: "100%",
+	overflow: "hidden",
 });
 
 const tocLinksCardClass = css({
@@ -42,6 +49,10 @@ const tocLinksCardClass = css({
 	minW: "6",
 	px: "3",
 	py: "2",
+	flex: "1 1 0%",
+	minH: "0",
+	maxH: "100%",
+	overflowY: "auto",
 });
 
 const tocLinkBaseClass = css({
