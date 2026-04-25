@@ -2,6 +2,10 @@
 
 import { IconCheckmark1Small } from "@central-icons-react/round-outlined-radius-3-stroke-2/IconCheckmark1Small";
 import { IconClipboard } from "@central-icons-react/round-outlined-radius-3-stroke-2/IconClipboard";
+import { IconCode } from "@central-icons-react/round-outlined-radius-3-stroke-2/IconCode";
+import { IconConsoleSimple } from "@central-icons-react/round-outlined-radius-3-stroke-2/IconConsoleSimple";
+import { IconFileText } from "@central-icons-react/round-outlined-radius-3-stroke-2/IconFileText";
+import { IconTypescript } from "@central-icons-react/round-outlined-radius-3-stroke-2/IconTypescript";
 import {
 	type FC,
 	isValidElement,
@@ -21,6 +25,7 @@ interface CodeBlockData {
 	code: string;
 	fileLabel: string | null;
 	caption: string | null;
+	language: string | null;
 }
 
 const jsFamilyLanguages = new Set([
@@ -31,6 +36,77 @@ const jsFamilyLanguages = new Set([
 	"typescript",
 	"javascript",
 ]);
+
+const terminalLanguages = new Set([
+	"bash",
+	"sh",
+	"zsh",
+	"shell",
+	"powershell",
+	"ps1",
+	"pwsh",
+]);
+
+/** Default label when the block has no `// file:` / frontmatter `data-file` (short path-like or “Terminal”). */
+function defaultCodeBlockTitle(language: string | null): string {
+	if (language) {
+		const lang = language.toLowerCase();
+		if (terminalLanguages.has(lang)) {
+			return "Terminal";
+		}
+		if (lang === "ts" || lang === "tsx" || lang === "typescript") {
+			return "index.ts";
+		}
+		if (lang === "js" || lang === "jsx" || lang === "javascript" || lang === "mjs" || lang === "cjs") {
+			return "index.js";
+		}
+		if (lang === "txt" || lang === "text") {
+			return "output.txt";
+		}
+		if (lang === "json" || lang === "jsonc") {
+			return "data.json";
+		}
+		if (lang === "yaml" || lang === "yml") {
+			return "config.yaml";
+		}
+	}
+	return "index.ts";
+}
+
+const CODE_BLOCK_HEADER_ICON_PX = 15 as const;
+const codeBlockHeaderIconA11y = { "aria-hidden": true as const };
+
+/** Fences used in site `content` MDX today — extend when you add a new language. */
+const codeBlockHeaderIcons = {
+	ts: IconTypescript,
+	bash: IconConsoleSimple,
+	txt: IconFileText,
+} as const;
+
+type CodeBlockHeaderIconKey = keyof typeof codeBlockHeaderIcons;
+
+function isCodeBlockHeaderIconKey(
+	value: string,
+): value is CodeBlockHeaderIconKey {
+	return (
+		value === "ts" ||
+		value === "bash" ||
+		value === "txt"
+	);
+}
+
+function CodeBlockHeaderIcon({ language }: { language: string | null }) {
+	const p = { size: CODE_BLOCK_HEADER_ICON_PX, ...codeBlockHeaderIconA11y };
+	const L = language?.toLowerCase();
+	if (!L) {
+		return <IconTypescript {...p} />;
+	}
+	if (isCodeBlockHeaderIconKey(L)) {
+		const Icon = codeBlockHeaderIcons[L];
+		return <Icon {...p} />;
+	}
+	return <IconCode {...p} />;
+}
 
 function normalizeCaption(value: unknown): string | null {
 	if (typeof value !== "string") {
@@ -131,6 +207,7 @@ function getCodeBlockData(children: ReactNode): CodeBlockData | null {
 			code: inferred.code,
 			fileLabel: explicitFileLabel ?? inferred.fileLabel,
 			caption: explicitCaption ?? inferred.caption,
+			language,
 		};
 	}
 
@@ -144,6 +221,7 @@ function getCodeBlockData(children: ReactNode): CodeBlockData | null {
 			code: inferred.code,
 			fileLabel: explicitFileLabel ?? inferred.fileLabel,
 			caption: explicitCaption ?? inferred.caption,
+			language,
 		};
 	}
 
@@ -176,19 +254,6 @@ const codeBlockWrapperWithoutCaptionClass = css({
 	mb: "6",
 });
 
-const codeBlockRevealOnHoverClass = css({
-	position: "relative",
-	/** Hover-only reveal is awkward on touch; keep copy always visible below `md`. */
-	md: {
-		_hover: {
-			"& [data-code-copy-wrap]": {
-				opacity: 1,
-				pointerEvents: "auto",
-			},
-		},
-	},
-});
-
 const codeBlockContainerClass = css({
 	borderWidth: "1px",
 	borderColor: "border",
@@ -214,6 +279,28 @@ const codeBlockHeaderClass = css({
 	minH: "9",
 });
 
+const codeBlockHeaderTitleRowClass = css({
+	display: "flex",
+	alignItems: "center",
+	gap: "2",
+	minW: "0",
+	flex: "1",
+});
+
+const codeBlockHeaderTitleTextClass = css({
+	overflow: "hidden",
+	textOverflow: "ellipsis",
+	whiteSpace: "nowrap",
+});
+
+const codeBlockHeaderTitleIconClass = css({
+	flexShrink: 0,
+	color: "muted",
+	"& svg": {
+		display: "block",
+	},
+});
+
 const codeBlockPreClass = css({
 	m: "0",
 	px: "6",
@@ -228,25 +315,17 @@ const codeBlockPreClass = css({
 const codeBlockCaptionClass = css({
 	mt: "2.5",
 	display: "block",
-	width: "100%",
+	mx: "25px",
 	boxSizing: "border-box",
 	fontSize: "sm",
 	lineHeight: "1.6",
 	color: "text",
 	opacity: 0.7,
-	bg: "inlineCodeBg",
-	p: "6px",
-	borderRadius: "2px",
 });
 
 const copyButtonWrapClass = css({
 	position: "relative",
 	flexShrink: 0,
-	opacity: { base: 1, md: 0 },
-	pointerEvents: { base: "auto", md: "none" },
-	transitionProperty: "opacity",
-	transitionDuration: "0.15s",
-	transitionTimingFunction: "ease",
 });
 
 const copyButtonClass = css({
@@ -328,21 +407,28 @@ export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 	}
 
 	const hasCaption = blockData.caption !== null;
-	const titleLabel = blockData.fileLabel ?? "Example";
+	const titleLabel =
+		blockData.fileLabel ?? defaultCodeBlockTitle(blockData.language);
 
 	return (
 		<div
 			className={cx(
 				codeBlockWrapperClass,
-				codeBlockRevealOnHoverClass,
 				hasCaption
 					? codeBlockWrapperWithCaptionClass
 					: codeBlockWrapperWithoutCaptionClass,
 			)}>
 			<div className={codeBlockContainerClass}>
 				<div className={codeBlockHeaderClass}>
-					<span>{titleLabel}</span>
-					<div data-code-copy-wrap className={copyButtonWrapClass}>
+					<span className={codeBlockHeaderTitleRowClass}>
+						<span className={codeBlockHeaderTitleIconClass}>
+							<CodeBlockHeaderIcon language={blockData.language} />
+						</span>
+						<span className={codeBlockHeaderTitleTextClass}>
+							{titleLabel}
+						</span>
+					</span>
+					<div className={copyButtonWrapClass}>
 						<button
 							type="button"
 							className={copyButtonClass}
