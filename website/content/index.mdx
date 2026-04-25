@@ -2,7 +2,7 @@ export const metadata = {
   path: "/",
   title: "Overview",
   description:
-    "A Notion API TypeScript wrapper that aims to improve interactions with databases and agents by building local static schemas.",
+    "An unofficial Notion API TypeScript wrapper that aims to improve interactions with databases and agents by building local static schemas.",
 };
 
 <NotionCubeLogo fixedHero />
@@ -11,7 +11,7 @@ export const metadata = {
 
 # Notion ORM
 
-A [Notion API](https://developers.notion.com/) TypeScript wrapper that leverages static types to deliver a better database (and custom agents) experience
+An unofficial [Notion API](https://developers.notion.com/) TypeScript wrapper that leverages static types to deliver a better database (and custom agents) experience
 
 ## Key Features
 
@@ -34,9 +34,6 @@ bun notion init
 ```
 
 ```ts
-// file: notion.config.ts (Root)
-// caption: Generated config from `notion init`
-
 // If you don't have an API key, sign up for free
 // [here](https://developers.notion.com)
 
@@ -303,16 +300,5 @@ console.log("Final:", finalResponse);
 ```
 
 See [API Reference](/api-reference) for full method signatures, `ThreadInfo` shape, and message schemas.
-
-## Size & dependencies
-
-**425.2 kB** is unpacked size (npm pack --dry-run).
-
-Runtime dependencies:
-
-- <a href="https://www.npmjs.com/package/@notionhq/client" target="_blank" rel="noopener noreferrer"><code>@notionhq/client</code></a> — Notion API client used by runtime `DatabaseClient` and `AgentClient` to call official endpoints.
-- <a href="https://www.npmjs.com/package/@babel/parser" target="_blank" rel="noopener noreferrer"><code>@babel/parser</code></a> — Parses generated TypeScript/JavaScript source into AST nodes during codegen and sync flows.
-- <a href="https://www.npmjs.com/package/@babel/generator" target="_blank" rel="noopener noreferrer"><code>@babel/generator</code></a> — Emits formatted source code from AST transforms used by generated config/registry/type files.
-- <a href="https://www.npmjs.com/package/zod" target="_blank" rel="noopener noreferrer"><code>zod</code></a> — Validates config and untrusted boundary input with typed schemas and clear parse errors.
 
 </DocsProse>
