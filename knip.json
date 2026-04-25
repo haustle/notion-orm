@@ -4,7 +4,8 @@
 	"ignoreFiles": [
 		"tests/golden/**",
 		"tests/agents/mealAgent.d.ts",
-		"website/playground-sources/**"
+		"website/playground-sources/**",
+		"website/content/**"
 	],
 	"workspaces": {
 		".": {

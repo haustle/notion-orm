@@ -1,3 +1,6 @@
+import fs from "fs/promises";
+import path from "path";
+import { randomUUID } from "crypto";
 import { pathToFileURL } from "url";
 import { findConfigFile } from "./findConfigFile.js";
 import { loadDotEnvFromCwd } from "./loadDotEnvFromCwd";
@@ -39,6 +42,9 @@ function parseNotionConfig(input: unknown): NotionConfigType {
  */
 async function loadUserConfig(absolutePath: string): Promise<unknown> {
 	try {
+		if (path.extname(absolutePath) === ".ts") {
+			return await loadTypeScriptConfig(absolutePath);
+		}
 		const importPath = pathToFileURL(absolutePath).href;
 		const mod = await import(importPath);
 		return mod.default ?? mod;
@@ -46,6 +52,27 @@ async function loadUserConfig(absolutePath: string): Promise<unknown> {
 		throw new Error(
 			`Failed to load config from '${absolutePath}': ${getErrorMessage(error)}`,
 		);
+	}
+}
+
+/**
+ * `notion init --ts` emits JavaScript-compatible source with a `.ts` extension.
+ * Plain Node cannot import `.ts` directly, so mirror it to a temporary `.mjs`
+ * alongside the config and load that file instead.
+ */
+async function loadTypeScriptConfig(absolutePath: string): Promise<unknown> {
+	const configSource = await fs.readFile(absolutePath, "utf8");
+	const runtimePath = path.join(
+		path.dirname(absolutePath),
+		`${path.basename(absolutePath, ".ts")}.runtime-${randomUUID()}.mjs`,
+	);
+	try {
+		await fs.writeFile(runtimePath, configSource);
+		const importPath = pathToFileURL(runtimePath).href;
+		const mod = await import(importPath);
+		return mod.default ?? mod;
+	} finally {
+		await fs.rm(runtimePath, { force: true });
 	}
 }
 

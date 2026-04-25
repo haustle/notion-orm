@@ -58,6 +58,29 @@ describe("config loading contracts", () => {
 		});
 	});
 
+	test("loadConfig parses a valid TypeScript config template under Node", async () => {
+		const workspacePath = createTempWorkspace("config-load-valid-ts-");
+		const configPath = writeWorkspaceFile({
+			workspacePath,
+			relativePath: CODEGEN_EMIT_PATHS.notionConfigTs,
+			content: [
+				"const auth = process.env.NOTION_KEY || 'token-123';",
+				"export default {",
+				"  auth,",
+				`  databases: ['${MOCK_DATA_SOURCE_ID}'],`,
+				"  agents: ['agent-1'],",
+				"};",
+			].join("\n"),
+		});
+
+		const config = await loadConfig(configPath);
+		expect(config).toEqual({
+			auth: "token-123",
+			databases: [MOCK_DATA_SOURCE_ID],
+			agents: ["agent-1"],
+		});
+	});
+
 	test("loadConfig rejects invalid config shapes with stable messages", async () => {
 		const workspacePath = createTempWorkspace("config-load-invalid-");
 		const configPath = writeWorkspaceFile({
