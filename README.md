@@ -194,7 +194,7 @@ await notion.databases.books.deleteMany({
 
 ### Stream large result sets
 
-`size` limits a single request. With `stream: n`, each Notion call returns up to n rows, cursors advance automatically, and `for await` walks the full result one row at a time without buffering everything or hand-rolling `nextCursor` (see [Cursor pagination](#cursor-pagination) and [`findMany`](#database-client-methods) in the API reference).
+`size` limits a single request. With `stream: n`, each Notion call returns up to n rows, cursors advance automatically, and `for await` walks the full result one row at a time without buffering everything or hand-rolling `nextCursor` (see [Cursor pagination](#cursor-pagination) and `[findMany](#database-client-methods)` in the API reference).
 
 ```ts
 // Notion is queried in chunks of 50; the loop runs once per matching row, not just the first chunk
@@ -397,6 +397,7 @@ Successful response shape:
 
 ## Runtime access (detailed)
 
+
 | runtime property   | type                             | description                                                    | go deeper                                          |
 | ------------------ | -------------------------------- | -------------------------------------------------------------- | -------------------------------------------------- |
 | `notion.databases` | `Record<string, DatabaseClient>` | Generated database client map keyed by camelCase database name | [Adding](#adding), [Querying](#querying)           |
@@ -405,17 +406,19 @@ Successful response shape:
 
 ## Database client methods
 
+
 | member                                                                  | kind     | description                                                                                                                                           | go deeper                                                                              |
 | ----------------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | `id`                                                                    | property | Notion data source ID used by this client instance                                                                                                    | -                                                                                      |
 | `name`                                                                  | property | Human-readable database name captured during generation                                                                                               | -                                                                                      |
-| `findMany({ where?, sortBy?, size?, select?, omit?, stream?, after? })` | method   | Queries database pages with typed filters, projection, pagination, or streaming                                                                           | [Querying](#querying), [Supported database properties](#supported-database-properties)  |
+| `findMany({ where?, sortBy?, size?, select?, omit?, stream?, after? })` | method   | Queries database pages with typed filters, projection, pagination, or streaming                                                                       | [Querying](#querying), [Supported database properties](#supported-database-properties) |
 | `findFirst({ where?, sortBy?, select?, omit? })`                        | method   | Returns the first matching row or `null`                                                                                                              | [Querying](#querying)                                                                  |
 | `findUnique({ where: { id }, select?, omit? })`                         | method   | Fetches a row by page ID with optional projection                                                                                                     | [Querying](#querying)                                                                  |
 | `create({ properties, icon?, cover?, markdown? })`                      | method   | Creates a page with optional [markdown body content](https://developers.notion.com/guides/data-apis/working-with-markdown-content#block-type-support) | [Adding](#adding), [Markdown](#adding-page-content-with-markdown)                      |
 
 
 ## Agent methods
+
 
 | member                                           | kind     | description                                                     | go deeper                                                            |
 | ------------------------------------------------ | -------- | --------------------------------------------------------------- | -------------------------------------------------------------------- |
@@ -434,13 +437,14 @@ Successful response shape:
 
 ## Generated exports
 
-| import path                            | what you get                                                                                                                                                                     | when to use                                                  |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `./notion/` (relative)                 | `NotionORM` class (generated entry; same as `./notion/index` but shorter)                                                                                                        | Typical app code after `notion sync`                         |
+
+| import path                            | what you get                                                                                                                                              | when to use                                                  |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `./notion/` (relative)                 | `NotionORM` class (generated entry; same as `./notion/index` but shorter)                                                                                 | Typical app code after `notion sync`                         |
 | `./notion/databases/<DatabaseName>.js` | `<DatabaseName>(auth)` factory, `PageSchema`, `CreateSchema`, `QuerySchema`, `columns` metadata, option tuples (select/status/multi-select), type aliases | Script-level direct DB usage without the `NotionORM` wrapper |
-| `./notion/agents/<AgentName>.js`       | `<AgentName>(auth)` factory that returns an `AgentClient` (PascalCase export; registry keys on `notion.agents` stay camelCase)                                                   | Script-level direct agent usage                              |
-| `./notion/databases/index.js`          | `databases` barrel object (all database factories)                                                                                                                               | Dynamic database selection or custom registry wiring         |
-| `./notion/agents/index.js`             | `agents` barrel object (all agent factories)                                                                                                                                     | Dynamic agent selection or custom registry wiring            |
+| `./notion/agents/<AgentName>.js`       | `<AgentName>(auth)` factory that returns an `AgentClient` (PascalCase export; registry keys on `notion.agents` stay camelCase)                            | Script-level direct agent usage                              |
+| `./notion/databases/index.js`          | `databases` barrel object (all database factories)                                                                                                        | Dynamic database selection or custom registry wiring         |
+| `./notion/agents/index.js`             | `agents` barrel object (all agent factories)                                                                                                              | Dynamic agent selection or custom registry wiring            |
 
 
 ## Thread response shapes
@@ -465,6 +469,7 @@ Successful response shape:
 
 
 ## Supported database properties
+
 
 | property_type      | expected returned shape                | example value                                 |
 | ------------------ | -------------------------------------- | --------------------------------------------- |
@@ -518,3 +523,4 @@ All supported properties can be used in typed filters. Formula properties are no
     ├── databases
     └── agents
 ```
+
