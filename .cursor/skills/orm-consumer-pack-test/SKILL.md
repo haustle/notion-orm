@@ -26,9 +26,9 @@ If `consumer_app_paths` are missing, default to `orm_repo_path/../orm-testing` w
 ## Preflight Checklist (run before workflow)
 
 ```text
-- [ ] Clean compile output first: `rm -rf build && bunx tsc`
+- [ ] Build ORM with the real release pipeline: `bun run build` (or `rm -rf build && tsc && node ./scripts/patch-build-import-extensions.mjs` + `chmod +x build/src/cli/index.js`). Do **not** use `bunx tsc` alone — the published CLI requires the import-extension patch or `notion sync` / `notion` will fail in consumers with missing `.js` modules.
 - [ ] Confirm source uses package-safe internal imports (no bare internal aliases like `config/helpers` or `cli/helpers`)
-- [ ] Confirm consumer has exactly one `@haustle/notion-orm` dependency entry in `package.json`
+- [ ] Confirm consumer has exactly one `@haustle/notion-orm` dependency entry in `package.json` (fix duplicate keys if a tool rewrote the file)
 - [ ] If dependency history looks noisy/stale, delete consumer `bun.lock` and run `bun install`
 - [ ] Confirm tarball ignores are in place (`*.tgz` in ORM `.gitignore`)
 - [ ] Confirm scripts/env needed for integration smoke are present (`NOTION_KEY`)
@@ -41,23 +41,24 @@ Copy this checklist and track progress:
 
 ```text
 ORM pack consumer validation progress
-- [ ] Build compiled output in ORM repo (no link required)
+- [ ] Build ORM with `bun run build` (includes import patch; required for CLI)
 - [ ] Create tarball with npm pack
 - [ ] Install tarball in each consuming app (bun add …tgz)
-- [ ] Regenerate generated types in each app if needed (notion sync)
+- [ ] (orm-testing) Optional but recommended: full refresh — see **“Full refresh: `orm-testing`”** below
+- [ ] Regenerate generated types in each app if needed (`notion sync`)
 - [ ] Run validation/tests in each consuming app
 - [ ] Report using structured template (pack pipeline, per-command results, test counts, DB add/query/property coverage)
 ```
 
 ### 1) Build package in ORM repo
 
-From `orm_repo_path`, produce `build/` with TypeScript only (avoids coupling to scripts that run `bun link`):
+From `orm_repo_path`, run the package **release-style** build so the CLI works from the tarball:
 
 ```bash
-rm -rf build && bunx tsc
+bun run build
 ```
 
-If the repo’s `bun run build` is known to be link-free, that is acceptable; prefer a **pure compile** when in doubt.
+This runs `tsc` plus `patch-build-import-extensions.mjs` and marks the CLI executable. **Bare `tsc` is insufficient** for validating `notion` / `notion sync` in a consumer.
 
 ### 2) Create the tarball
 
@@ -83,7 +84,56 @@ Example when `orm` and `orm-testing` are sibling repos:
 bun add ../orm/haustle-notion-orm-0.0.44.tgz
 ```
 
+**Bun caveat:** `bun add ../orm/haustle-notion-orm-<version>.tgz` sometimes hits a **DependencyLoop** error. If that happens, **copy** the `.tgz` into the consumer app directory and install locally:
+
+```bash
+cp "$orm_repo_path/haustle-notion-orm-<version>.tgz" /path/to/consumer/
+cd /path/to/consumer && bun add ./haustle-notion-orm-<version>.tgz
+```
+
+After `bun add`, confirm `package.json` has a **single** `@haustle/notion-orm` dependency (no duplicate keys).
+
 Re-running `bun add` after a new pack replaces the installed package with the new tarball.
+
+### Full refresh: `orm-testing` (recommended)
+
+Use this when you want to exercise **`notion init` → `notion add` → `notion sync`** end-to-end on the packed CLI, not only swap the dependency.
+
+1. **Record IDs** from the existing `notion.config.ts` (or `.js`): copy `databases` and `agents` UUIDs you need to restore. For databases, `notion add` accepts dashed or undashed IDs; use the **data source** ID for the Coffee Shop–style DB in `orm-testing`.
+2. **Remove config and generated types** (from consumer app root):
+
+   ```bash
+   rm -f notion.config.ts notion.config.js
+   rm -rf notion
+   ```
+
+3. **Install the packed ORM** (see step 3) so `bunx notion` resolves to the tarball build.
+4. **Init + add database(s):**
+
+   ```bash
+   bunx notion init --ts   # or --js; match the consumer project
+   bunx notion add <data-source-id-or-url> --type database
+   ```
+
+   Repeat `notion add` for each database you recorded. There is no `notion add --type agent`; agent IDs are **refreshed by `notion sync`** once the Agents SDK is available.
+
+5. **Agents SDK (if the app uses agents):**
+
+   ```bash
+   bunx notion setup-agents-sdk
+   ```
+
+   This may rewrite `package.json`. **Inspect and dedupe** dependency keys (e.g. keep a single `@notionhq/agents-client`, typically `file:../notion-agents-sdk` for sibling repos). Run `bun install` if the lockfile warned about duplicates.
+
+6. **Full sync:**
+
+   ```bash
+   bunx notion sync
+   ```
+
+7. **Validate** (e.g. `bun run coffee-shop`, `bun test`).
+
+Treat restored `notion.config.ts` and `notion/` as **regenerated**; do not assume byte-identical output vs. the pre-refresh files.
 
 ### 4) Regenerate generated types (when applicable)
 
@@ -182,8 +232,10 @@ Short runs may collapse the property table to a bullet list, but **do not** omit
 
 ## Failure Handling
 
-- If `tsc` or `npm pack` fails, stop and report before touching consumers.
-- If `bun add` fails, confirm the tarball path and that `npm pack` completed in `orm_repo_path`.
+- If `bun run build` or `npm pack` fails, stop and report before touching consumers.
+- If `bun add` fails with **DependencyLoop**, copy the `.tgz` into the consumer and `bun add ./haustle-notion-orm-<version>.tgz`.
+- If `bun install` or `bun.lock` errors with **duplicate key** or **InvalidPackageKey**, open `package.json` and ensure each dependency name appears once; then delete `bun.lock` and run `bun install` again.
+- If `notion` fails with `ERR_MODULE_NOT_FOUND` for extensionless paths under `build/src/`, rebuild ORM with `bun run build` and reinstall the new tarball.
 - Include exact failing command and error details for each failure.
 
 ## Notes
