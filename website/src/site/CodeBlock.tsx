@@ -6,6 +6,7 @@ import { IconCode } from "@central-icons-react/round-outlined-radius-3-stroke-2/
 import { IconConsoleSimple } from "@central-icons-react/round-outlined-radius-3-stroke-2/IconConsoleSimple";
 import { IconFileText } from "@central-icons-react/round-outlined-radius-3-stroke-2/IconFileText";
 import { IconTypescript } from "@central-icons-react/round-outlined-radius-3-stroke-2/IconTypescript";
+import { Highlight } from "prism-react-renderer";
 import {
 	type FC,
 	isValidElement,
@@ -16,6 +17,13 @@ import {
 	useState,
 } from "react";
 import { css, cx } from "../styled-system/css";
+import { Prism } from "./codeBlockPrismRegister";
+import { getSiteCodeBlockPrismTheme } from "./codeBlockPrismTheme";
+import {
+	mdxFenceLanguageToPrism,
+	prismHasGrammar,
+} from "./mdxFenceLanguageToPrism";
+import { useSiteCodeBlockColorMode } from "./useSiteCodeBlockColorMode";
 
 interface CodeBlockProps {
 	children?: ReactNode;
@@ -57,7 +65,13 @@ function defaultCodeBlockTitle(language: string | null): string {
 		if (lang === "ts" || lang === "tsx" || lang === "typescript") {
 			return "index.ts";
 		}
-		if (lang === "js" || lang === "jsx" || lang === "javascript" || lang === "mjs" || lang === "cjs") {
+		if (
+			lang === "js" ||
+			lang === "jsx" ||
+			lang === "javascript" ||
+			lang === "mjs" ||
+			lang === "cjs"
+		) {
 			return "index.js";
 		}
 		if (lang === "txt" || lang === "text") {
@@ -88,11 +102,7 @@ type CodeBlockHeaderIconKey = keyof typeof codeBlockHeaderIcons;
 function isCodeBlockHeaderIconKey(
 	value: string,
 ): value is CodeBlockHeaderIconKey {
-	return (
-		value === "ts" ||
-		value === "bash" ||
-		value === "txt"
-	);
+	return value === "ts" || value === "bash" || value === "txt";
 }
 
 function CodeBlockHeaderIcon({ language }: { language: string | null }) {
@@ -301,7 +311,7 @@ const codeBlockHeaderTitleIconClass = css({
 	},
 });
 
-const codeBlockPreClass = css({
+const codeBlockPreBaseClass = css({
 	m: "0",
 	px: "6",
 	py: "5",
@@ -309,7 +319,29 @@ const codeBlockPreClass = css({
 	fontFamily: "mono",
 	fontSize: "sm",
 	lineHeight: "1.75",
+});
+
+const codeBlockPrePlainTextClass = css({
 	color: "text",
+});
+
+const codeBlockCodeInnerClass = css({
+	display: "block",
+	w: "100%",
+	p: "0",
+	m: "0",
+	fontFamily: "inherit",
+	fontSize: "inherit",
+	lineHeight: "inherit",
+	color: "inherit",
+	bg: "transparent",
+	borderWidth: "0",
+	borderRadius: "0",
+});
+
+const codeBlockLineClass = css({
+	display: "block",
+	whiteSpace: "pre",
 });
 
 const codeBlockCaptionClass = css({
@@ -367,8 +399,18 @@ const copyIconLayerClass = css({
 
 const COPY_SUCCESS_MS = 600;
 
+/**
+ * MDX fences almost always end with a trailing newline. `prism-react-renderer` normalizes
+ * that into an extra empty `token-line` (`.token-line`), which reads as a bogus blank line
+ * in short terminal/bash blocks.
+ */
+function codeBlockVisualSource(source: string): string {
+	return source.replace(/(?:\r\n|\n)+$/, "");
+}
+
 export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 	const blockData = getCodeBlockData(children);
+	const codeBlockColorMode = useSiteCodeBlockColorMode();
 	const [copied, setCopied] = useState(false);
 	const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -390,7 +432,9 @@ export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 			return;
 		}
 		try {
-			await navigator.clipboard.writeText(blockData.code);
+			await navigator.clipboard.writeText(
+				codeBlockVisualSource(blockData.code),
+			);
 		} catch {
 			return;
 		}
@@ -410,6 +454,13 @@ export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 	const titleLabel =
 		blockData.fileLabel ?? defaultCodeBlockTitle(blockData.language);
 
+	const prismId = mdxFenceLanguageToPrism(blockData.language);
+	const useSyntaxHighlight =
+		codeBlockColorMode.ready &&
+		prismId !== null &&
+		prismHasGrammar(Prism, prismId);
+	const visualCode = codeBlockVisualSource(blockData.code);
+
 	return (
 		<div
 			className={cx(
@@ -424,9 +475,7 @@ export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 						<span className={codeBlockHeaderTitleIconClass}>
 							<CodeBlockHeaderIcon language={blockData.language} />
 						</span>
-						<span className={codeBlockHeaderTitleTextClass}>
-							{titleLabel}
-						</span>
+						<span className={codeBlockHeaderTitleTextClass}>{titleLabel}</span>
 					</span>
 					<div className={copyButtonWrapClass}>
 						<button
@@ -455,9 +504,44 @@ export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 						</button>
 					</div>
 				</div>
-				<pre className={codeBlockPreClass}>
-					<code>{blockData.code}</code>
-				</pre>
+				{useSyntaxHighlight ? (
+					<Highlight
+						language={prismId}
+						prism={Prism}
+						code={visualCode}
+						theme={getSiteCodeBlockPrismTheme(codeBlockColorMode.isDark)}>
+						{({ className, style, tokens, getLineProps, getTokenProps }) => (
+							<pre
+								className={cx(codeBlockPreBaseClass, className)}
+								style={style}>
+								<code className={codeBlockCodeInnerClass}>
+									{tokens.map((line, i) => (
+										<span
+											// biome-ignore lint/suspicious/noArrayIndexKey: static MDX code output; line order is fixed
+											key={i}
+											{...getLineProps({
+												line,
+												className: codeBlockLineClass,
+											})}>
+											{line.map((token, k) => (
+												<span
+													// biome-ignore lint/suspicious/noArrayIndexKey: static MDX code output; line order is fixed
+													key={k}
+													{...getTokenProps({ token })}
+												/>
+											))}
+										</span>
+									))}
+								</code>
+							</pre>
+						)}
+					</Highlight>
+				) : (
+					<pre
+						className={cx(codeBlockPreBaseClass, codeBlockPrePlainTextClass)}>
+						<code className={codeBlockCodeInnerClass}>{visualCode}</code>
+					</pre>
+				)}
 			</div>
 			{hasCaption && (
 				<p className={codeBlockCaptionClass}>{blockData.caption}</p>
