@@ -200,7 +200,10 @@ await notion.databases.books.deleteMany({
 
 ### Stream large result sets
 
+With the usual `await findMany(...)`, **`size` only bounds a single Notion query**: you get one response’s worth of rows (at most `size`), and nothing else is fetched even if more pages match. **`stream`** is different: that number is how many rows to request **per Notion call**. When a response says there are more pages, the library **fetches the next page for you** (using the cursor), over and over, until everything matching your filter has been returned. Your `for await` loop then sees **one row per iteration**—the full result set, in order, without loading it all into one big array and without hand-writing pagination (compare [cursor pagination](#cursor-pagination), where you pass each `nextCursor` yourself). Full arg details: [`findMany`](/api-reference#findmany).
+
 ```ts
+// Notion is queried in chunks of 50; the loop runs once per matching row, not just the first chunk
 for await (const book of notion.databases.books.findMany({ stream: 50 })) {
   console.log(book.bookName);
 }
