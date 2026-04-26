@@ -41,18 +41,12 @@ function parseNotionConfig(input: unknown): NotionConfigType {
  * JS-compatible template emitted by `notion init --ts`, not arbitrary TS syntax.
  */
 async function loadUserConfig(absolutePath: string): Promise<unknown> {
-	try {
-		if (path.extname(absolutePath) === ".ts") {
-			return await loadJsCompatibleTsConfig(absolutePath);
-		}
-		const importPath = pathToFileURL(absolutePath).href;
-		const mod = await import(importPath);
-		return mod.default ?? mod;
-	} catch (error: unknown) {
-		throw new Error(
-			`Failed to load config from '${absolutePath}': ${getErrorMessage(error)}`,
-		);
+	if (path.extname(absolutePath) === ".ts") {
+		return await loadJsCompatibleTsConfig(absolutePath);
 	}
+	const importPath = pathToFileURL(absolutePath).href;
+	const mod = await import(importPath);
+	return mod.default ?? mod;
 }
 
 /**
