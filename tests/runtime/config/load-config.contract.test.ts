@@ -4,6 +4,7 @@ import {
 	getNotionConfig,
 	loadConfig,
 } from "../../../src/config/loadConfig";
+import { renderLiteralNotionConfigModule } from "../../../src/ast/shared/emit/config-emitter";
 import { createConfigTemplate } from "../../../src/config/init";
 import { CODEGEN_EMIT_PATHS } from "../../helpers/codegen-file-names";
 import {
@@ -59,15 +60,19 @@ describe("config loading contracts", () => {
 		});
 	});
 
-	test("loadConfig parses the generated JS-compatible notion.config.ts template under Node", async () => {
+	test("loadConfig parses the init notion.config.ts template (imported as JS-compatible ESM when ext is .ts)", async () => {
 		const workspacePath = createTempWorkspace("config-load-valid-ts-");
 		const configPath = writeWorkspaceFile({
 			workspacePath,
 			relativePath: CODEGEN_EMIT_PATHS.notionConfigTs,
-			content: createConfigTemplate(true)
-				.replace('"your-notion-api-key-here"', '"token-123"')
-				.replace("databases: []", `databases: ['${MOCK_DATA_SOURCE_ID}']`)
-				.replace("agents: []", "agents: ['agent-1']"),
+			content: renderLiteralNotionConfigModule({
+				config: {
+					auth: "token-123",
+					databases: [MOCK_DATA_SOURCE_ID],
+					agents: ["agent-1"],
+				},
+				isTS: true,
+			}),
 		});
 
 		const config = await loadConfig(configPath);
