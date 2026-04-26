@@ -4,6 +4,7 @@ import * as parser from "@babel/parser";
 import * as t from "@babel/types";
 import * as ts from "typescript";
 import { NOTION_CONFIG_BASENAME } from "../../../config/notion-config-filenames";
+import type { NotionConfigType } from "../../../config/types";
 import { codegenArtifactFileName } from "../codegen-environment";
 import {
 	createEmitContext,
@@ -11,7 +12,7 @@ import {
 	type TsEmitContext,
 } from "./ts-emit-core";
 
-export type ConfigListKey = "databases" | "agents";
+export type ConfigListKey = Exclude<keyof NotionConfigType, "auth">;
 
 export interface ConfigListItem {
 	value: string;
@@ -89,51 +90,8 @@ function createConfigProperty(args: {
 	return property;
 }
 
-/**
- * Builds AST nodes for a starter `notion.config` module.
- *
- * Example:
- * `buildConfigTemplateModuleAst({ isTS: true })`
- * builds:
- * - `const auth = process.env.NOTION_KEY || "...";`
- * - `const NotionConfig = { auth, databases: [], agents: [] };`
- * - `export default NotionConfig`
- */
-export function buildConfigTemplateModuleAst(args: {
-	isTS: boolean;
-}): ts.Statement[] {
-	const { isTS } = args;
-	const authVariable = createAuthVariableStatement();
-	const notionConfigVariable = ts.factory.createVariableStatement(
-		undefined,
-		ts.factory.createVariableDeclarationList(
-			[
-				ts.factory.createVariableDeclaration(
-					ts.factory.createIdentifier("NotionConfig"),
-					undefined,
-					undefined,
-					ts.factory.createObjectLiteralExpression(
-						[
-							ts.factory.createShorthandPropertyAssignment(
-								ts.factory.createIdentifier("auth"),
-							),
-							createConfigProperty({
-								name: "databases",
-								helpText: "Use: notion add <database-id> --type database",
-							}),
-							createConfigProperty({
-								name: "agents",
-								helpText: "Agents are auto-populated by: notion sync",
-							}),
-						],
-						true,
-					),
-				),
-			],
-			ts.NodeFlags.Const,
-		),
-	);
-	const exportStatement = isTS
+function createConfigExportStatement(isTS: boolean): ts.Statement {
+	return isTS
 		? ts.factory.createExportAssignment(
 				undefined,
 				false,
@@ -149,7 +107,93 @@ export function buildConfigTemplateModuleAst(args: {
 					ts.factory.createIdentifier("NotionConfig"),
 				),
 			);
-	return [authVariable, notionConfigVariable, exportStatement];
+}
+
+/**
+ * Shared module shape: auth variable, `const NotionConfig = { ... }`, then
+ * `export default` (TS) or `module.exports` (CJS).
+ *
+ * When `config` is omitted, builds the `notion init` template: env-based `auth`,
+ * empty `databases`/`agents` with help comments. When `config` is set, builds
+ * literal `auth` and ID lists (tests/fixtures).
+ */
+function buildNotionConfigModuleAst(args: {
+	isTS: boolean;
+	config?: NotionConfigType;
+}): ts.Statement[] {
+	const { isTS, config } = args;
+	const authVariable = config
+		? createAuthLiteralVariableStatement(config.auth)
+		: createAuthVariableStatement();
+
+	const listProperties: ts.ObjectLiteralElementLike[] = config
+		? [
+				ts.factory.createPropertyAssignment(
+					ts.factory.createIdentifier("databases"),
+					ts.factory.createArrayLiteralExpression(
+						config.databases.map((id) => ts.factory.createStringLiteral(id)),
+						true,
+					),
+				),
+				ts.factory.createPropertyAssignment(
+					ts.factory.createIdentifier("agents"),
+					ts.factory.createArrayLiteralExpression(
+						config.agents.map((id) => ts.factory.createStringLiteral(id)),
+						true,
+					),
+				),
+			]
+		: [
+				createConfigProperty({
+					name: "databases",
+					helpText: "Use: notion add <database-id> --type database",
+				}),
+				createConfigProperty({
+					name: "agents",
+					helpText: "Agents are auto-populated by: notion sync",
+				}),
+			];
+
+	const notionConfigVariable = ts.factory.createVariableStatement(
+		undefined,
+		ts.factory.createVariableDeclarationList(
+			[
+				ts.factory.createVariableDeclaration(
+					ts.factory.createIdentifier("NotionConfig"),
+					undefined,
+					undefined,
+					ts.factory.createObjectLiteralExpression(
+						[
+							ts.factory.createShorthandPropertyAssignment(
+								ts.factory.createIdentifier("auth"),
+							),
+							...listProperties,
+						],
+						true,
+					),
+				),
+			],
+			ts.NodeFlags.Const,
+		),
+	);
+
+	return [authVariable, notionConfigVariable, createConfigExportStatement(isTS)];
+}
+
+/**
+ * Builds AST nodes for a starter `notion.config` module.
+ *
+ * Example:
+ * `buildConfigTemplateModuleAst({ isTS: true })`
+ * builds:
+ * - `const auth = process.env.NOTION_KEY || "...";`
+ * - `const NotionConfig = { auth, databases: [], agents: [] };`
+ * - `export default NotionConfig`
+ */
+export function buildConfigTemplateModuleAst(args: {
+	isTS: boolean;
+}): ts.Statement[] {
+	return buildNotionConfigModuleAst({ isTS: args.isTS });
 }
 
 /**
@@ -170,7 +214,59 @@ export function renderConfigTemplateModule(args: {
 		}),
 	} = args;
 	return printTsNodes({
-		nodes: buildConfigTemplateModuleAst({ isTS }),
+		nodes: buildNotionConfigModuleAst({ isTS }),
+		context,
+	});
+}
+
+function createAuthLiteralVariableStatement(
+	authValue: string,
+): ts.VariableStatement {
+	return ts.factory.createVariableStatement(
+		undefined,
+		ts.factory.createVariableDeclarationList(
+			[
+				ts.factory.createVariableDeclaration(
+					ts.factory.createIdentifier("auth"),
+					undefined,
+					undefined,
+					ts.factory.createStringLiteral(authValue),
+				),
+			],
+			ts.NodeFlags.Const,
+		),
+	);
+}
+
+/**
+ * Like {@link buildConfigTemplateModuleAst} but with literal `auth` and list
+ * values. Used for tests and fixtures; not for `notion init`.
+ */
+export function buildLiteralNotionConfigModuleAst(args: {
+	config: NotionConfigType;
+	isTS: boolean;
+}): ts.Statement[] {
+	return buildNotionConfigModuleAst({ isTS: args.isTS, config: args.config });
+}
+
+/**
+ * Renders a literal `notion.config` module (see
+ * {@link buildLiteralNotionConfigModuleAst}) for tests and generated fixtures.
+ */
+export function renderLiteralNotionConfigModule(args: {
+	config: NotionConfigType;
+	isTS: boolean;
+	context?: TsEmitContext;
+}): string {
+	const {
+		config,
+		isTS,
+		context = createEmitContext({
+			fileName: codegenArtifactFileName(NOTION_CONFIG_BASENAME, "typescript"),
+		}),
+	} = args;
+	return printTsNodes({
+		nodes: buildNotionConfigModuleAst({ config, isTS }),
 		context,
 	});
 }

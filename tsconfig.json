@@ -13,7 +13,8 @@
 			"strict": true,
 			"baseUrl": "src",
 			"paths": {
-				"@haustle/notion-orm": ["index.ts"]
+				"@haustle/notion-orm": ["index.ts"],
+				"@notionhq/agents-client": ["client/agent/notionhq-agents-client.d.ts"]
 			},
 			"noImplicitAny": true,
 			"declaration": true,

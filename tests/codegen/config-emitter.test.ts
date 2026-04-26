@@ -4,9 +4,12 @@ import * as t from "@babel/types";
 import * as ts from "typescript";
 import {
 	buildConfigTemplateModuleAst,
+	buildLiteralNotionConfigModuleAst,
 	renderConfigTemplateModule,
+	renderLiteralNotionConfigModule,
 	updateConfigListInConfigModule,
 } from "../../src/ast/shared/emit/config-emitter";
+import { NOTION_CONFIG_FIELD_KEYS } from "../../src/config/types";
 import {
 	createEmitContext,
 	printTsNodes,
@@ -97,6 +100,37 @@ describe("config emitter", () => {
 		expect(nodes[1].kind).toBe(ts.SyntaxKind.VariableStatement);
 		expect(nodes[2].kind).toBe(ts.SyntaxKind.ExportAssignment);
 		expect(printedCode.includes("const NotionConfig")).toBe(true);
+	});
+
+	test("Zod schema field keys are the auth and list property names for config modules", () => {
+		expect(new Set(NOTION_CONFIG_FIELD_KEYS)).toEqual(
+			new Set(["auth", "databases", "agents"]),
+		);
+	});
+
+	test("renders a literal TypeScript config module (AST, same shape as init template)", () => {
+		const code = renderLiteralNotionConfigModule({
+			isTS: true,
+			config: {
+				auth: "fix-token",
+				databases: [MOCK_DATA_SOURCE_ID],
+				agents: ["agent-1"],
+			},
+		});
+		expect(code).toContain("const auth = ");
+		expect(code).toContain('"fix-token"');
+		expect(code).toContain("const NotionConfig = ");
+		expect(code).toContain("export default NotionConfig");
+		expect(code).not.toContain("process.env.NOTION_KEY");
+		const nodes = buildLiteralNotionConfigModuleAst({
+			isTS: true,
+			config: {
+				auth: "x",
+				databases: [],
+				agents: [],
+			},
+		});
+		expect(nodes).toHaveLength(3);
 	});
 
 	// Checks fixture scenarios patch config lists for append and replace behavior.

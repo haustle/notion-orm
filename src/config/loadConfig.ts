@@ -1,3 +1,6 @@
+import fs from "fs/promises";
+import path from "path";
+import { randomUUID } from "crypto";
 import { pathToFileURL } from "url";
 import { findConfigFile } from "./findConfigFile.js";
 import { loadDotEnvFromCwd } from "./loadDotEnvFromCwd";
@@ -34,18 +37,44 @@ function parseNotionConfig(input: unknown): NotionConfigType {
 /**
  * Dynamically loads the user's notion.config file via `import()`.
  * Use a `file://` URL so Node, Bun, and other ESM runtimes resolve the path consistently.
- * Plain Node loads `.js`/`.mjs` natively; `.ts` requires a runtime that can execute TypeScript
- * (or compile the config to JavaScript first).
+ * Plain Node loads `.js`/`.mjs` natively. For `.ts`, we only support the
+ * JS-compatible template emitted by `notion init --ts`, not arbitrary TS syntax.
  */
 async function loadUserConfig(absolutePath: string): Promise<unknown> {
+	if (path.extname(absolutePath) === ".ts") {
+		return await loadJsCompatibleTsConfig(absolutePath);
+	}
+	const importPath = pathToFileURL(absolutePath).href;
+	const mod = await import(importPath);
+	return mod.default ?? mod;
+}
+
+/**
+ * `notion init --ts` emits JS-compatible source with a `.ts` extension.
+ * Keep the real project-relative module resolution by mirroring that source to a
+ * temporary sibling `.mjs` file for import under plain Node.
+ */
+async function loadJsCompatibleTsConfig(absolutePath: string): Promise<unknown> {
+	const configSource = await fs.readFile(absolutePath, "utf8");
+	const runtimePath = path.join(
+		path.dirname(absolutePath),
+		`${path.basename(absolutePath, ".ts")}.runtime-${randomUUID()}.mjs`,
+	);
 	try {
-		const importPath = pathToFileURL(absolutePath).href;
-		const mod = await import(importPath);
-		return mod.default ?? mod;
-	} catch (error: unknown) {
-		throw new Error(
-			`Failed to load config from '${absolutePath}': ${getErrorMessage(error)}`,
-		);
+		await fs.writeFile(runtimePath, configSource);
+		try {
+			const importPath = pathToFileURL(runtimePath).href;
+			const mod = await import(importPath);
+			return mod.default ?? mod;
+		} catch (error: unknown) {
+			throw new Error(
+				"Plain Node only supports JS-compatible notion.config.ts files " +
+					"(like the template emitted by `notion init --ts`). " +
+					getErrorMessage(error),
+			);
+		}
+	} finally {
+		await fs.rm(runtimePath, { force: true });
 	}
 }
 
