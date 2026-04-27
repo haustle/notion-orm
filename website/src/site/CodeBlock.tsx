@@ -305,6 +305,8 @@ const codeBlockHeaderTitleTextClass = css({
 	overflow: "hidden",
 	textOverflow: "ellipsis",
 	whiteSpace: "nowrap",
+	fontSize: "sm",
+	color: "muted",
 });
 
 const codeBlockHeaderTitleIconClass = css({

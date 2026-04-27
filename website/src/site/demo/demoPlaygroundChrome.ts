@@ -54,7 +54,7 @@ export const playgroundApiReferenceLinkClass = css({
 	},
 });
 
-/** Layout for Example/Schema control (label + icon); pair with `playgroundNotionSchemaToggleButtonClass` on one `<button>`. */
+/** Layout for the Databases file switch (page icon + filename label); pair with `playgroundNotionSchemaToggleButtonClass` on one `<button>`. */
 export const playgroundExampleSchemaSwitchRowClass = css({
 	display: "inline-flex",
 	alignItems: "center",
@@ -63,7 +63,7 @@ export const playgroundExampleSchemaSwitchRowClass = css({
 	lineHeight: "1",
 });
 
-/** Current mode name: "Example" or "Schema" — left of the icon in the switch row. */
+/** Current source label (e.g. `index.ts` vs generated module basename) — right of the page icon. */
 export const playgroundExampleSchemaModeLabelClass = css({
 	display: "inline-flex",
 	alignItems: "center",
@@ -87,14 +87,32 @@ export const playgroundNotionSchemaToggleButtonClass = css({
 	color: "muted",
 	backgroundColor: "transparent",
 	border: "none",
+	borderRadius: "4px",
 	cursor: "pointer",
-	transition: "color 0.15s, opacity 0.15s",
+	transformOrigin: "center",
+	transform: "scale(1)",
+	outlineWidth: "2px",
+	outlineStyle: "solid",
+	outlineColor: "transparent",
+	outlineOffset: "0",
+	transition:
+		"color 0.15s ease, opacity 0.15s ease, background-color 0.2s ease, outline-width 0.22s ease, outline-color 0.22s ease, transform 0.22s cubic-bezier(0.34, 1.45, 0.64, 1)",
 	_hover: {
 		color: "text",
+		backgroundColor: "inlineCodeBg",
+		outlineWidth: "6px",
+		outlineColor: "inlineCodeBg",
+		transform: "scale(1.05)",
+	},
+	_active: {
+		transform: "scale(0.96)",
+		transition:
+			"color 0.15s ease, opacity 0.15s ease, background-color 0.15s ease, outline-width 0.1s ease, outline-color 0.1s ease, transform 0.1s cubic-bezier(0.34, 1.8, 0.64, 1)",
 	},
 	_disabled: {
 		opacity: "0.45",
 		cursor: "not-allowed",
+		transform: "scale(1)",
 	},
 	"& svg": {
 		w: "4.5",
@@ -125,7 +143,7 @@ export const playgroundResetButtonClass = css({
 	transformOrigin: "center",
 	transform: "scale(1)",
 	transition:
-		"background-color 0.15s, color 0.15s, transform 0.22s cubic-bezier(0.34, 1.45, 0.64, 1)",
+		"color 0.15s ease, opacity 0.15s ease, background-color 0.2s ease, transform 0.22s cubic-bezier(0.34, 1.45, 0.64, 1)",
 	_hover: {
 		color: "text",
 		backgroundColor: "background",
@@ -134,7 +152,7 @@ export const playgroundResetButtonClass = css({
 	_active: {
 		transform: "scale(0.96)",
 		transition:
-			"background-color 0.15s, color 0.15s, transform 0.1s cubic-bezier(0.34, 1.8, 0.64, 1)",
+			"color 0.15s ease, opacity 0.15s ease, background-color 0.15s ease, transform 0.1s cubic-bezier(0.34, 1.8, 0.64, 1)",
 	},
 	_disabled: {
 		opacity: "0.45",
@@ -183,13 +201,6 @@ export const demoPlaygroundPanels = {
 		apiReferenceAriaLabel: "Database client API reference",
 		sectionGap: false,
 	},
-	notionOrm: {
-		label: "Notion ORM",
-		resetAriaLabel: "Reset Notion ORM multi-database demo to default code",
-		apiReferenceHref: "/api-reference#generated-code-layout",
-		apiReferenceAriaLabel: "Generated Notion code layout (NotionORM entry)",
-		sectionGap: false,
-	},
 	agents: {
 		label: "Agents",
 		resetAriaLabel: "Reset agent demo to default code",
@@ -202,6 +213,5 @@ export const demoPlaygroundPanels = {
 /** Stable column order for the demo playground (labels alone are not unique keys across refactors). */
 export const demoPlaygroundPanelOrder = [
 	"databases",
-	"notionOrm",
 	"agents",
 ] as const satisfies readonly (keyof typeof demoPlaygroundPanels)[];

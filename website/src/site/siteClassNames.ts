@@ -45,6 +45,7 @@ export const cmDemoSiteClassNames = {
 	content: "cm-content",
 	gutter: "cm-gutter",
 	line: "cm-line",
+	foldPlaceholder: "cm-foldPlaceholder",
 	lintMarkerError: "cm-lint-marker-error",
 	lintMarkerWarning: "cm-lint-marker-warning",
 	lintMarkerInfo: "cm-lint-marker-info",
