@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cache } from "react";
 import { getPage as getPageFromContent } from "../generated/content";
+import { pageDocumentTitle, siteSocialMetadata } from "./config";
 import type { SitePage, SitePath } from "./types";
 
 const getCachedPage = cache((path: SitePath) => getPageFromContent(path));
@@ -16,5 +17,9 @@ export function getPageMetadata(page: SitePage | undefined): Metadata {
 	return {
 		title: page.title,
 		description: page.description,
+		...siteSocialMetadata({
+			openGraphTitle: pageDocumentTitle(page.title),
+			openGraphDescription: page.description,
+		}),
 	};
 }
