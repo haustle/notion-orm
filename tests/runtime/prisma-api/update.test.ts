@@ -7,10 +7,7 @@ import {
 	type PrismaApiPagesRetrieveFn,
 	type PrismaApiPagesUpdateFn,
 } from "../../helpers/notion-client-test-mock";
-import {
-	emptyQueryDataSourceResponse,
-	queryDataSourceListResponse,
-} from "../../helpers/query-data-source-response";
+import { queryDataSourceListResponse } from "../../helpers/query-data-source-response";
 import { databasePropertyValue } from "../../helpers/query-transform-fixtures";
 import {
 	MOCK_DATA_SOURCE_ID,
@@ -35,9 +32,6 @@ const { dataSourceQueryMock, pagesUpdateMock, pagesRetrieveMock } =
 	});
 
 const { DatabaseClient } = await import("../../../src/client/database/DatabaseClient");
-
-type TestSchema = { shopName: string; rating: number };
-type TestColumnTypes = { shopName: "title"; rating: "number" };
 
 function createClient() {
 	return createPrismaApiTestDatabaseClient(DatabaseClient);

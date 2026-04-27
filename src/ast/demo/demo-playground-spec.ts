@@ -42,8 +42,6 @@ export interface DemoPlaygroundSpec {
 	agents: DemoAgentFixture[];
 	databaseEntryFile: string;
 	agentEntryFile: string;
-	/** Extra editor: `NotionORM` + exported helpers for the synced database. */
-	ormAllDatabasesEntryFile: string;
 	databaseScenario: DemoDatabaseScenario;
 	agentScenario: DemoAgentScenario;
 }
@@ -82,7 +80,6 @@ export const DEMO_PLAYGROUND_SPEC: DemoPlaygroundSpec = {
 	],
 	databaseEntryFile: "demo-databases.ts",
 	agentEntryFile: "demo-agents.ts",
-	ormAllDatabasesEntryFile: "demo-orm-all-databases.ts",
 	databaseScenario: {
 		targetDatabase: "Favorite Songs",
 		create: {

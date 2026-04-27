@@ -17,9 +17,6 @@ const { pagesCreateMock } = installPrismaApiNotionClientMock({
 
 const { DatabaseClient } = await import("../../../src/client/database/DatabaseClient");
 
-type TestSchema = { shopName: string; rating: number; hasWifi: boolean };
-type TestColumnTypes = { shopName: "title"; rating: "number"; hasWifi: "checkbox" };
-
 function createClient() {
 	return createPrismaApiTestDatabaseClient(DatabaseClient, PRISMA_API_CREATE_COLUMNS);
 }

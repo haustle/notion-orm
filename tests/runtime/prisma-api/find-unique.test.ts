@@ -11,9 +11,6 @@ const { pagesRetrieveMock } = installPrismaApiNotionClientMock();
 
 const { DatabaseClient } = await import("../../../src/client/database/DatabaseClient");
 
-type TestSchema = { shopName: string; rating: number };
-type TestColumnTypes = { shopName: "title"; rating: "number" };
-
 function createClient() {
 	return createPrismaApiTestDatabaseClient(DatabaseClient);
 }

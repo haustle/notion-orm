@@ -27,21 +27,6 @@ const metadata: {
 	agents: [...ORM_INDEX_SCENARIO.agents],
 };
 
-type RuntimeNotionOrmInstance = {
-	databases: { taskDb: { kind: string; auth: string } };
-	agents: { mealAgent: { kind: string; auth: string } };
-};
-
-type RuntimeNotionOrmConstructor = new (config: {
-	auth?: string;
-}) => RuntimeNotionOrmInstance;
-
-function isRuntimeNotionOrmConstructor(
-	value: unknown,
-): value is RuntimeNotionOrmConstructor {
-	return typeof value === "function";
-}
-
 describe("orm index emitter", () => {
 	test("emits declaration source that matches the orm-index golden file", () => {
 		const nodes = buildOrmIndexDeclarationAst(metadata);

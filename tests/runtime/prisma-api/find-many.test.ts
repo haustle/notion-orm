@@ -7,7 +7,6 @@ import {
 	PRISMA_API_FIND_MANY_COLUMNS,
 } from "../../helpers/notion-client-test-mock";
 import {
-	emptyQueryDataSourceResponse,
 	type QueryDataSourceResultRow,
 	queryDataSourceListResponse,
 } from "../../helpers/query-data-source-response";
@@ -30,13 +29,6 @@ type TestSchema = {
 	rating: number;
 	hasWifi: boolean;
 	notes: string;
-};
-
-type TestColumnTypes = {
-	shopName: "title";
-	rating: "number";
-	hasWifi: "checkbox";
-	notes: "rich_text";
 };
 
 function createClient() {

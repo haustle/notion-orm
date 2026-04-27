@@ -3,7 +3,6 @@ import { describe, expect, test } from "bun:test";
 import type {
 	DatabaseColumns,
 	DatabaseDefinition,
-	InferDatabaseSchema,
 	QueryFilter,
 } from "../../../src/client/database/types";
 import { transformQueryFilterToApiFilter } from "../../../src/client/database/query/filter";
@@ -59,7 +58,6 @@ const map = {
 } as const satisfies DatabaseColumns;
 
 type QueryDefinition = DatabaseDefinition<typeof map>;
-type QuerySchema = InferDatabaseSchema<typeof map>;
 
 function transformFilter(queryFilter: QueryFilter<QueryDefinition>) {
 	return transformQueryFilterToApiFilter<QueryDefinition>(queryFilter, map);
