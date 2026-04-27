@@ -13,6 +13,7 @@ import type {
 	CreatePageResponse,
 	GetPageParameters,
 	GetPageResponse,
+	PageObjectResponse,
 	PartialPageObjectResponse,
 	QueryDataSourceParameters,
 	QueryDataSourceResponse,
@@ -70,6 +71,36 @@ export const PRISMA_API_TEST_NOTION_DATABASE_ID = "notion-database-parent-1";
 /** Minimal `PartialPageObjectResponse` for mocks. */
 export function prismaApiStubPartialPage(id: string): PartialPageObjectResponse {
 	return { object: "page", id };
+}
+
+/**
+ * Minimal {@link PageObjectResponse} when tests need `pages.create` to return a full page
+ * (all fields required by the Notion SDK type).
+ */
+export function prismaApiStubFullPage(args: {
+	id: string;
+	dataSourceId: string;
+	properties?: PageObjectResponse["properties"];
+}): PageObjectResponse {
+	const { id, dataSourceId, properties } = args;
+	return {
+		object: "page",
+		id,
+		created_time: "2024-01-01T00:00:00.000Z",
+		last_edited_time: "2024-01-01T00:00:00.000Z",
+		in_trash: false,
+		archived: false,
+		is_archived: false,
+		is_locked: false,
+		url: `https://www.notion.so/${id.replace(/-/g, "")}`,
+		public_url: null,
+		parent: prismaApiDataSourceParent({ dataSourceId }),
+		properties: properties ?? {},
+		icon: null,
+		cover: null,
+		created_by: { object: "user", id: "creator-user-id" },
+		last_edited_by: { object: "user", id: "editor-user-id" },
+	};
 }
 
 /** `parent` for mocked `pages.retrieve` / full page responses under a data source. */

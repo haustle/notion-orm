@@ -9,6 +9,7 @@ import {
 	buildCreatePageParametersForDataSource,
 	mapDatabaseSchemaToNotionPropertyMap,
 } from "./create";
+import { pickDatabaseCreatePageResultFromResponse } from "./create-page-result";
 import { buildZodFromColumns } from "./schema-builder";
 import { buildDataSourceQueryParams } from "./query/build-query-params";
 import { buildQueryResponse } from "./query/build-query-response";
@@ -144,7 +145,8 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 			cover: args.cover,
 			markdown: args.markdown,
 		});
-		return await this.client.pages.create(callBody);
+		const raw = await this.client.pages.create(callBody);
+		return pickDatabaseCreatePageResultFromResponse(raw);
 	}
 
 	public findMany<

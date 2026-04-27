@@ -60,6 +60,7 @@ export type {
 } from "./client/database/types";
 export {
 	brandedNotionIdsAsStringArray,
+	DATABASE_CREATE_PAGE_RESULT_PAGE_KEYS,
 	toNotionDatabaseId,
 	toNotionPageId,
 	toNotionUserId,
