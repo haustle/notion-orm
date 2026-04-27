@@ -18,3 +18,7 @@ website/public/fonts/*
 *.tsbuildinfo
 .cursor/mcp.json
 .cursor/commands/agentation.md
+
+# Local PR / commit-plan drafts (not product source)
+.cursor-draft-*.md
+.pr-body-*.md
