@@ -3,10 +3,7 @@ import type { FC, ReactNode } from "react";
 import { css, cx } from "../styled-system/css";
 import { githubUrl, haustleTwitterUrl, siteTitle } from "./config";
 import { PageToc } from "./PageToc";
-import {
-	PAGE_LINK_ARROW_ATTR,
-	PAGE_LINK_ARROW_VALUE,
-} from "./siteClassNames";
+import { SitePagesNav } from "./SitePagesNav";
 import {
 	type SitePage,
 	type SitePath,
@@ -90,16 +87,6 @@ const sidebarBrandSectionClass = css({
 	flexShrink: "0",
 });
 
-const pagesNavClass = css({
-	display: "flex",
-	flexDirection: "column",
-	gap: "1",
-	bg: { _dark: "bgDark" },
-	rounded: "10",
-	p: "3",
-	flexShrink: "0",
-});
-
 const tocNavOffsetClass = css({
 	mt: "10",
 });
@@ -170,42 +157,6 @@ const siteFooterCreditLinkClass = css({
 	},
 });
 
-const pageLinkBaseClass = css({
-	display: "inline-flex",
-	alignItems: "center",
-	gap: "2",
-	py: "1",
-	fontSize: "sm",
-	lineHeight: "1.5",
-	fontWeight: "400",
-	color: { base: "text", _dark: "white" },
-	textDecoration: "none",
-	transitionProperty: "opacity",
-	transitionDuration: "220ms",
-	_hover: { opacity: 1 },
-});
-
-const pageLinkActiveClass = css({
-	opacity: 1,
-});
-
-const pageLinkInactiveClass = css({
-	opacity: 0.6,
-});
-
-const pageLinkAdornmentClass = css({
-	display: "inline-flex",
-	alignItems: "center",
-	justifyContent: "center",
-});
-
-const pageLinkDotClass = css({
-	w: "1.5",
-	h: "1.5",
-	rounded: "full",
-	bg: { base: "textLight", _dark: "white" },
-});
-
 const Sidebar: FC<SidebarProps> = ({ sitePages, currentPath, toc }) => {
 	return (
 		<aside className={sidebarClass}>
@@ -215,45 +166,7 @@ const Sidebar: FC<SidebarProps> = ({ sitePages, currentPath, toc }) => {
 				{siteTitle}
 			</Link>
 
-			<nav className={pagesNavClass} aria-label="Pages">
-				{sitePages.map((p) => {
-					const active = p.path === currentPath;
-					return (
-						<Link
-							key={p.path}
-							href={p.path}
-							className={cx(
-								pageLinkBaseClass,
-								active ? pageLinkActiveClass : pageLinkInactiveClass,
-							)}>
-							<span>{p.title}</span>
-							{active && (
-								<span className={pageLinkAdornmentClass}>
-									<span className={pageLinkDotClass} aria-hidden />
-								</span>
-							)}
-						</Link>
-					);
-				})}
-				<a
-					href={githubUrl}
-					target="_blank"
-					rel="noreferrer"
-					className={cx(
-						pageLinkBaseClass,
-						pageLinkInactiveClass,
-						"site-nav-github-link",
-					)}>
-					<span>GitHub</span>
-					<span className={pageLinkAdornmentClass}>
-						<span
-							{...{ [PAGE_LINK_ARROW_ATTR]: PAGE_LINK_ARROW_VALUE }}
-							aria-hidden>
-							↗
-						</span>
-					</span>
-				</a>
-			</nav>
+			<SitePagesNav sitePages={sitePages} currentPath={currentPath} />
 
 			{toc.length > 0 && (
 				<PageToc toc={toc} className={tocNavOffsetClass} />
