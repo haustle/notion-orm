@@ -132,161 +132,41 @@ const siteFooterClass = css({
 });
 
 const siteFooterCreditLinkClass = css({
+	display: "inline-flex",
+	alignItems: "center",
+	gap: "0.3em",
 	color: "inherit",
 	textDecoration: "none",
-	"& > span": {
-		textDecoration: "underline",
-		textUnderlineOffset: "0.1em",
-	},
+	borderRadius: "2px",
+	cursor: "pointer",
+	transformOrigin: "center",
+	transform: "scale(1)",
+	py: "0.5",
+	px: "1.5",
+	mx: "-1.5",
+	my: "-0.5",
+	outlineStyle: "solid",
+	outlineWidth: "0",
+	outlineColor: "transparent",
+	outlineOffset: "0",
+	transition:
+		"color 0.15s ease, background-color 0.2s ease, outline-width 0.22s ease, outline-color 0.22s ease, transform 0.22s cubic-bezier(0.34, 1.45, 0.64, 1)",
 	_hover: {
-		"& > span": {
-			color: "text",
+		color: "text",
+		backgroundColor: "inlineCodeBg",
+		outlineWidth: "5px",
+		outlineColor: "inlineCodeBg",
+	},
+	_active: {
+		transform: "scale(0.96)",
+		transition:
+			"color 0.15s ease, background-color 0.15s ease, outline-width 0.1s ease, outline-color 0.1s ease, transform 0.1s cubic-bezier(0.34, 1.8, 0.64, 1)",
+	},
+	"@media (prefers-reduced-motion: reduce)": {
+		transition: "color 0.15s ease, background-color 0.15s ease, outline-width 0.22s ease, outline-color 0.22s ease",
+		_active: {
+			transform: "none",
 		},
-	},
-});
-
-const proseStyles = {
-	"& h1, & h2, & h3, & h4": {
-		transition: "background-color 150ms ease, box-shadow 150ms ease",
-	},
-	"& h1": {
-		fontSize: { base: "3xl", md: "4xl" },
-		lineHeight: "1.1",
-		letterSpacing: "-0.03em",
-		fontWeight: "600",
-		marginTop: "0",
-		marginBottom: "4",
-		scrollMarginTop: "10",
-	},
-	"& h2": {
-		fontSize: { base: "xl", md: "2xl" },
-		lineHeight: "1.2",
-		letterSpacing: "-0.02em",
-		fontWeight: "600",
-		marginTop: "10",
-		marginBottom: "3",
-		scrollMarginTop: "10",
-	},
-	"& h3": {
-		fontSize: { base: "md", md: "lg" },
-		lineHeight: "1.3",
-		fontWeight: "600",
-		marginTop: "7",
-		marginBottom: "2",
-		scrollMarginTop: "10",
-	},
-	"& h4": {
-		fontSize: "base",
-		lineHeight: "1.3",
-		fontWeight: "600",
-		marginTop: "5",
-		marginBottom: "2",
-		scrollMarginTop: "10",
-	},
-	"& p": {
-		marginY: "4",
-		color: "text",
-	},
-	"& ul": {
-		marginY: "4",
-		paddingLeft: "4",
-		listStyleType: "disc",
-	},
-	"& li": {
-		marginY: "1.5",
-		color: "text",
-		"&::marker": {
-			color: "muted",
-		},
-	},
-	"& blockquote": {
-		marginY: "6",
-		pl: "4",
-		borderLeftWidth: "2px",
-		borderLeftColor: "border",
-		color: "muted",
-	},
-	"& hr": {
-		marginY: "8",
-		border: "0",
-		borderTopWidth: "1px",
-		borderTopColor: "border",
-	},
-	"& code": {
-		fontSize: "0.92em",
-		bg: "inlineCodeBg",
-		color: "inlineCodeText",
-		borderRadius: "sm",
-		px: "1",
-		py: "0.5",
-	},
-	"& h1 code, & h2 code, & h3 code, & h4 code": {
-		/** `background` (not just `background-color`) matches Panda `bg` and refills the chip smoothly after the TOC flash. */
-		transition: "background 150ms ease, color 150ms ease, box-shadow 150ms ease",
-	},
-	"& pre code": {
-		bg: "transparent",
-		color: "inherit",
-		borderWidth: "0",
-		borderRadius: "0",
-		px: "0",
-		py: "0",
-		fontSize: "inherit",
-	},
-	"& a": {
-		color: "text",
-		textDecoration: "underline",
-		textUnderlineOffset: "3px",
-	},
-	"& table": {
-		width: "100%",
-		borderCollapse: "collapse",
-		marginY: "4",
-		fontSize: "sm",
-	},
-	"& th": {
-		textAlign: "left",
-		padding: "2",
-		borderBottomWidth: "2px",
-		borderBottomColor: "border",
-		fontWeight: "600",
-	},
-	"& td": {
-		padding: "2",
-		borderBottomWidth: "1px",
-		borderBottomColor: "border",
-	},
-} as const;
-
-/**
- * `SITE_TOC_HEADING_CLICK_FLASH_CLASS` in `siteClassNames.ts` — only static string keys here so
- * Panda can extract these rules to CSS.
- */
-const articleProseClass = css({
-	...proseStyles,
-	"& h1.site-toc-heading-click-flash, & h2.site-toc-heading-click-flash, & h3.site-toc-heading-click-flash, & h4.site-toc-heading-click-flash":
-		{
-			transition: "none",
-		},
-	"& h1.site-toc-heading-click-flash code": {
-		bg: "transparent",
-		color: "text",
-		transition: "none",
-	},
-	"& h2.site-toc-heading-click-flash code": {
-		bg: "transparent",
-		color: "text",
-		transition: "none",
-	},
-	"& h3.site-toc-heading-click-flash code": {
-		bg: "transparent",
-		color: "text",
-		transition: "none",
-	},
-	"& h4.site-toc-heading-click-flash code": {
-		bg: "transparent",
-		color: "text",
-		transition: "none",
 	},
 });
 
@@ -406,17 +286,15 @@ export const Layout: FC<LayoutProps> = ({
 			<div className={cx(layoutClass, narrowMainColumn && narrowLayoutClass)}>
 				<Sidebar sitePages={sitePages} currentPath={currentPath} toc={toc} />
 				<main className={contentClass}>
-					<article
-						className={cx(articleBaseClass, articleProseClass)}>
-						{children}
-					</article>
+					<article className={articleBaseClass}>{children}</article>
 					<footer className={siteFooterClass}>
 						<a
 							href={haustleTwitterUrl}
 							target="_blank"
 							rel="noreferrer"
 							className={siteFooterCreditLinkClass}>
-							Made by <span>haustle</span>
+							<span>Made by</span>
+							<span>haustle</span>
 						</a>
 					</footer>
 				</main>

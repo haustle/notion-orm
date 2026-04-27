@@ -9,6 +9,7 @@ import {
 	MdxHeading3,
 	MdxHeading4,
 } from "./mdxHeading";
+import { docsArticleProseClass } from "./docsArticleProse";
 import { extractText, isElement } from "./mdxTextUtils";
 import { NotionCubeLogo } from "./NotionCubeLogo";
 
@@ -83,13 +84,6 @@ const stackedRowTypeClass = css({
 	fontSize: "0.8em",
 	color: "muted",
 	lineHeight: "1.5",
-	"& code": {
-		bg: "transparent",
-		color: "inherit",
-		px: "0",
-		py: "0",
-		fontSize: "inherit",
-	},
 });
 
 const stackedRowDescClass = css({
@@ -119,7 +113,13 @@ const StackedTable: FC<{ children?: ReactNode }> = ({ children }) => {
 						className={cx(stackedRowClass, isLastRow && stackedRowLastClass)}>
 						<div className={stackedRowHeaderClass}>
 							<span>{name}</span>
-							{type && <span className={stackedRowTypeClass}>{type}</span>}
+							{type && (
+								<span
+									className={stackedRowTypeClass}
+									data-docs-prose-plain-code>
+									{type}
+								</span>
+							)}
 						</div>
 						{description && (
 							<div className={stackedRowDescClass}>{description}</div>
@@ -147,7 +147,12 @@ const DocsProse: FC<{
 	children?: ReactNode;
 	flushTop?: boolean;
 }> = ({ children, flushTop }) => (
-	<div className={cx(docsProseClass, flushTop && docsProseFlushTopClass)}>
+	<div
+		className={cx(
+			docsProseClass,
+			docsArticleProseClass,
+			flushTop && docsProseFlushTopClass,
+		)}>
 		{children}
 	</div>
 );

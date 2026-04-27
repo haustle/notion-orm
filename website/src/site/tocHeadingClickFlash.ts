@@ -1,7 +1,7 @@
 import { SITE_TOC_HEADING_CLICK_FLASH_CLASS } from "./siteClassNames";
 
 /** Must match `tocHeadingClickFlash` duration in `panda.config.ts` */
-const TOC_HEADING_FLASH_MS = 700;
+const TOC_HEADING_FLASH_MS = 800;
 const FLASH_CLEAR_SAFETY_MS = 100;
 
 /**
