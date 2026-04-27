@@ -67,12 +67,9 @@ bun notion setup-agents-sdk
 bun notion sync
 ```
 
-**What this does:**
-1. Clones the SDK repository into a local cache (`node_modules/.cache/.notion-agents-sdk`) and adds the built `@notionhq/agents-client` package to your project
+`bun notion setup-agents-sdk` clones the Notion Agents SDK, builds it from a local cache, and links `@notionhq/agents-client` into your project. Run it with `bun notion sync` to generate agent types and pick up agents on your integration. When the upstream SDK changes, re-run setup, then sync again.
 
-Run both commands to install the SDK and generate agent types. Agents linked to your integration are automatically discovered. When the upstream SDK changes, rerun `bun notion setup-agents-sdk` (it refreshes the cached clone, rebuilds, and reinstalls), then `bun notion sync`.
-
-If you have not run the setup command, `notion sync` will skip agent generation and only produce database types. Once the SDK is published to npm, this step will no longer be necessary.
+If you have not run setup, `notion sync` only generates database types. This extra step will go away when the SDK is published to npm.
 
 Learn more about [Custom Agents](https://www.notion.com/help/custom-agents) in the Notion documentation.
 

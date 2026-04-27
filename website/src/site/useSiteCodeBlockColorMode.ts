@@ -10,7 +10,7 @@ type SiteCodeBlockColorMode =
 	| { ready: false }
 	| { ready: true; isDark: boolean };
 
-export function isSiteCodeBlockColorModeReady(
+function isSiteCodeBlockColorModeReady(
 	mode: SiteCodeBlockColorMode,
 ): mode is { ready: true; isDark: boolean } {
 	return mode.ready;
@@ -30,8 +30,10 @@ export function isSiteCodeDarkForPrism(mode: SiteCodeBlockColorMode): boolean {
 
 /**
  * Read `data-color-mode` on `<html>` (see `src/app/layout.tsx` theme init script).
- * Defers to `useLayoutEffect` + `MutationObserver` so the first client paint matches
- * SSR (plain code block) and no hydration flash for theme, then we swap in Prism highlights.
+ * `useLayoutEffect` + `MutationObserver` align syntax **theme** with the real attribute
+ * after attach; {@link isSiteCodeDarkForPrism} defaults to light until `ready` so Prism
+ * token colors stay consistent with SSR on first paint. MDX `Highlight` does not wait
+ * for `ready`—only the theme passed to `getSiteCodeBlockPrismTheme` does.
  */
 export function useSiteCodeBlockColorMode(): SiteCodeBlockColorMode {
 	const [s, setS] = useState<SiteCodeBlockColorMode>({ ready: false });

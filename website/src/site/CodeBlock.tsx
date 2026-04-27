@@ -13,6 +13,7 @@ import {
 	type ReactNode,
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useRef,
 	useState,
 } from "react";
@@ -24,7 +25,6 @@ import {
 	prismHasGrammar,
 } from "./mdxFenceLanguageToPrism";
 import {
-	isSiteCodeBlockColorModeReady,
 	isSiteCodeDarkForPrism,
 	useSiteCodeBlockColorMode,
 } from "./useSiteCodeBlockColorMode";
@@ -418,6 +418,9 @@ function codeBlockVisualSource(source: string): string {
 export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 	const blockData = getCodeBlockData(children);
 	const codeBlockColorMode = useSiteCodeBlockColorMode();
+	/** `prism-react-renderer` + `prismjs` can disagree between SSR and client (tokens/DOM), so we match plain markup first, then enable Highlight before first paint. */
+	const [isPrismHighlightClientReady, setIsPrismHighlightClientReady] =
+		useState(false);
 	const [copied, setCopied] = useState(false);
 	const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -433,6 +436,13 @@ export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 			clearResetTimer();
 		};
 	}, [clearResetTimer]);
+
+	// `useLayoutEffect` runs after DOM commit but before paint, so the flip to
+	// client-side Prism happens in the same frame as the first render—no
+	// pre-paint flash from SSR/plain markup to highlighted tokens.
+	useLayoutEffect(() => {
+		setIsPrismHighlightClientReady(true);
+	}, []);
 
 	const handleCopy = useCallback(async () => {
 		if (!blockData) {
@@ -468,12 +478,14 @@ export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 	const prismId = mdxFenceLanguageToPrism(blockData.language);
 	const prismHighlightLanguage =
 		!isTerminalCodeFence &&
-		isSiteCodeBlockColorModeReady(codeBlockColorMode) &&
 		prismId !== null &&
 		prismHasGrammar(Prism, prismId)
 			? prismId
 			: null;
 	const visualCode = codeBlockVisualSource(blockData.code);
+	const isDarkMode = isSiteCodeDarkForPrism(codeBlockColorMode);
+	const showPrismHighlight =
+		prismHighlightLanguage !== null && isPrismHighlightClientReady;
 
 	return (
 		<div
@@ -518,15 +530,19 @@ export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 						</button>
 					</div>
 				</div>
-				{prismHighlightLanguage !== null ? (
+				{showPrismHighlight ? (
 					<Highlight
 						language={prismHighlightLanguage}
 						prism={Prism}
 						code={visualCode}
-						theme={getSiteCodeBlockPrismTheme(
-							isSiteCodeDarkForPrism(codeBlockColorMode),
-						)}>
-						{({ className, style, tokens, getLineProps, getTokenProps }) => (
+						theme={getSiteCodeBlockPrismTheme(isDarkMode)}>
+						{({
+							className,
+							style,
+							tokens,
+							getLineProps,
+							getTokenProps,
+						}) => (
 							<pre
 								className={cx(codeBlockPreBaseClass, className)}
 								style={style}>
@@ -539,13 +555,18 @@ export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 												line,
 												className: codeBlockLineClass,
 											})}>
-											{line.map((token, k) => (
-												<span
-													// biome-ignore lint/suspicious/noArrayIndexKey: static MDX code output; line order is fixed
-													key={k}
-													{...getTokenProps({ token })}
-												/>
-											))}
+											{line.map((token, k) => {
+												const t = getTokenProps({ token });
+												return (
+													<span
+														// biome-ignore lint/suspicious/noArrayIndexKey: static MDX code output; line order is fixed
+														key={k}
+														className={t.className}
+														style={t.style}>
+														{t.children}
+													</span>
+												);
+											})}
 										</span>
 									))}
 								</code>
@@ -554,7 +575,10 @@ export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 					</Highlight>
 				) : (
 					<pre
-						className={cx(codeBlockPreBaseClass, codeBlockPrePlainTextClass)}>
+						className={cx(
+							codeBlockPreBaseClass,
+							codeBlockPrePlainTextClass,
+						)}>
 						<code className={codeBlockCodeInnerClass}>{visualCode}</code>
 					</pre>
 				)}
