@@ -54,6 +54,7 @@ import {
 	SITE_COLOR_MODE_DARK,
 	siteMonoFontFamilyCssVar,
 } from "../siteClassNames";
+import { demoPlaygroundExpandAutoClosedBlockBraces } from "./demoPlaygroundExpandBlockBraces";
 import { cmOneDarkTheme } from "./cmOneDarkTheme";
 import {
 	playgroundApiReferenceLinkClass as apiReferenceLinkClass,
@@ -80,6 +81,7 @@ import {
 	NOTION_SCHEMA_VIEW_FILE_KEY,
 } from "./demoPlaygroundNotionSchemaFiles";
 import { ideLikeTsAutocomplete } from "./ideLikeTsAutocomplete";
+import { applyPrettierToDemoEditor } from "./demoPlaygroundPrettier";
 import {
 	agentEntryFile,
 	databaseEntryFile,
@@ -182,6 +184,10 @@ function createEditorTheme(isDark: boolean): Extension {
 	const lintPalette = isDark
 		? cmLintMarkerPalette.dark
 		: cmLintMarkerPalette.light;
+	// Fold box: in light mode bias toward text (darker on pale code); in dark mode toward a light line on the editor.
+	const foldPlaceholderBorder = isDark
+		? "1px solid color-mix(in srgb, var(--colors-text) 58%, white 42%)"
+		: "1px solid color-mix(in srgb, var(--colors-text) 46%, var(--colors-border) 54%)";
 
 	return EditorView.theme({
 		"&": {
@@ -218,7 +224,7 @@ function createEditorTheme(isDark: boolean): Extension {
 			verticalAlign: "text-bottom",
 			overflow: "hidden",
 			backgroundColor: "transparent",
-			border: "1px solid var(--colors-border)",
+			border: foldPlaceholderBorder,
 			color: "transparent",
 		},
 		[`.${cm.content}`]: {
@@ -631,6 +637,7 @@ function createEditorExtensions(
 		indentOnInput(),
 		demoSyntaxThemeCompartment.of(getDemoSyntaxTheme(isDark)),
 		bracketMatching(),
+		demoPlaygroundExpandAutoClosedBlockBraces(),
 		closeBrackets(),
 		foldGutter(),
 		lintGutter(),
@@ -639,6 +646,13 @@ function createEditorExtensions(
 		demoEditorChromeCompartment.of(createEditorTheme(isDark)),
 		demoTooltipMotionPlugin,
 		keymap.of([
+			{
+				key: "Mod-s",
+				run: (view) => {
+					void applyPrettierToDemoEditor(view);
+					return true;
+				},
+			},
 			indentWithTab,
 			...defaultKeymap,
 			...historyKeymap,
@@ -891,6 +905,7 @@ export function DemoPlayground() {
 	useEffect(() => {
 		let disposed = false;
 		let colorModeObserver: MutationObserver | null = null;
+		let colorModeRafId = 0;
 
 		async function mount() {
 			const databasesContainer = databasesContainerRef.current;
@@ -929,13 +944,24 @@ export function DemoPlayground() {
 				});
 
 				colorModeObserver = new MutationObserver(() => {
-					const nextIsDark = isDarkSiteColorMode();
-					if (nextIsDark === isDark) {
-						return;
-					}
-					isDark = nextIsDark;
-					reconfigureDemoThemes(databasesView, nextIsDark);
-					reconfigureDemoThemes(agentsView, nextIsDark);
+					// `cmOneDarkTheme` uses Panda CSS variables (`var(--colors-background)`, etc.). Those
+					// update in the same turn as our observer but after style resolution for the new
+					// `data-color-mode`. Defer reconfigure to the next frame so variables match the
+					// active mode (avoids a stuck light editor surface when switching to dark).
+					cancelAnimationFrame(colorModeRafId);
+					colorModeRafId = requestAnimationFrame(() => {
+						colorModeRafId = 0;
+						if (disposed) {
+							return;
+						}
+						const nextIsDark = isDarkSiteColorMode();
+						if (nextIsDark === isDark) {
+							return;
+						}
+						isDark = nextIsDark;
+						reconfigureDemoThemes(databasesView, nextIsDark);
+						reconfigureDemoThemes(agentsView, nextIsDark);
+					});
 				});
 				colorModeObserver.observe(document.documentElement, {
 					attributes: true,
@@ -967,6 +993,7 @@ export function DemoPlayground() {
 
 		return () => {
 			disposed = true;
+			cancelAnimationFrame(colorModeRafId);
 			colorModeObserver?.disconnect();
 			envRef.current = null;
 			prevDatabasesActiveFileRef.current = null;
