@@ -8,7 +8,7 @@ export interface TocDomClassNames {
 	nestedCollapsed: string;
 }
 
-export interface TocDomRegistry {
+interface TocDomRegistry {
 	byId: Map<string, { el: HTMLAnchorElement; kind: "root" | "child" }>;
 	nestedBySectionId: Map<string, HTMLElement>;
 }

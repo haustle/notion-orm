@@ -12,7 +12,7 @@ import type { SitePage, SitePath } from "./types";
 
 type SiteNavPage = Pick<SitePage, "path" | "title">;
 
-export interface SitePagesNavProps {
+interface SitePagesNavProps {
 	sitePages: SiteNavPage[];
 	currentPath: SitePath | "";
 }

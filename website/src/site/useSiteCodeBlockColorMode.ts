@@ -6,7 +6,7 @@ import { SITE_COLOR_MODE_ATTR, SITE_COLOR_MODE_DARK } from "./siteClassNames";
  * (see `src/app/layout.tsx`). Callers that need a boolean (e.g. Prism) should use
  * {@link isSiteCodeDarkForPrism} instead of reading `isDark` while `ready` is false.
  */
-export type SiteCodeBlockColorMode =
+type SiteCodeBlockColorMode =
 	| { ready: false }
 	| { ready: true; isDark: boolean };
 

@@ -18,7 +18,7 @@ const plainDark = {
 } as const;
 
 /** Prism token styles for dark mode (matches `cmOneDarkTheme` hex values). */
-export const siteCodeBlockPrismThemeDark = {
+const siteCodeBlockPrismThemeDark = {
 	plain: { ...plainDark },
 	styles: [
 		{
@@ -82,7 +82,7 @@ export const siteCodeBlockPrismThemeDark = {
 } satisfies PrismTheme;
 
 /** Prism light theme — `clouds` (thememirror) with TS-friendly accents. */
-export const siteCodeBlockPrismThemeLight = {
+const siteCodeBlockPrismThemeLight = {
 	plain: { ...plainLight },
 	styles: [
 		{
