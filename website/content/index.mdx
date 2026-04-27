@@ -61,7 +61,7 @@ bun notion add <database-id>
 
 ### Adding Custom Agents
 
-Agent support requires the [Notion Agents SDK](https://github.com/makenotion/notion-agents-sdk-js), which is **currently in alpha** and not published to npm. Because of this, a one-command setup handles the entire download-and-install flow for you:
+Agent support requires the [Notion Agents SDK](https://github.com/makenotion/notion-agents-sdk-js), which is currently in alpha and not published to npm. Because of this, a one-command setup handles the entire download-and-install flow for you:
 
 ```bash
 bun notion setup-agents-sdk
@@ -85,15 +85,15 @@ If you have not run the setup command, `notion sync` will skip agent generation 
 
 Learn more about [Custom Agents](https://www.notion.com/help/custom-agents) in the Notion documentation.
 
-### Full sync command (`notion sync`)
+### Full sync command
 
-- Fetch/refresh database schemas. If the agents SDK is installed, also syncs custom agents.
+Fetch/refresh database schemas. If the agents SDK is installed, also syncs custom agents.
 
 ```bash
 bun notion sync
 ```
 
-### Where sync writes files (`notion/`)
+### Where sync writes files
 
 `notion sync` writes generated modules under `notion/` at your project root—your synced database schemas, registries, and agent factories. A full sync replaces the entire `notion/` tree so removed databases or agents do not linger.
 
@@ -112,7 +112,7 @@ notion/
     └── metadata.json
 ```
 
-For the full tree (including declaration maps), how **camelCase** registry keys map to **PascalCase** files, and project-relative **import paths**, see **[Generated code layout](/api-reference#generated-code-layout)** in the API Reference.
+For the full tree (including declaration maps), how *camelCase* registry keys map to *PascalCase* files, and project-relative *import paths*, see [Generated code layout](/api-reference#generated-code-layout) in the API Reference.
 
 ### Initialization
 
@@ -122,7 +122,7 @@ Create a single ORM instance with your Notion integration key:
 import { NotionORM } from "./notion";
 
 const notion = new NotionORM({
-  auth: process.env.NOTION_KEY!,
+  auth: process.env.NOTION_KEY,
 });
 
 const db = notion.databases.yourDatabaseName; // DatabaseClient
@@ -141,7 +141,7 @@ Every generated database exposes a Prisma-style API with full type inference fro
 ### Create a page
 
 ```ts
-await notion.databases.books.create({
+const page = await notion.databases.books.create({
   properties: {
     bookName: "Creativity, Inc.",
     author: "Ed Catmull",
@@ -151,6 +151,10 @@ await notion.databases.books.create({
   },
   icon: { type: "emoji", emoji: "📕" },
 });
+// `page` from `create` includes:
+// - `id` — new page id
+// - `object` — Notion’s resource-kind tag (`"page"` here; other APIs use the same field for blocks, databases, etc.)
+// Use `findUnique` when you need the full row (properties, url, …).
 ```
 
 ### Create a page with markdown content
@@ -227,7 +231,7 @@ Agents require the Notion Agents SDK. Run `notion setup-agents-sdk` first, then 
 
 Once set up, agents shared with your integration are exposed at `notion.agents.*`.
 
-See the [Agent client API reference](/api-reference#agent-client) for full method signatures, thread helpers, and message APIs.
+See the Agent client [API reference](/api-reference#agent-client) for full method signatures, thread helpers, and message APIs.
 
 #### Chat and read messages
 
@@ -302,6 +306,6 @@ console.log("Thread ID:", thread.threadId);
 console.log("Final:", finalResponse);
 ```
 
-See [API Reference](/api-reference) for full method signatures, `ThreadInfo` shape, and message schemas.
+See [API Reference](/api-reference#threadinfo) for full method signatures, `ThreadInfo` shape, and message schemas.
 
 </DocsProse>

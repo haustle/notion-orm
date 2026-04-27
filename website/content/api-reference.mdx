@@ -16,11 +16,11 @@ Complete reference for the Notion ORM API. The sections follow a learning progre
 import { NotionORM } from "./notion";
 
 const notion = new NotionORM({
-  auth: process.env.NOTION_KEY!,
+  auth: process.env.NOTION_KEY,
 });
 
-// DatabaseClient — e.g. notion.booksDb (camelCase DB name from generation)
-// AgentClient — e.g. notion.agents.helpBot (camelCase agent name from generation)
+// DatabaseClient — e.g. notion.databases.books
+// AgentClient — e.g. notion.agents.helpBot
 ```
 
 | Runtime Property   | Type                             | Description                                                    |
@@ -656,4 +656,4 @@ notion/
     └── metadata.json        # sync cache for agents
 ```
 
-Sync writes **`metadata.json`** cache files (not `metadata.js`). Your build may still emit `.js` and `.d.ts` next to the `.ts` modules above; they are omitted here for brevity.
+Sync writes `metadata.json` cache files that store Notion ids and display names so incremental syncs stay fast and stable across runs.
