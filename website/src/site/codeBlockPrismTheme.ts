@@ -18,7 +18,7 @@ const plainDark = {
 } as const;
 
 /** Prism token styles for dark mode (matches `cmOneDarkTheme` hex values). */
-export const siteCodeBlockPrismThemeDark: PrismTheme = {
+export const siteCodeBlockPrismThemeDark = {
 	plain: { ...plainDark },
 	styles: [
 		{
@@ -79,10 +79,10 @@ export const siteCodeBlockPrismThemeDark: PrismTheme = {
 			style: { color: "inherit" },
 		},
 	],
-};
+} satisfies PrismTheme;
 
 /** Prism light theme — `clouds` (thememirror) with TS-friendly accents. */
-export const siteCodeBlockPrismThemeLight: PrismTheme = {
+export const siteCodeBlockPrismThemeLight = {
 	plain: { ...plainLight },
 	styles: [
 		{
@@ -133,7 +133,7 @@ export const siteCodeBlockPrismThemeLight: PrismTheme = {
 			style: { color: "inherit" },
 		},
 	],
-};
+} satisfies PrismTheme;
 
 export function getSiteCodeBlockPrismTheme(isDark: boolean): PrismTheme {
 	return isDark ? siteCodeBlockPrismThemeDark : siteCodeBlockPrismThemeLight;

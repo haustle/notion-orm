@@ -1,10 +1,7 @@
 "use client";
 
+import type { AgentationProps } from "agentation";
 import dynamic from "next/dynamic";
-
-type AgentationProps = {
-	endpoint: string;
-};
 
 const DevAgentation =
 	process.env.NODE_ENV === "production"

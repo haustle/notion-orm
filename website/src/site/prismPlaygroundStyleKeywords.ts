@@ -1,4 +1,4 @@
-import type { default as PrismLib } from "prismjs";
+import type { Languages } from "prismjs";
 
 const STORAGE_DECL = {
 	declaration: {
@@ -14,9 +14,9 @@ const STORAGE_DECL = {
  * `insertBefore` has to be applied to each id **after** every component has loaded, not just `javascript`
  * (otherwise TS/MDX ` ```ts` blocks never get the `declaration` token).
  */
-export function registerPrismPlaygroundStyleKeywords(
-	Prism: typeof PrismLib,
-): void {
+export function registerPrismPlaygroundStyleKeywords(Prism: {
+	languages: Languages;
+}): void {
 	for (const id of ["javascript", "typescript", "tsx"] as const) {
 		const grammar = Prism.languages[id];
 		if (!grammar) {

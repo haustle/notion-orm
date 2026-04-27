@@ -23,7 +23,11 @@ import {
 	mdxFenceLanguageToPrism,
 	prismHasGrammar,
 } from "./mdxFenceLanguageToPrism";
-import { useSiteCodeBlockColorMode } from "./useSiteCodeBlockColorMode";
+import {
+	isSiteCodeBlockColorModeReady,
+	isSiteCodeDarkForPrism,
+	useSiteCodeBlockColorMode,
+} from "./useSiteCodeBlockColorMode";
 
 interface CodeBlockProps {
 	children?: ReactNode;
@@ -455,11 +459,16 @@ export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 		blockData.fileLabel ?? defaultCodeBlockTitle(blockData.language);
 
 	const prismId = mdxFenceLanguageToPrism(blockData.language);
-	const useSyntaxHighlight =
-		codeBlockColorMode.ready &&
+	const prismHighlightLanguage =
+		isSiteCodeBlockColorModeReady(codeBlockColorMode) &&
 		prismId !== null &&
-		prismHasGrammar(Prism, prismId);
+		prismHasGrammar(Prism, prismId)
+			? prismId
+			: null;
 	const visualCode = codeBlockVisualSource(blockData.code);
+	const prismTheme = getSiteCodeBlockPrismTheme(
+		isSiteCodeDarkForPrism(codeBlockColorMode),
+	);
 
 	return (
 		<div
@@ -504,12 +513,12 @@ export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 						</button>
 					</div>
 				</div>
-				{useSyntaxHighlight ? (
+				{prismHighlightLanguage !== null ? (
 					<Highlight
-						language={prismId}
+						language={prismHighlightLanguage}
 						prism={Prism}
 						code={visualCode}
-						theme={getSiteCodeBlockPrismTheme(codeBlockColorMode.isDark)}>
+						theme={prismTheme}>
 						{({ className, style, tokens, getLineProps, getTokenProps }) => (
 							<pre
 								className={cx(codeBlockPreBaseClass, className)}

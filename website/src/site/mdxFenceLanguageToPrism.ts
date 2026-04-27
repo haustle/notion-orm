@@ -1,6 +1,8 @@
 import type { Language } from "prism-react-renderer";
+import type { Languages } from "prismjs";
+import { objectKeys } from "../../../src/typeUtils";
 
-const MDX_FENCE_TO_PRISM: Record<string, Language> = {
+const MDX_FENCE_TO_PRISM = {
 	ts: "typescript",
 	tsx: "tsx",
 	mts: "typescript",
@@ -27,7 +29,12 @@ const MDX_FENCE_TO_PRISM: Record<string, Language> = {
 	css: "css",
 	scss: "scss",
 	sass: "scss",
-};
+} as const satisfies Readonly<Record<string, Language>>;
+
+const mdxFenceAliasToPrismLanguage = new Map<string, Language>();
+for (const key of objectKeys(MDX_FENCE_TO_PRISM)) {
+	mdxFenceAliasToPrismLanguage.set(key, MDX_FENCE_TO_PRISM[key]);
+}
 
 /** Fences for which we show plain text (no grammar). */
 const NO_HIGHLIGHT = new Set([
@@ -51,14 +58,15 @@ export function mdxFenceLanguageToPrism(fence: string | null): Language | null {
 	if (NO_HIGHLIGHT.has(k)) {
 		return null;
 	}
-	if (k in MDX_FENCE_TO_PRISM) {
-		return MDX_FENCE_TO_PRISM[k];
+	const aliased = mdxFenceAliasToPrismLanguage.get(k);
+	if (aliased !== undefined) {
+		return aliased;
 	}
 	return k;
 }
 
 export function prismHasGrammar(
-	Prism: { languages: Record<string, object | undefined> },
+	Prism: { readonly languages: Languages },
 	lang: Language,
 ): boolean {
 	return Boolean(Prism.languages[lang]);
