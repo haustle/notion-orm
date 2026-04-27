@@ -4,6 +4,9 @@ import { toPascalCase } from "../shared/ast-builders";
 import { AST_TYPE_NAMES, PLAYGROUND_PATHS } from "../shared/constants";
 import type { DemoPlaygroundSpec } from "./demo-playground-spec";
 
+/** Shown as the first line in each CodeMirror tab on /demo. */
+export const PLAYGROUND_ENTRY_TOP_HINT = "// Edit and try here!\n\n";
+
 interface ResolvedDatabaseModule {
 	moduleName: string;
 	databaseTitle: string;
@@ -99,7 +102,7 @@ export function buildDemoDatabaseEntry(args: {
 		? `\ticon: { type: "emoji", emoji: "${scenario.create.icon.emoji}" },\n`
 		: "";
 
-	return `import { NotionORM } from "./${PLAYGROUND_PATHS.BUILD_INDEX_DATABASES}";
+	return `${PLAYGROUND_ENTRY_TOP_HINT}import { NotionORM } from "./${PLAYGROUND_PATHS.BUILD_INDEX_DATABASES}";
 
 import {
 ${namedImports}
@@ -156,7 +159,7 @@ export function buildDemoAgentEntry(args: {
 		);
 	}
 
-	return `import { NotionORM } from "./${PLAYGROUND_PATHS.BUILD_INDEX_AGENTS}";
+	return `${PLAYGROUND_ENTRY_TOP_HINT}import { NotionORM } from "./${PLAYGROUND_PATHS.BUILD_INDEX_AGENTS}";
 
 const notion = new NotionORM({ auth: "${PLAYGROUND_PATHS.DEMO_AUTH_PLACEHOLDER}" });
 

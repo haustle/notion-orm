@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { PLAYGROUND_ENTRY_TOP_HINT } from "../../src/ast/demo/demo-entry-builders";
 import { DEMO_PLAYGROUND_SPEC } from "../../src/ast/demo/demo-playground-spec";
 import {
 	buildDemoPlaygroundWorkspace,
@@ -88,6 +89,17 @@ describe("demo workspace builder", () => {
 	test("includes tsconfig.json", () => {
 		const tsconfig = JSON.parse(result.files["tsconfig.json"]!);
 		expect(tsconfig.compilerOptions.strict).toBe(true);
+	});
+
+	test("entry files start with playground editor hint", () => {
+		expect(
+			result.files[result.databaseEntryFile]!.startsWith(
+				PLAYGROUND_ENTRY_TOP_HINT,
+			),
+		).toBe(true);
+		expect(
+			result.files[result.agentEntryFile]!.startsWith(PLAYGROUND_ENTRY_TOP_HINT),
+		).toBe(true);
 	});
 
 	test("database entry references the spec scenario target", () => {
