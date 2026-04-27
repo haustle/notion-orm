@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { FC, ReactNode } from "react";
 import { css, cx } from "../styled-system/css";
-import { githubUrl, siteTitle } from "./config";
+import { githubUrl, haustleTwitterUrl, siteTitle } from "./config";
 import { PageToc } from "./PageToc";
-import { PAGE_LINK_ARROW_ATTR, PAGE_LINK_ARROW_VALUE } from "./siteClassNames";
+import { SitePagesNav } from "./SitePagesNav";
 import {
 	type SitePage,
 	type SitePath,
@@ -87,16 +87,6 @@ const sidebarBrandSectionClass = css({
 	flexShrink: "0",
 });
 
-const pagesNavClass = css({
-	display: "flex",
-	flexDirection: "column",
-	gap: "1",
-	bg: { _dark: "bgDark" },
-	rounded: "10",
-	p: "3",
-	flexShrink: "0",
-});
-
 const tocNavOffsetClass = css({
 	mt: "10",
 });
@@ -108,7 +98,7 @@ const mobileGithubLinkClass = css({
 const contentClass = css({
 	display: "flex",
 	flexDirection: "column",
-	gap: "8",
+	gap: "0",
 	minW: "0",
 });
 
@@ -120,152 +110,64 @@ const articleBaseClass = css({
 	color: "text",
 });
 
-const articleBottomSpaceClass = css({
-	mb: "100px",
+const siteFooterClass = css({
+	mt: "100px",
+	mb: "40px",
+	fontSize: "sm",
+	color: "muted",
+	textAlign: "center",
 });
 
-const proseStyles = {
-	"& h1": {
-		fontSize: { base: "3xl", md: "4xl" },
-		lineHeight: "1.1",
-		letterSpacing: "-0.03em",
-		fontWeight: "600",
-		marginTop: "0",
-		marginBottom: "4",
-		scrollMarginTop: "10",
+const siteFooterCreditLinkClass = css({
+	display: "inline-flex",
+	alignItems: "center",
+	gap: "0.3em",
+	color: "inherit",
+	textDecoration: "none",
+	borderRadius: "4px",
+	cursor: "pointer",
+	transformOrigin: "center",
+	transform: "scale(1)",
+	py: "0.5",
+	px: "1.5",
+	mx: "-1.5",
+	my: "-0.5",
+	outlineStyle: "solid",
+	outlineWidth: "0",
+	outlineColor: "transparent",
+	outlineOffset: "0",
+	transition:
+		"background-color 0.2s ease, outline-width 0.22s ease, outline-color 0.22s ease, transform 0.22s cubic-bezier(0.34, 1.45, 0.64, 1)",
+	_focusVisible: {
+		outlineWidth: "2px",
+		outlineColor: "accent",
+		outlineOffset: "3px",
 	},
-	"& h2": {
-		fontSize: { base: "xl", md: "2xl" },
-		lineHeight: "1.2",
-		letterSpacing: "-0.02em",
-		fontWeight: "600",
-		marginTop: "10",
-		marginBottom: "3",
-		scrollMarginTop: "10",
+	"& span:last-of-type": {
+		transition: "color 110ms ease",
 	},
-	"& h3": {
-		fontSize: { base: "md", md: "lg" },
-		lineHeight: "1.3",
-		fontWeight: "600",
-		marginTop: "7",
-		marginBottom: "2",
-		scrollMarginTop: "10",
-	},
-	"& h4": {
-		fontSize: "base",
-		lineHeight: "1.3",
-		fontWeight: "600",
-		marginTop: "5",
-		marginBottom: "2",
-		scrollMarginTop: "10",
-	},
-	"& p": {
-		marginY: "4",
-		color: "text",
-	},
-	"& ul": {
-		marginY: "4",
-		paddingLeft: "4",
-		listStyleType: "disc",
-	},
-	"& li": {
-		marginY: "1.5",
-		color: "text",
-		"&::marker": {
-			color: "muted",
+	_hover: {
+		backgroundColor: "codeBg",
+		outlineWidth: "5px",
+		outlineColor: "codeBg",
+		"& span:last-of-type": {
+			color: "text",
 		},
 	},
-	"& blockquote": {
-		marginY: "6",
-		pl: "4",
-		borderLeftWidth: "2px",
-		borderLeftColor: "border",
-		color: "muted",
+	_active: {
+		transform: "scale(0.96)",
+		transition:
+			"background-color 0.15s ease, outline-width 0.1s ease, outline-color 0.1s ease, transform 0.1s cubic-bezier(0.34, 1.8, 0.64, 1)",
 	},
-	"& hr": {
-		marginY: "8",
-		border: "0",
-		borderTopWidth: "1px",
-		borderTopColor: "border",
+	"@media (prefers-reduced-motion: reduce)": {
+		transition: "background-color 0.15s ease, outline-width 0.22s ease, outline-color 0.22s ease",
+		"& span:last-of-type": {
+			transition: "none",
+		},
+		_active: {
+			transform: "none",
+		},
 	},
-	"& code": {
-		fontSize: "0.92em",
-		bg: "inlineCodeBg",
-		color: "inlineCodeText",
-		borderRadius: "sm",
-		px: "1",
-		py: "0.5",
-	},
-	"& pre code": {
-		bg: "transparent",
-		color: "inherit",
-		borderWidth: "0",
-		borderRadius: "0",
-		px: "0",
-		py: "0",
-		fontSize: "inherit",
-	},
-	"& a": {
-		color: "text",
-		textDecoration: "underline",
-		textUnderlineOffset: "3px",
-	},
-	"& table": {
-		width: "100%",
-		borderCollapse: "collapse",
-		marginY: "4",
-		fontSize: "sm",
-	},
-	"& th": {
-		textAlign: "left",
-		padding: "2",
-		borderBottomWidth: "2px",
-		borderBottomColor: "border",
-		fontWeight: "600",
-	},
-	"& td": {
-		padding: "2",
-		borderBottomWidth: "1px",
-		borderBottomColor: "border",
-	},
-} as const;
-
-const articleProseClass = css(proseStyles);
-
-const pageLinkBaseClass = css({
-	display: "inline-flex",
-	alignItems: "center",
-	gap: "2",
-	py: "1",
-	fontSize: "sm",
-	lineHeight: "1.5",
-	fontWeight: "400",
-	color: { base: "text", _dark: "white" },
-	textDecoration: "none",
-	transitionProperty: "opacity",
-	transitionDuration: "220ms",
-	_hover: { opacity: 1 },
-});
-
-const pageLinkActiveClass = css({
-	opacity: 1,
-});
-
-const pageLinkInactiveClass = css({
-	opacity: 0.6,
-});
-
-const pageLinkAdornmentClass = css({
-	display: "inline-flex",
-	alignItems: "center",
-	justifyContent: "center",
-});
-
-const pageLinkDotClass = css({
-	w: "1.5",
-	h: "1.5",
-	rounded: "full",
-	bg: { base: "textLight", _dark: "white" },
 });
 
 const Sidebar: FC<SidebarProps> = ({ sitePages, currentPath, toc }) => {
@@ -277,45 +179,7 @@ const Sidebar: FC<SidebarProps> = ({ sitePages, currentPath, toc }) => {
 				{siteTitle}
 			</Link>
 
-			<nav className={pagesNavClass} aria-label="Pages">
-				{sitePages.map((p) => {
-					const active = p.path === currentPath;
-					return (
-						<Link
-							key={p.path}
-							href={p.path}
-							className={cx(
-								pageLinkBaseClass,
-								active ? pageLinkActiveClass : pageLinkInactiveClass,
-							)}>
-							<span>{p.title}</span>
-							{active && (
-								<span className={pageLinkAdornmentClass}>
-									<span className={pageLinkDotClass} aria-hidden />
-								</span>
-							)}
-						</Link>
-					);
-				})}
-				<a
-					href={githubUrl}
-					target="_blank"
-					rel="noreferrer"
-					className={cx(
-						pageLinkBaseClass,
-						pageLinkInactiveClass,
-						"site-nav-github-link",
-					)}>
-					<span>GitHub</span>
-					<span className={pageLinkAdornmentClass}>
-						<span
-							{...{ [PAGE_LINK_ARROW_ATTR]: PAGE_LINK_ARROW_VALUE }}
-							aria-hidden>
-							↗
-						</span>
-					</span>
-				</a>
-			</nav>
+			<SitePagesNav sitePages={sitePages} currentPath={currentPath} />
 
 			{toc.length > 0 && (
 				<PageToc toc={toc} className={tocNavOffsetClass} />
@@ -348,14 +212,17 @@ export const Layout: FC<LayoutProps> = ({
 			<div className={cx(layoutClass, narrowMainColumn && narrowLayoutClass)}>
 				<Sidebar sitePages={sitePages} currentPath={currentPath} toc={toc} />
 				<main className={contentClass}>
-					<article
-						className={cx(
-							articleBaseClass,
-							articleProseClass,
-							articleBottomSpaceClass,
-						)}>
-						{children}
-					</article>
+					<article className={articleBaseClass}>{children}</article>
+					<footer className={siteFooterClass}>
+						<a
+							href={haustleTwitterUrl}
+							target="_blank"
+							rel="noreferrer"
+							className={siteFooterCreditLinkClass}>
+							<span>Made by</span>
+							<span>haustle</span>
+						</a>
+					</footer>
 				</main>
 			</div>
 		</div>

@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { preload } from "swr";
 import {
@@ -9,11 +8,11 @@ import {
 } from "./demoPlaygroundLoad";
 
 /**
- * After first paint, warm the demo playground chunk and prefetch `/demo` so a later visit feels instant.
+ * After first paint, warm the demo playground chunk. Route JS/CSS for `/demo` is prefetched from
+ * `<link rel="prefetch" href="/demo" />` in the root layout so this module does not call
+ * `useRouter()` (avoids re-subscribing the warmup subtree to App Router state on every URL tick).
  */
 export function DemoPlaygroundWarmup() {
-	const router = useRouter();
-
 	useEffect(() => {
 		let cancelled = false;
 
@@ -22,7 +21,6 @@ export function DemoPlaygroundWarmup() {
 				return;
 			}
 			preload(DEMO_PLAYGROUND_SWR_KEY, fetchDemoPlayground);
-			router.prefetch("/demo");
 		};
 
 		if (typeof window.requestIdleCallback === "function") {
@@ -38,7 +36,7 @@ export function DemoPlaygroundWarmup() {
 			cancelled = true;
 			window.clearTimeout(timeoutId);
 		};
-	}, [router]);
+	}, []);
 
 	return null;
 }

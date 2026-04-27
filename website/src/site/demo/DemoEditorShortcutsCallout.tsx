@@ -126,6 +126,11 @@ export const DemoEditorShortcutsCallout: FC = () => (
 					<div className={descCellClass}>Redo</div>
 
 					<div className={shortcutCellClass}>
+						<Kbd>Cmd/Ctrl+S</Kbd>
+					</div>
+					<div className={descCellClass}>Format with Prettier</div>
+
+					<div className={shortcutCellClass}>
 						<Kbd>Tab</Kbd>
 					</div>
 					<div className={descCellClass}>Indent</div>

@@ -159,6 +159,17 @@ export const PLAYGROUND_PATHS = {
 	 */
 	BUILD_INDEX_DIR: `${PROJECT_CODEGEN_DIR_NAME}/`,
 
+	/**
+	 * Playground: `NotionORM` with `databases` only (excludes `agents` from the type).
+	 * Real apps keep importing from {@link BUILD_INDEX} / {@link BUILD_INDEX_DIR}.
+	 */
+	BUILD_INDEX_DATABASES: `${PROJECT_CODEGEN_DIR_NAME}/index-databases.ts`,
+
+	/**
+	 * Playground: `NotionORM` with `agents` only (databases array empty; see emitter warn policy).
+	 */
+	BUILD_INDEX_AGENTS: `${PROJECT_CODEGEN_DIR_NAME}/index-agents.ts`,
+
 	databaseModule(name: string): string {
 		return `${PROJECT_CODEGEN_DIR_NAME}/${PROJECT_DATABASES_DIR_NAME}/${toPascalCase(name)}.ts`;
 	},

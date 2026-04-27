@@ -1,7 +1,11 @@
 import { camelize } from "../../helpers";
+import { objectEntries } from "../../typeUtils";
 import { toPascalCase } from "../shared/ast-builders";
 import { AST_TYPE_NAMES, PLAYGROUND_PATHS } from "../shared/constants";
 import type { DemoPlaygroundSpec } from "./demo-playground-spec";
+
+/** Shown as the first line in each CodeMirror tab on /demo. */
+export const PLAYGROUND_ENTRY_TOP_HINT = "// Edit and try here!\n\n";
 
 interface ResolvedDatabaseModule {
 	moduleName: string;
@@ -25,12 +29,13 @@ function findSelectLikeProperties(
 	if (!db) {
 		return [];
 	}
-	return Object.entries(db.properties)
+	return objectEntries(db.properties)
 		.filter(
 			([, prop]) =>
-				prop.type === "select" ||
-				prop.type === "multi_select" ||
-				prop.type === "status",
+				prop !== undefined &&
+				(prop.type === "select" ||
+					prop.type === "multi_select" ||
+					prop.type === "status"),
 		)
 		.map(([name]) => name);
 }
@@ -67,13 +72,13 @@ export function buildDemoDatabaseEntry(args: {
 		`\ttype CreateSchema,`,
 	].join("\n");
 
-	const schemaEntries = Object.entries(scenario.create.schemaLiteral)
+	const schemaEntries = objectEntries(scenario.create.schemaLiteral)
 		.map(([key, value]) => `\t${key}: ${value},`)
 		.join("\n");
 
-	const whereEntries = Object.entries(scenario.findMany.where)
+	const whereEntries = objectEntries(scenario.findMany.where)
 		.map(([key, filter]) => {
-			const filterEntries = Object.entries(filter)
+			const filterEntries = objectEntries(filter)
 				.map(([op, val]) => `${op}: ${val}`)
 				.join(", ");
 			return `\t\t${key}: { ${filterEntries} },`;
@@ -84,9 +89,9 @@ export function buildDemoDatabaseEntry(args: {
 		.map((s) => `{ property: "${s.property}", direction: "${s.direction}" }`)
 		.join(", ");
 
-	const countWhereEntries = Object.entries(scenario.count.where)
+	const countWhereEntries = objectEntries(scenario.count.where)
 		.map(([key, filter]) => {
-			const filterEntries = Object.entries(filter)
+			const filterEntries = objectEntries(filter)
 				.map(([op, val]) => `${op}: ${val}`)
 				.join(", ");
 			return `\t\t${key}: { ${filterEntries} },`;
@@ -97,7 +102,7 @@ export function buildDemoDatabaseEntry(args: {
 		? `\ticon: { type: "emoji", emoji: "${scenario.create.icon.emoji}" },\n`
 		: "";
 
-	return `import { NotionORM } from "./${PLAYGROUND_PATHS.BUILD_INDEX_DIR}";
+	return `${PLAYGROUND_ENTRY_TOP_HINT}import { NotionORM } from "./${PLAYGROUND_PATHS.BUILD_INDEX_DATABASES}";
 
 import {
 ${namedImports}
@@ -154,7 +159,7 @@ export function buildDemoAgentEntry(args: {
 		);
 	}
 
-	return `import { NotionORM } from "./${PLAYGROUND_PATHS.BUILD_INDEX_DIR}";
+	return `${PLAYGROUND_ENTRY_TOP_HINT}import { NotionORM } from "./${PLAYGROUND_PATHS.BUILD_INDEX_AGENTS}";
 
 const notion = new NotionORM({ auth: "${PLAYGROUND_PATHS.DEMO_AUTH_PLACEHOLDER}" });
 

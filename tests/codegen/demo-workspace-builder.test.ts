@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { PLAYGROUND_ENTRY_TOP_HINT } from "../../src/ast/demo/demo-entry-builders";
 import { DEMO_PLAYGROUND_SPEC } from "../../src/ast/demo/demo-playground-spec";
 import {
 	buildDemoPlaygroundWorkspace,
@@ -54,6 +55,11 @@ describe("demo workspace builder", () => {
 		expect(result.files[PLAYGROUND_PATHS.BUILD_INDEX]).toBeDefined();
 	});
 
+	test("produces scoped playground index modules", () => {
+		expect(result.files[PLAYGROUND_PATHS.BUILD_INDEX_DATABASES]).toBeDefined();
+		expect(result.files[PLAYGROUND_PATHS.BUILD_INDEX_AGENTS]).toBeDefined();
+	});
+
 	test("index module imports use .ts extensions for VFS resolution", () => {
 		const indexSource = result.files[PLAYGROUND_PATHS.BUILD_INDEX]!;
 		for (const db of DEMO_PLAYGROUND_SPEC.databases) {
@@ -85,10 +91,21 @@ describe("demo workspace builder", () => {
 		expect(tsconfig.compilerOptions.strict).toBe(true);
 	});
 
+	test("entry files start with playground editor hint", () => {
+		expect(
+			result.files[result.databaseEntryFile]!.startsWith(
+				PLAYGROUND_ENTRY_TOP_HINT,
+			),
+		).toBe(true);
+		expect(
+			result.files[result.agentEntryFile]!.startsWith(PLAYGROUND_ENTRY_TOP_HINT),
+		).toBe(true);
+	});
+
 	test("database entry references the spec scenario target", () => {
 		const entry = result.files[result.databaseEntryFile]!;
 		expect(entry).toContain(
-			`from "./${PLAYGROUND_PATHS.BUILD_INDEX_DIR}"`,
+			`from "./${PLAYGROUND_PATHS.BUILD_INDEX_DATABASES}"`,
 		);
 		const targetModuleName = camelize(
 			DEMO_PLAYGROUND_SPEC.databaseScenario.targetDatabase,
@@ -104,7 +121,7 @@ describe("demo workspace builder", () => {
 	test("agent entry references all scenario agents", () => {
 		const entry = result.files[result.agentEntryFile]!;
 		expect(entry).toContain(
-			`from "./${PLAYGROUND_PATHS.BUILD_INDEX_DIR}"`,
+			`from "./${PLAYGROUND_PATHS.BUILD_INDEX_AGENTS}"`,
 		);
 		const chatModuleName = camelize(
 			DEMO_PLAYGROUND_SPEC.agentScenario.chatAgent,
@@ -126,9 +143,36 @@ describe("demo workspace builder", () => {
 	test("file count matches expected total", () => {
 		const expectedDatabases = DEMO_PLAYGROUND_SPEC.databases.length;
 		const expectedAgents = DEMO_PLAYGROUND_SPEC.agents.length;
-		const staticFiles = 7;
+		// 2 entry files + 3 index variants (full, databases, agents) + 3 mock + tsconfig
+		const staticFiles = 9;
 		expect(Object.keys(result.files).length).toBe(
 			staticFiles + expectedDatabases + expectedAgents,
 		);
+	});
+
+	test("databases-only index omits agent module imports", () => {
+		const indexSource = result.files[PLAYGROUND_PATHS.BUILD_INDEX_DATABASES]!;
+		for (const agent of DEMO_PLAYGROUND_SPEC.agents) {
+			const moduleName = camelize(agent.name);
+			expect(indexSource).not.toContain(
+				PLAYGROUND_PATHS.agentImport(moduleName),
+			);
+		}
+	});
+
+	test("agents-only index omits database module imports", () => {
+		const indexSource = result.files[PLAYGROUND_PATHS.BUILD_INDEX_AGENTS]!;
+		for (const db of DEMO_PLAYGROUND_SPEC.databases) {
+			const moduleName = camelize(db.title);
+			expect(indexSource).not.toContain(
+				PLAYGROUND_PATHS.databaseImport(moduleName),
+			);
+		}
+		expect(indexSource).not.toMatch(/public\s+databases\s*:/);
+	});
+
+	test("databases-only index omits agents property on NotionORM", () => {
+		const indexSource = result.files[PLAYGROUND_PATHS.BUILD_INDEX_DATABASES]!;
+		expect(indexSource).not.toMatch(/public\s+agents\s*:/);
 	});
 });

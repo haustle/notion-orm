@@ -16,10 +16,9 @@ An unofficial [Notion API](https://developers.notion.com/) TypeScript wrapper th
 ## Key Features
 
 - Full type inference when interacting with databases, including `findMany`, `create`, `update`, `delete`, and more
-- Manage databases and agents in Notion
 - Sync remote schema changes in a single command
 - Quickly start/resume chat streams with your agents
-- Access exported property values, schemas, and types (ex. `zod` validators)
+- Access exported property values, schemas, and types from generated modules
 
 ## Setup
 
@@ -34,6 +33,7 @@ bun notion init
 ```
 
 ```ts
+// file: notion.config.ts
 // If you don't have an API key, sign up for free
 // [here](https://developers.notion.com)
 
@@ -61,39 +61,28 @@ bun notion add <database-id>
 
 ### Adding Custom Agents
 
-Agent support requires the [Notion Agents SDK](https://github.com/makenotion/notion-agents-sdk-js), which is **currently in alpha** and not published to npm. Because of this, a one-command setup handles the entire download-and-install flow for you:
-
-```bash
-bun notion setup-agents-sdk
-```
-
-**What this does:**
-1. Clones the SDK repository into a local cache (`node_modules/.cache/.notion-agents-sdk`)
-2. Installs the SDK's dependencies and builds it
-3. Adds the built `@notionhq/agents-client` package to your project
-
-After setup, run `notion sync` to generate agent types. Agents linked to your integration are automatically discovered.
-
-**Updating:** When the upstream SDK receives changes, rerun the same command. It pulls the latest from the cached clone, rebuilds, and reinstalls:
+Agent support requires the [Notion Agents SDK](https://github.com/makenotion/notion-agents-sdk-js), which is currently in alpha and not published to npm. Because of this, use the commands below to download, build, and link the SDK, then sync:
 
 ```bash
 bun notion setup-agents-sdk
 bun notion sync
 ```
 
-If you have not run the setup command, `notion sync` will skip agent generation and only produce database types. Once the SDK is published to npm, this step will no longer be necessary.
+`bun notion setup-agents-sdk` clones the Notion Agents SDK, builds it from a local cache, and links `@notionhq/agents-client` into your project. Run it with `bun notion sync` to generate agent types and pick up agents on your integration. When the upstream SDK changes, re-run setup, then sync again.
+
+If you have not run setup, `notion sync` only generates database types. This extra step will go away when the SDK is published to npm.
 
 Learn more about [Custom Agents](https://www.notion.com/help/custom-agents) in the Notion documentation.
 
-### Full sync command (`notion sync`)
+### Full sync command
 
-- Fetch/refresh database schemas. If the agents SDK is installed, also syncs custom agents.
+Fetch/refresh database schemas. If the agents SDK is installed, also syncs custom agents.
 
 ```bash
 bun notion sync
 ```
 
-### Where sync writes files (`notion/`)
+### Where sync writes files
 
 `notion sync` writes generated modules under `notion/` at your project root—your synced database schemas, registries, and agent factories. A full sync replaces the entire `notion/` tree so removed databases or agents do not linger.
 
@@ -112,7 +101,7 @@ notion/
     └── metadata.json
 ```
 
-For the full tree (including declaration maps), how **camelCase** registry keys map to **PascalCase** files, and project-relative **import paths**, see **[Generated code layout](/api-reference#generated-code-layout)** in the API Reference.
+For the full tree (including declaration maps), how *camelCase* registry keys map to *PascalCase* files, and project-relative *import paths*, see [Generated code layout](/api-reference#generated-code-layout) in the API Reference.
 
 ### Initialization
 
@@ -122,7 +111,7 @@ Create a single ORM instance with your Notion integration key:
 import { NotionORM } from "./notion";
 
 const notion = new NotionORM({
-  auth: process.env.NOTION_KEY!,
+  auth: process.env.NOTION_KEY,
 });
 
 const db = notion.databases.yourDatabaseName; // DatabaseClient
@@ -141,7 +130,7 @@ Every generated database exposes a Prisma-style API with full type inference fro
 ### Create a page
 
 ```ts
-await notion.databases.books.create({
+const page = await notion.databases.books.create({
   properties: {
     bookName: "Creativity, Inc.",
     author: "Ed Catmull",
@@ -151,6 +140,10 @@ await notion.databases.books.create({
   },
   icon: { type: "emoji", emoji: "📕" },
 });
+// `page` from `create` includes:
+// - `id` — new page id
+// - `object` — Notion’s resource-kind tag (`"page"` here; other APIs use the same field for blocks, databases, etc.)
+// Use `findUnique` when you need the full row (properties, url, …).
 ```
 
 ### Create a page with markdown content
@@ -200,7 +193,7 @@ await notion.databases.books.deleteMany({
 
 ### Stream large result sets
 
-The usual `await findMany` uses `size` for **one** request only (no follow-up fetches). **`stream: n`** means **n rows per Notion call**, with cursors followed automatically; `for await` then yields **one row at a time** for the full match—no loading everything into an array, and no hand-rolled `nextCursor` (see [cursor pagination](#cursor-pagination)). [`findMany`](/api-reference#findmany).
+`size` limits a single request. With `stream: n`, each Notion call returns up to n rows, cursors advance automatically, and `for await` walks the full result one row at a time without buffering everything or hand-rolling `nextCursor` ([cursor pagination](#cursor-pagination); [`findMany`](/api-reference#findmany)).
 
 ```ts
 // Notion is queried in chunks of 50; the loop runs once per matching row, not just the first chunk
@@ -227,7 +220,7 @@ Agents require the Notion Agents SDK. Run `notion setup-agents-sdk` first, then 
 
 Once set up, agents shared with your integration are exposed at `notion.agents.*`.
 
-See the [Agent client API reference](/api-reference#agent-client) for full method signatures, thread helpers, and message APIs.
+See the Agent client [API reference](/api-reference#agent-client) for full method signatures, thread helpers, and message APIs.
 
 #### Chat and read messages
 
@@ -302,6 +295,6 @@ console.log("Thread ID:", thread.threadId);
 console.log("Final:", finalResponse);
 ```
 
-See [API Reference](/api-reference) for full method signatures, `ThreadInfo` shape, and message schemas.
+See [API Reference](/api-reference#threadinfo) for full method signatures, `ThreadInfo` shape, and message schemas.
 
 </DocsProse>

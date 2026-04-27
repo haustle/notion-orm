@@ -277,6 +277,7 @@ function createRuntimeClassDeclaration(args: {
 	syncCommand: string;
 }): ts.ClassDeclaration {
 	const { databases, agents, syncCommand } = args;
+	const hasDatabases = databases.length > 0;
 	const hasAgents = agents.length > 0;
 	const statements: ts.Statement[] = [
 		ts.factory.createExpressionStatement(
@@ -284,17 +285,22 @@ function createRuntimeClassDeclaration(args: {
 				ts.factory.createIdentifier("config"),
 			]),
 		),
-		ts.factory.createExpressionStatement(
-			ts.factory.createBinaryExpression(
-				ts.factory.createPropertyAccessExpression(
-					ts.factory.createThis(),
-					ts.factory.createIdentifier("databases"),
-				),
-				ts.factory.createToken(ts.SyntaxKind.EqualsToken),
-				createRegistryInitializer(databases, toPascalCase),
-			),
-		),
 	];
+
+	if (hasDatabases) {
+		statements.push(
+			ts.factory.createExpressionStatement(
+				ts.factory.createBinaryExpression(
+					ts.factory.createPropertyAccessExpression(
+						ts.factory.createThis(),
+						ts.factory.createIdentifier("databases"),
+					),
+					ts.factory.createToken(ts.SyntaxKind.EqualsToken),
+					createRegistryInitializer(databases, toPascalCase),
+				),
+			),
+		);
+	}
 
 	if (hasAgents) {
 		statements.push(
@@ -311,7 +317,7 @@ function createRuntimeClassDeclaration(args: {
 		);
 	}
 
-	if (databases.length === 0) {
+	if (!hasDatabases && !hasAgents) {
 		statements.push(
 			ts.factory.createExpressionStatement(
 				ts.factory.createCallExpression(
@@ -322,7 +328,7 @@ function createRuntimeClassDeclaration(args: {
 					undefined,
 					[
 						ts.factory.createStringLiteral(
-							`⚠️  No databases found. Please run '${syncCommand}' to generate database types.`,
+							`⚠️  No databases and no agents found. Please run '${syncCommand}' to generate types.`,
 						),
 					],
 				),
@@ -330,19 +336,22 @@ function createRuntimeClassDeclaration(args: {
 		);
 	}
 
-	const databasesProperty = ts.factory.createPropertyDeclaration(
-		[ts.factory.createModifier(ts.SyntaxKind.PublicKeyword)],
-		ts.factory.createIdentifier("databases"),
-		undefined,
-		createRegistryTypeLiteral(databases, toPascalCase),
-		undefined,
-	);
-	addSyntheticJsdocBlock(databasesProperty, [
-		"Typed database client factories.",
-		"Keys match the `databases` entries in your Notion config; each value is a factory bound to this client's `auth` token.",
-	]);
+	const classMembers: ts.ClassElement[] = [];
 
-	const classMembers: ts.ClassElement[] = [databasesProperty];
+	if (hasDatabases) {
+		const databasesProperty = ts.factory.createPropertyDeclaration(
+			[ts.factory.createModifier(ts.SyntaxKind.PublicKeyword)],
+			ts.factory.createIdentifier("databases"),
+			undefined,
+			createRegistryTypeLiteral(databases, toPascalCase),
+			undefined,
+		);
+		addSyntheticJsdocBlock(databasesProperty, [
+			"Typed database client factories.",
+			"Keys match the `databases` entries in your Notion config; each value is a factory bound to this client's `auth` token.",
+		]);
+		classMembers.push(databasesProperty);
+	}
 
 	if (hasAgents) {
 		const agentsProperty = ts.factory.createPropertyDeclaration(
@@ -359,12 +368,14 @@ function createRuntimeClassDeclaration(args: {
 		classMembers.push(agentsProperty);
 	}
 
-	const assignDatabasesStatement = statements[1];
-	if (assignDatabasesStatement) {
-		addLeadingSectionSlashComment(
-			assignDatabasesStatement,
-			"Instantiate generated factories with the same API token passed to this client.",
-		);
+	if (hasDatabases || hasAgents) {
+		const firstRegistryAssignment = statements[1];
+		if (firstRegistryAssignment) {
+			addLeadingSectionSlashComment(
+				firstRegistryAssignment,
+				"Instantiate generated factories with the same API token passed to this client.",
+			);
+		}
 	}
 
 	classMembers.push(
@@ -398,12 +409,39 @@ function createRuntimeClassDeclaration(args: {
 		],
 		classMembers,
 	);
-	addSyntheticJsdocBlock(classDeclaration, [
-		"Generated Notion ORM entrypoint for this project.",
-		"`databases` and `agents` expose typed factories produced from your synced Notion workspace.",
-		`Regenerate this file with \`${syncCommand}\` when your Notion schema or config changes.`,
-	]);
+	addSyntheticJsdocBlock(
+		classDeclaration,
+		runtimeOrmIndexClassJSDoc({ syncCommand, hasDatabases, hasAgents }),
+	);
 	return classDeclaration;
+}
+
+function runtimeOrmIndexClassJSDoc(args: {
+	syncCommand: string;
+	hasDatabases: boolean;
+	hasAgents: boolean;
+}): string[] {
+	const { syncCommand, hasDatabases, hasAgents } = args;
+	const lines: string[] = [
+		"Generated Notion ORM entrypoint for this project.",
+	];
+	if (hasDatabases && hasAgents) {
+		lines.push(
+			"`databases` and `agents` expose typed factories produced from your synced Notion workspace.",
+		);
+	} else if (hasDatabases) {
+		lines.push(
+			"`databases` exposes typed database client factories produced from your synced Notion workspace.",
+		);
+	} else if (hasAgents) {
+		lines.push(
+			"`agents` exposes typed agent client factories produced from your synced Notion workspace.",
+		);
+	}
+	lines.push(
+		`Regenerate this file with \`${syncCommand}\` when your Notion schema or config changes.`,
+	);
+	return lines;
 }
 
 /**
@@ -414,21 +452,25 @@ function createDeclarationClass(args: {
 	agents: OrmEntityMetadata[];
 }): ts.ClassDeclaration {
 	const { databases, agents } = args;
+	const hasDatabases = databases.length > 0;
 	const hasAgents = agents.length > 0;
 
-	const databasesProperty = ts.factory.createPropertyDeclaration(
-		[ts.factory.createModifier(ts.SyntaxKind.PublicKeyword)],
-		ts.factory.createIdentifier("databases"),
-		undefined,
-		createRegistryTypeLiteral(databases, toPascalCase),
-		undefined,
-	);
-	addSyntheticJsdocBlock(databasesProperty, [
-		"Typed database client factories.",
-		"Keys match the `databases` entries in your Notion config; each value is a factory bound to this client's `auth` token.",
-	]);
+	const classMembers: ts.ClassElement[] = [];
 
-	const classMembers: ts.ClassElement[] = [databasesProperty];
+	if (hasDatabases) {
+		const databasesProperty = ts.factory.createPropertyDeclaration(
+			[ts.factory.createModifier(ts.SyntaxKind.PublicKeyword)],
+			ts.factory.createIdentifier("databases"),
+			undefined,
+			createRegistryTypeLiteral(databases, toPascalCase),
+			undefined,
+		);
+		addSyntheticJsdocBlock(databasesProperty, [
+			"Typed database client factories.",
+			"Keys match the `databases` entries in your Notion config; each value is a factory bound to this client's `auth` token.",
+		]);
+		classMembers.push(databasesProperty);
+	}
 
 	if (hasAgents) {
 		const agentsProperty = ts.factory.createPropertyDeclaration(
@@ -476,11 +518,35 @@ function createDeclarationClass(args: {
 		],
 		classMembers,
 	);
-	addSyntheticJsdocBlock(classDeclaration, [
-		"Generated Notion ORM entrypoint for this project.",
-		"`databases` and `agents` expose typed factories produced from your synced Notion workspace.",
-	]);
+	addSyntheticJsdocBlock(
+		classDeclaration,
+		declarationOrmIndexClassJSDoc({ hasDatabases, hasAgents }),
+	);
 	return classDeclaration;
+}
+
+function declarationOrmIndexClassJSDoc(args: {
+	hasDatabases: boolean;
+	hasAgents: boolean;
+}): string[] {
+	const { hasDatabases, hasAgents } = args;
+	const lines: string[] = [
+		"Generated Notion ORM entrypoint for this project.",
+	];
+	if (hasDatabases && hasAgents) {
+		lines.push(
+			"`databases` and `agents` expose typed factories produced from your synced Notion workspace.",
+		);
+	} else if (hasDatabases) {
+		lines.push(
+			"`databases` exposes typed database client factories produced from your synced Notion workspace.",
+		);
+	} else if (hasAgents) {
+		lines.push(
+			"`agents` exposes typed agent client factories produced from your synced Notion workspace.",
+		);
+	}
+	return lines;
 }
 
 /**

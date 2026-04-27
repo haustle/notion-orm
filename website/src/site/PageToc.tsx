@@ -1,6 +1,13 @@
 "use client";
 
-import { type FC, useCallback, useEffect, useMemo, useState } from "react";
+import {
+	type FC,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+} from "react";
 import { css, cx } from "../styled-system/css";
 import {
 	BOTTOM_OF_PAGE_THRESHOLD,
@@ -10,9 +17,17 @@ import {
 	getTocTargetOrderMismatch,
 	groupTocIntoSections,
 	HEADING_ACTIVATION_OFFSET,
-	sectionShouldBeExpanded,
+	type TocNavigationState,
+	type TocSection,
 	updateTocNavigationState,
 } from "./toc";
+import {
+	applyTocVisuals,
+	buildTocDomRegistry,
+	statesEqual,
+	type TocDomClassNames,
+} from "./tocDom";
+import { playTocHeadingClickFlash } from "./tocHeadingClickFlash";
 import type { TocEntry } from "./types";
 
 interface PageTocProps {
@@ -88,7 +103,6 @@ const tocSectionBlockClass = css({
 	gap: "1",
 });
 
-/** Mutually exclusive with `tocNestedRevealExpandedClass` — do not merge (opacity would fight). */
 const tocNestedRevealCollapsedClass = css({
 	display: "grid",
 	gridTemplateRows: "0fr",
@@ -154,6 +168,13 @@ const tocNestedLinkH4IndentClass = css({
 	pl: "2",
 });
 
+const tocDomClassNames: TocDomClassNames = {
+	linkActive: tocLinkActiveClass,
+	linkInactive: tocLinkInactiveClass,
+	nestedExpanded: tocNestedRevealExpandedClass,
+	nestedCollapsed: tocNestedRevealCollapsedClass,
+};
+
 function compareElementsInDocumentOrder(
 	left: HTMLElement,
 	right: HTMLElement,
@@ -179,8 +200,22 @@ function getHeadingElementsInDomOrder(toc: TocEntry[]): HTMLElement[] {
 		.sort(compareElementsInDocumentOrder);
 }
 
-function getActiveHeadingId(toc: TocEntry[]): string | null {
-	const headings = getHeadingElementsInDomOrder(toc);
+function buildHeadingIdToElement(
+	headings: HTMLElement[],
+): Map<string, HTMLElement> {
+	return new Map(headings.map((h) => [h.id, h]));
+}
+
+/**
+ * In-page only: all targets already resolved to elements (same document as the TOC).
+ * Hot path: called once per rAF on scroll; cached headings avoid N× getElementById.
+ */
+function getActiveHeadingIdFromHeadings(
+	headings: HTMLElement[],
+): string | null {
+	if (headings.length === 0) {
+		return null;
+	}
 
 	const scrollBottom = window.scrollY + window.innerHeight;
 	const documentHeight = document.documentElement.scrollHeight;
@@ -197,62 +232,136 @@ function getActiveHeadingId(toc: TocEntry[]): string | null {
 
 export const PageToc: FC<PageTocProps> = ({ toc, className }) => {
 	const sections = useMemo(() => groupTocIntoSections(toc), [toc]);
-	const [navigationState, setNavigationState] = useState(() =>
+	const navRef = useRef<HTMLElement | null>(null);
+	/** In-page section headings (same document); rebuilt when `toc` changes. Avoids N× getElementById on every scroll rAF. */
+	const headingsInDomRef = useRef<HTMLElement[]>([]);
+	const headingIdToElementRef = useRef<Map<string, HTMLElement>>(new Map());
+	const registryRef = useRef<ReturnType<typeof buildTocDomRegistry> | null>(
+		null,
+	);
+	const tocNavStateRef = useRef<TocNavigationState>(
 		getTocNavigationState({
 			sections,
 			entryId: toc[0]?.id ?? null,
 		}),
 	);
-	const { activeId, revealedRootId } = navigationState;
+	/** Latest grouped `sections` and `toc` — one ref, one assign per render, for stable callbacks. */
+	const tocModelRef = useRef<{
+		sections: TocSection[];
+		toc: TocEntry[];
+	}>({ sections, toc });
+	tocModelRef.current = { sections, toc };
 
-	useEffect(() => {
-		setNavigationState(
-			getTocNavigationState({
-				sections,
-				entryId: toc[0]?.id ?? null,
-			}),
-		);
-	}, [sections, toc]);
+	const commitNavigationState = useCallback((next: TocNavigationState) => {
+		if (statesEqual(next, tocNavStateRef.current)) {
+			return;
+		}
+		tocNavStateRef.current = next;
+		const registry = registryRef.current;
+		if (!registry) {
+			return;
+		}
+		applyTocVisuals({
+			state: next,
+			sections: tocModelRef.current.sections,
+			registry,
+			classNames: tocDomClassNames,
+		});
+	}, []);
 
-	const applyTocEntryId = useCallback(
-		(entryId: string | null) => {
-			setNavigationState((currentState) =>
-				updateTocNavigationState({
-					sections,
-					currentState,
-					entryId,
-				}),
-			);
-		},
-		[sections],
-	);
+	const applyTocEntryId = useCallback((entryId: string | null) => {
+		const next = updateTocNavigationState({
+			sections: tocModelRef.current.sections,
+			currentState: tocNavStateRef.current,
+			entryId,
+		});
+		commitNavigationState(next);
+	}, [commitNavigationState]);
 
+	/**
+	 * Same document / same route only: `id` is always a section on this page. We resolve the
+	 * target from `headingIdToElementRef` when possible (O(1)) instead of `getElementById` on
+	 * every click, and the hash is only changed via `replaceState` (in-page; no client route transition).
+	 */
 	const navigateToTocEntry = useCallback(
 		(
 			id: string,
 			options: {
 				scroll: boolean;
 				updateHash: boolean;
+				playHeadingClickFlash?: boolean;
 			},
 		): boolean => {
-			if (!id || !toc.some((entry) => entry.id === id)) {
+			const { toc: tocCurrent } = tocModelRef.current;
+			if (!id || !tocCurrent.some((entry) => entry.id === id)) {
 				return false;
 			}
 
 			if (options.scroll) {
-				document.getElementById(id)?.scrollIntoView({
+				const target =
+					headingIdToElementRef.current.get(id) ??
+					document.getElementById(id);
+				target?.scrollIntoView({
 					behavior: "auto",
 					block: "start",
 				});
 			}
 			if (options.updateHash) {
-				window.history.replaceState(null, "", `#${id}`);
+				// Defer hash write so the App Router’s outer layout is less likely to sync in the
+				// same turn as scroll + imperative TOC DOM (same URL path; hash-only).
+				queueMicrotask(() => {
+					window.history.replaceState(null, "", `#${id}`);
+				});
 			}
 			applyTocEntryId(id);
+			if (options.playHeadingClickFlash) {
+				window.requestAnimationFrame(() => {
+					window.requestAnimationFrame(() => {
+						playTocHeadingClickFlash(id);
+					});
+				});
+			}
 			return true;
 		},
-		[applyTocEntryId, toc],
+		[applyTocEntryId],
 	);
+
+	useLayoutEffect(() => {
+		if (toc.length === 0 || !navRef.current) {
+			return;
+		}
+
+		const headingList = getHeadingElementsInDomOrder(toc);
+		headingsInDomRef.current = headingList;
+		headingIdToElementRef.current = buildHeadingIdToElement(headingList);
+
+		const builtRegistry = buildTocDomRegistry(navRef.current);
+		registryRef.current = builtRegistry;
+
+		const { sections: groupedSections, toc: tocForLayout } = tocModelRef.current;
+		const hashId = window.location.hash.slice(1);
+		const hashMatchesToc = Boolean(
+			hashId && tocForLayout.some((e) => e.id === hashId),
+		);
+
+		const initial = hashMatchesToc
+			? getTocNavigationState({
+					sections: groupedSections,
+					entryId: hashId,
+				})
+			: getTocNavigationState({
+					sections: groupedSections,
+					entryId: getActiveHeadingIdFromHeadings(headingList),
+				});
+
+		tocNavStateRef.current = initial;
+		applyTocVisuals({
+			state: initial,
+			sections: groupedSections,
+			registry: builtRegistry,
+			classNames: tocDomClassNames,
+		});
+	}, [toc, sections]);
 
 	useEffect(() => {
 		if (toc.length === 0) {
@@ -284,7 +393,13 @@ export const PageToc: FC<PageTocProps> = ({ toc, className }) => {
 		}
 
 		const updateActiveHeading = () => {
-			applyTocEntryId(getActiveHeadingId(toc));
+			let list = headingsInDomRef.current;
+			if (list.length === 0) {
+				list = getHeadingElementsInDomOrder(toc);
+				headingsInDomRef.current = list;
+				headingIdToElementRef.current = buildHeadingIdToElement(list);
+			}
+			applyTocEntryId(getActiveHeadingIdFromHeadings(list));
 		};
 
 		const hashId = window.location.hash.slice(1);
@@ -346,70 +461,61 @@ export const PageToc: FC<PageTocProps> = ({ toc, className }) => {
 	return (
 		<div className={cx(tocRootClass, className)}>
 			<span className={tocHeadingLabelClass}>On page</span>
-			<nav className={tocLinksCardClass} aria-label="Table of contents">
+			<nav
+				ref={navRef}
+				className={tocLinksCardClass}
+				aria-label="Table of contents">
 				{sections.map((section) => {
-					const showNested = sectionShouldBeExpanded({
-						section,
-						activeId,
-						revealedRootId,
-					});
-					const rootActive = section.root.id === activeId;
-
 					return (
 						<div key={section.root.id} className={tocSectionBlockClass}>
 							<a
 								href={`#${section.root.id}`}
 								title={section.root.label}
-								className={cx(
-									tocLinkBaseClass,
-									rootActive ? tocLinkActiveClass : tocLinkInactiveClass,
-								)}
-								aria-current={rootActive ? "location" : undefined}
+								data-toc-link
+								data-toc-id={section.root.id}
+								data-toc-kind="root"
+								className={cx(tocLinkBaseClass, tocLinkInactiveClass)}
 								onClick={(e) => {
 									e.preventDefault();
 									navigateToTocEntry(section.root.id, {
 										scroll: true,
 										updateHash: true,
+										playHeadingClickFlash: true,
 									});
 								}}>
 								{section.root.label}
 							</a>
 							{section.children.length > 0 && (
 								<div
-									className={
-										showNested
-											? tocNestedRevealExpandedClass
-											: tocNestedRevealCollapsedClass
-									}
-									aria-hidden={!showNested}>
+									data-toc-nested={section.root.id}
+									className={tocNestedRevealCollapsedClass}
+									aria-hidden>
 									<div className={tocNestedRevealInnerClass}>
 										<div className={tocNestedListClass}>
 											<div className={tocNestedAccentBarClass} aria-hidden />
 											<div className={tocNestedLinksColumnClass}>
 												{section.children.map((child) => {
-													const childActive = child.id === activeId;
 													return (
 														<a
 															key={child.id}
 															href={`#${child.id}`}
 															title={child.label}
+															data-toc-link
+															data-toc-id={child.id}
+															data-toc-kind="child"
 															className={cx(
 																tocLinkBaseClass,
-																childActive
-																	? tocLinkActiveClass
-																	: tocLinkInactiveClass,
+																tocLinkInactiveClass,
 																child.depth >= 4 &&
 																	tocNestedLinkH4IndentClass,
 															)}
-															aria-current={
-																childActive ? "location" : undefined
-															}
-															tabIndex={showNested ? undefined : -1}
+															tabIndex={-1}
 															onClick={(e) => {
 																e.preventDefault();
 																navigateToTocEntry(child.id, {
 																	scroll: true,
 																	updateHash: true,
+																	playHeadingClickFlash: true,
 																});
 															}}>
 															{child.label}

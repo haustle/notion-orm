@@ -24,9 +24,6 @@ const { dataSourceQueryMock, pagesCreateMock, pagesUpdateMock } =
 
 const { DatabaseClient } = await import("../../../src/client/database/DatabaseClient");
 
-type TestSchema = { shopName: string; rating: number };
-type TestColumnTypes = { shopName: "title"; rating: "number" };
-
 function createClient() {
 	return createPrismaApiTestDatabaseClient(DatabaseClient);
 }
@@ -156,7 +153,14 @@ describe("upsert", () => {
 		});
 
 		const firstCall = dataSourceQueryMock.mock.calls.at(0);
-		const firstQueryArg = firstCall?.at(0) as { sorts?: unknown } | undefined;
+		const firstQueryArg = firstCall?.at(0);
+		if (
+			!firstQueryArg ||
+			typeof firstQueryArg !== "object" ||
+			!("sorts" in firstQueryArg)
+		) {
+			throw new Error("expected query call with sorts");
+		}
 		expect(firstQueryArg.sorts).toEqual([
 			{ timestamp: "created_time", direction: "ascending" },
 		]);

@@ -50,7 +50,8 @@ export async function importWorkspaceModule<TModule>(args: {
 	relativePath: string;
 }): Promise<TModule> {
 	const absolutePath = resolve(args.workspacePath, args.relativePath);
-	return (await import(pathToFileURL(absolutePath).href)) as TModule;
+	const loaded = await import(pathToFileURL(absolutePath).href);
+	return loaded satisfies TModule;
 }
 
 export async function withTempWorkspace(

@@ -21,7 +21,6 @@ import {
 	INVENTORY_ITEMS_FIXTURE,
 } from "../../src/ast/demo/datasource-fixture-builder";
 import {
-	expectCodeToParseAsValidJs,
 	expectCodeToParseAsValidTs,
 	readGolden,
 } from "../helpers/golden-code-assertions";

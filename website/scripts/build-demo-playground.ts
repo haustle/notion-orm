@@ -1,3 +1,8 @@
+/**
+ * Writes `website/src/generated/demo-playground-files.ts` (ignored by git).
+ * Run via `bun run build:demo-playground`, or indirectly through `build:assets`,
+ * `prebuild`, and `typecheck` so CI and local builds stay in sync with the AST builder.
+ */
 import fs from "node:fs";
 import path from "node:path";
 import { buildDemoPlaygroundWorkspace } from "../../src/ast/demo/demo-workspace-builder";

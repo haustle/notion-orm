@@ -3,6 +3,7 @@ import {
 	createPrismaApiTestDatabaseClient,
 	installPrismaApiNotionClientMock,
 	PRISMA_API_CREATE_COLUMNS,
+	prismaApiStubFullPage,
 	prismaApiStubPartialPage,
 	type PrismaApiPagesCreateFn,
 } from "../../helpers/notion-client-test-mock";
@@ -16,9 +17,6 @@ const { pagesCreateMock } = installPrismaApiNotionClientMock({
 });
 
 const { DatabaseClient } = await import("../../../src/client/database/DatabaseClient");
-
-type TestSchema = { shopName: string; rating: number; hasWifi: boolean };
-type TestColumnTypes = { shopName: "title"; rating: "number"; hasWifi: "checkbox" };
 
 function createClient() {
 	return createPrismaApiTestDatabaseClient(DatabaseClient, PRISMA_API_CREATE_COLUMNS);
@@ -35,7 +33,10 @@ describe("create", () => {
 		const result = await client.create({
 			properties: { shopName: "Cafe Nervosa", rating: 4, hasWifi: true },
 		});
-		expect(result.id).toBe("created-page-id");
+		expect(result).toEqual({
+			id: "created-page-id",
+			object: "page",
+		});
 		expect(pagesCreateMock).toHaveBeenCalledWith(
 			expect.objectContaining({
 				parent: { data_source_id: MOCK_DATA_SOURCE_ID, type: "data_source_id" },
@@ -133,5 +134,27 @@ describe("create", () => {
 		await expect(
 			client.create({ properties: { shopName: "Fail", rating: 1, hasWifi: false } }),
 		).rejects.toThrow("Conflict");
+	});
+
+	test("returns only picked fields when API returns a full page", async () => {
+		const full = prismaApiStubFullPage({
+			id: "full-page-id",
+			dataSourceId: MOCK_DATA_SOURCE_ID,
+		});
+		pagesCreateMock.mockResolvedValueOnce(full);
+		const client = createClient();
+		const result = await client.create({
+			properties: { shopName: "Full Response", rating: 2, hasWifi: true },
+		});
+		expect(result).toEqual({
+			id: full.id,
+			object: "page",
+			url: full.url,
+			properties: full.properties,
+			created_time: full.created_time,
+			last_edited_time: full.last_edited_time,
+		});
+		expect("parent" in result).toBe(false);
+		expect("icon" in result).toBe(false);
 	});
 });

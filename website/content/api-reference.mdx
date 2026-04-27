@@ -4,6 +4,8 @@ export const metadata = {
   description: "Full method signatures, response shapes, and type definitions for Notion ORM.",
 };
 
+<DocsProse flushTop>
+
 # API Reference
 
 Complete reference for the Notion ORM API. The sections follow a learning progression: start with runtime access, then databases, then agents, then advanced usage.
@@ -16,11 +18,11 @@ Complete reference for the Notion ORM API. The sections follow a learning progre
 import { NotionORM } from "./notion";
 
 const notion = new NotionORM({
-  auth: process.env.NOTION_KEY!,
+  auth: process.env.NOTION_KEY,
 });
 
-// DatabaseClient — e.g. notion.booksDb (camelCase DB name from generation)
-// AgentClient — e.g. notion.agents.helpBot (camelCase agent name from generation)
+// DatabaseClient — e.g. notion.databases.books
+// AgentClient — e.g. notion.agents.helpBot
 ```
 
 | Runtime Property   | Type                             | Description                                                    |
@@ -627,7 +629,7 @@ export const InventoryItems = (auth: string) => {
 | `QuerySchema` | Typed filters, sort, field selection, cursors, and stream options. |
 | `InventoryItems` | `(auth) => DatabaseClient` for this database (name matches the module). |
 
-Select, status, and multi-select options drive **typed filters and writes** and match the generated Zod helpers. Relation columns point at other databases instead of option lists. A **`.js`** file is emitted next to **`.ts`** for plain JS imports.
+Select, status, and multi-select options drive **typed filters and writes** from the same option literals in generated modules. At runtime, `DatabaseClient` uses that column metadata to validate normalized query rows (Zod is internal to the ORM, not part of generated files). Relation columns point at other databases instead of option lists. A **`.js`** file is emitted next to **`.ts`** for plain JS imports.
 
 ### Import paths
 
@@ -636,7 +638,7 @@ Use **project-relative** imports into `./notion/`. After sync, that directory ho
 | Import path | What you get | When to use |
 | ----------- | ------------ | ----------- |
 | `./notion/` | `NotionORM` and base re-exports (`import { NotionORM } from "./notion/"`; directory import resolves to `index.ts`) | Typical app code |
-| `./notion/databases/<Database>` | `<Database>(auth)` factory, `PageSchema`, `CreateSchema`, `QuerySchema`, generated Zod schema, option tuples for select/status/multi-select, related type aliases | Direct database usage without the `NotionORM` wrapper |
+| `./notion/databases/<Database>` | `<Database>(auth)` factory, `PageSchema`, `CreateSchema`, `QuerySchema`, `columns` metadata, option tuples for select/status/multi-select, related type aliases | Direct database usage without the `NotionORM` wrapper |
 | `./notion/agents/<Agent>` | `<Agent>(auth)` factory → `AgentClient` | Direct agent usage without the wrapper |
 | `./notion/databases` | `databases` barrel (all database factories) | Dynamic DB selection or custom wiring |
 | `./notion/agents` | `agents` barrel (all agent factories) | Dynamic agent selection or custom wiring |
@@ -656,4 +658,6 @@ notion/
     └── metadata.json        # sync cache for agents
 ```
 
-Sync writes **`metadata.json`** cache files (not `metadata.js`). Your build may still emit `.js` and `.d.ts` next to the `.ts` modules above; they are omitted here for brevity.
+Sync writes `metadata.json` cache files that store Notion ids and display names so incremental syncs stay fast and stable across runs.
+
+</DocsProse>

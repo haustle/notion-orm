@@ -7,10 +7,7 @@ import {
 	type OrmEntityMetadata,
 } from "../shared/emit/orm-index-emitter";
 import { createEmitContext, printTsNodes } from "../shared/emit/ts-emit-core";
-import {
-	buildDemoAgentEntry,
-	buildDemoDatabaseEntry,
-} from "./demo-entry-builders";
+import { buildDemoAgentEntry, buildDemoDatabaseEntry } from "./demo-entry-builders";
 import {
 	DEMO_PLAYGROUND_SPEC,
 	type DemoPlaygroundSpec,
@@ -80,17 +77,36 @@ export function buildDemoPlaygroundWorkspace(args: {
 		name: agent.agentModuleName,
 	}));
 
+	const indexImportPaths = {
+		databaseClass: PLAYGROUND_PATHS.databaseImport,
+		agentClass: PLAYGROUND_PATHS.agentImport,
+	} as const;
 	const generatedIndexTs = printTsNodes({
 		nodes: buildOrmIndexModuleAst({
 			databases: databaseMetadata,
 			agents: agentMetadata,
 			syncCommand: AST_RUNTIME_CONSTANTS.CLI_GENERATE_COMMAND,
-			importPaths: {
-				databaseClass: PLAYGROUND_PATHS.databaseImport,
-				agentClass: PLAYGROUND_PATHS.agentImport,
-			},
+			importPaths: indexImportPaths,
 		}),
 		context: createEmitContext({ fileName: "index.ts" }),
+	});
+	const generatedIndexDatabasesTs = printTsNodes({
+		nodes: buildOrmIndexModuleAst({
+			databases: databaseMetadata,
+			agents: [],
+			syncCommand: AST_RUNTIME_CONSTANTS.CLI_GENERATE_COMMAND,
+			importPaths: indexImportPaths,
+		}),
+		context: createEmitContext({ fileName: "index-databases.ts" }),
+	});
+	const generatedIndexAgentsTs = printTsNodes({
+		nodes: buildOrmIndexModuleAst({
+			databases: [],
+			agents: agentMetadata,
+			syncCommand: AST_RUNTIME_CONSTANTS.CLI_GENERATE_COMMAND,
+			importPaths: indexImportPaths,
+		}),
+		context: createEmitContext({ fileName: "index-agents.ts" }),
 	});
 
 	const databaseEntry = buildDemoDatabaseEntry({
@@ -113,6 +129,8 @@ export function buildDemoPlaygroundWorkspace(args: {
 		[spec.databaseEntryFile]: databaseEntry,
 		[spec.agentEntryFile]: agentEntry,
 		[PLAYGROUND_PATHS.BUILD_INDEX]: generatedIndexTs,
+		[PLAYGROUND_PATHS.BUILD_INDEX_DATABASES]: generatedIndexDatabasesTs,
+		[PLAYGROUND_PATHS.BUILD_INDEX_AGENTS]: generatedIndexAgentsTs,
 		[PLAYGROUND_PATHS.MOCK_PACKAGE_INDEX]: mockPackageSource,
 		[PLAYGROUND_PATHS.MOCK_PACKAGE_NOTION_ID_PATTERNS]: notionIdPatternsSource,
 		[PLAYGROUND_PATHS.MOCK_PACKAGE_BASE]: mockBaseSource,
