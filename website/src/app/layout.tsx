@@ -53,6 +53,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
 					href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
 					rel="stylesheet"
 				/>
+				{/* Prefetch static /demo for idle navigation without a client `useRouter()` subscription in DemoPlaygroundWarmup */}
+				<link rel="prefetch" href="/demo" />
 			</head>
 			<body>
 				<div className={appRootClass}>{children}</div>

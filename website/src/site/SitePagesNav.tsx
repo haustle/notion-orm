@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { memo, type MouseEvent } from "react";
+import { memo, startTransition, type MouseEvent } from "react";
 import { css, cx } from "../styled-system/css";
 import { githubUrl } from "./config";
 import {
@@ -102,7 +102,10 @@ export const SitePagesNav = memo(function SitePagesNav({
 								return;
 							}
 							e.preventDefault();
-							router.push(p.path);
+							// De-prioritizes App Router work vs. urgent input (Vercel: rerender-transitions)
+							startTransition(() => {
+								router.push(p.path);
+							});
 						}}>
 						<span>{p.title}</span>
 						{active && (
