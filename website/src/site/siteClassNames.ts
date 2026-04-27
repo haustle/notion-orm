@@ -27,6 +27,13 @@ export const siteMonoFontFamilyCssVar = "var(--fonts-mono)" as const;
 export const DEMO_CURSOR_HINT_ROW_CLASS = "demo-cursor-hint-row" as const;
 export const DEMO_CURSOR_HINT_ICON_CLASS = "demo-cursor-hint-icon" as const;
 
+/**
+ * One-shot heading highlight when jumping via sidebar TOC. Styles live in `panda.config.ts`
+ * `globalCss` (single class — safe for `classList`); `prefers-reduced-motion` is handled in TS.
+ */
+export const SITE_TOC_HEADING_CLICK_FLASH_CLASS =
+	"site-toc-heading-click-flash" as const;
+
 /** `className` segment for demo Reset buttons; `prefers-reduced-motion` for those controls is in `demoPlaygroundResetButton.css`. */
 export const DEMO_PLAYGROUND_RESET_BUTTON_CLASS =
 	"demo-playground-reset-btn" as const;

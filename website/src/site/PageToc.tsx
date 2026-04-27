@@ -13,6 +13,7 @@ import {
 	sectionShouldBeExpanded,
 	updateTocNavigationState,
 } from "./toc";
+import { playTocHeadingClickFlash } from "./tocHeadingClickFlash";
 import type { TocEntry } from "./types";
 
 interface PageTocProps {
@@ -233,6 +234,7 @@ export const PageToc: FC<PageTocProps> = ({ toc, className }) => {
 			options: {
 				scroll: boolean;
 				updateHash: boolean;
+				playHeadingClickFlash?: boolean;
 			},
 		): boolean => {
 			if (!id || !toc.some((entry) => entry.id === id)) {
@@ -249,6 +251,13 @@ export const PageToc: FC<PageTocProps> = ({ toc, className }) => {
 				window.history.replaceState(null, "", `#${id}`);
 			}
 			applyTocEntryId(id);
+			if (options.playHeadingClickFlash) {
+				window.requestAnimationFrame(() => {
+					window.requestAnimationFrame(() => {
+						playTocHeadingClickFlash(id);
+					});
+				});
+			}
 			return true;
 		},
 		[applyTocEntryId, toc],
@@ -370,6 +379,7 @@ export const PageToc: FC<PageTocProps> = ({ toc, className }) => {
 									navigateToTocEntry(section.root.id, {
 										scroll: true,
 										updateHash: true,
+										playHeadingClickFlash: true,
 									});
 								}}>
 								{section.root.label}
@@ -410,6 +420,7 @@ export const PageToc: FC<PageTocProps> = ({ toc, className }) => {
 																navigateToTocEntry(child.id, {
 																	scroll: true,
 																	updateHash: true,
+																	playHeadingClickFlash: true,
 																});
 															}}>
 															{child.label}

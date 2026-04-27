@@ -62,6 +62,72 @@ export default defineConfig({
 					subtleDark: { value: "0 1px 2px rgba(0, 0, 0, 0.3)" },
 				},
 			},
+			keyframes: {
+				/** One-shot: TOC link click only — `website/src/site/tocHeadingClickFlash.ts` */
+				/**
+				 * Ring = `box-shadow` spread. Intro: **2px** transparent → up to **4px**; exit: **4 → 3 → 2 → 1 → 0 → -2px**
+				 * (negative spread pulls inward), then background fades. Colors: `--site-toc-flash-channels` in `globalCss`.
+				 */
+				tocHeadingClickFlash: {
+					"0%": {
+						backgroundColor: "rgb(var(--site-toc-flash-channels) / 0)",
+						boxShadow: "0 0 0 2px rgb(var(--site-toc-flash-channels) / 0)",
+					},
+					"4%": {
+						backgroundColor: "rgb(var(--site-toc-flash-channels) / 0.2)",
+						boxShadow: "0 0 0 2px rgb(var(--site-toc-flash-channels) / 0.35)",
+					},
+					"10%": {
+						backgroundColor: "rgb(var(--site-toc-flash-channels) / 0.55)",
+						boxShadow: "0 0 0 2px rgb(var(--site-toc-flash-channels) / 0.55)",
+					},
+					"16%": {
+						backgroundColor: "rgb(var(--site-toc-flash-channels) / 0.55)",
+						boxShadow: "0 0 0 3px rgb(var(--site-toc-flash-channels) / 0.55)",
+					},
+					"24%": {
+						backgroundColor: "rgb(var(--site-toc-flash-channels) / 0.55)",
+						boxShadow: "0 0 0 4px rgb(var(--site-toc-flash-channels) / 0.55)",
+					},
+					"32%": {
+						backgroundColor: "rgb(var(--site-toc-flash-channels) / 0.55)",
+						boxShadow: "0 0 0 3px rgb(var(--site-toc-flash-channels) / 0.55)",
+					},
+					"38%": {
+						backgroundColor: "rgb(var(--site-toc-flash-channels) / 0.55)",
+						boxShadow: "0 0 0 2px rgb(var(--site-toc-flash-channels) / 0.55)",
+					},
+					"44%": {
+						backgroundColor: "rgb(var(--site-toc-flash-channels) / 0.55)",
+						boxShadow: "0 0 0 1px rgb(var(--site-toc-flash-channels) / 0.45)",
+					},
+					"50%": {
+						backgroundColor: "rgb(var(--site-toc-flash-channels) / 0.55)",
+						boxShadow: "0 0 0 0 rgb(var(--site-toc-flash-channels) / 0)",
+					},
+					"54%": {
+						backgroundColor: "rgb(var(--site-toc-flash-channels) / 0.55)",
+						boxShadow: "0 0 0 -2px rgb(var(--site-toc-flash-channels) / 0)",
+					},
+					"55%": {
+						backgroundColor: "rgb(var(--site-toc-flash-channels) / 0.4)",
+						boxShadow: "0 0 0 -2px rgb(var(--site-toc-flash-channels) / 0)",
+					},
+					"70%": {
+						backgroundColor: "rgb(var(--site-toc-flash-channels) / 0.18)",
+						boxShadow: "0 0 0 -2px rgb(var(--site-toc-flash-channels) / 0)",
+					},
+					"88%": {
+						backgroundColor: "rgb(var(--site-toc-flash-channels) / 0.04)",
+						boxShadow: "0 0 0 -2px rgb(var(--site-toc-flash-channels) / 0)",
+					},
+					"100%": {
+						backgroundColor: "rgb(var(--site-toc-flash-channels) / 0)",
+						/** Match unstyled `h1–h4` (no `box-shadow`) so removing the class does not pop. */
+						boxShadow: "none",
+					},
+				},
+			},
 		},
 		semanticTokens: {
 			colors: {
@@ -133,6 +199,13 @@ export default defineConfig({
 		"html, body": {
 			minHeight: "100%",
 		},
+		/** TOC flash: light `#00a6fb`; dark keeps `rgb(37 99 235)` for contrast. */
+		html: {
+			"--site-toc-flash-channels": "0 166 251",
+		},
+		"html[data-color-mode=dark]": {
+			"--site-toc-flash-channels": "37 99 235",
+		},
 		body: {
 			margin: "0",
 			bg: "background",
@@ -145,6 +218,16 @@ export default defineConfig({
 		},
 		"code, pre": {
 			fontFamily: "mono",
+		},
+		/** `SITE_TOC_HEADING_CLICK_FLASH_CLASS` — must be a single class for DOM `classList` */
+		".site-toc-heading-click-flash": {
+			backgroundColor: "transparent",
+			width: "fit-content",
+			maxWidth: "100%",
+			borderRadius: "4px",
+			/** `forwards` only — `both` can leave keyframed `background` feeling sticky vs inherited heading styles. */
+			animation:
+				"tocHeadingClickFlash 700ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards",
 		},
 	},
 });

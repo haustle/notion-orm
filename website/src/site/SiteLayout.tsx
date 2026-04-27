@@ -1,9 +1,12 @@
 import Link from "next/link";
 import type { FC, ReactNode } from "react";
 import { css, cx } from "../styled-system/css";
-import { githubUrl, siteTitle } from "./config";
+import { githubUrl, haustleTwitterUrl, siteTitle } from "./config";
 import { PageToc } from "./PageToc";
-import { PAGE_LINK_ARROW_ATTR, PAGE_LINK_ARROW_VALUE } from "./siteClassNames";
+import {
+	PAGE_LINK_ARROW_ATTR,
+	PAGE_LINK_ARROW_VALUE,
+} from "./siteClassNames";
 import {
 	type SitePage,
 	type SitePath,
@@ -108,7 +111,7 @@ const mobileGithubLinkClass = css({
 const contentClass = css({
 	display: "flex",
 	flexDirection: "column",
-	gap: "8",
+	gap: "0",
 	minW: "0",
 });
 
@@ -120,11 +123,32 @@ const articleBaseClass = css({
 	color: "text",
 });
 
-const articleBottomSpaceClass = css({
-	mb: "100px",
+const siteFooterClass = css({
+	mt: "100px",
+	mb: "40px",
+	fontSize: "sm",
+	color: "muted",
+	textAlign: "center",
+});
+
+const siteFooterCreditLinkClass = css({
+	color: "inherit",
+	textDecoration: "none",
+	"& > span": {
+		textDecoration: "underline",
+		textUnderlineOffset: "0.1em",
+	},
+	_hover: {
+		"& > span": {
+			color: "text",
+		},
+	},
 });
 
 const proseStyles = {
+	"& h1, & h2, & h3, & h4": {
+		transition: "background-color 150ms ease, box-shadow 150ms ease",
+	},
 	"& h1": {
 		fontSize: { base: "3xl", md: "4xl" },
 		lineHeight: "1.1",
@@ -196,6 +220,10 @@ const proseStyles = {
 		px: "1",
 		py: "0.5",
 	},
+	"& h1 code, & h2 code, & h3 code, & h4 code": {
+		/** `background` (not just `background-color`) matches Panda `bg` and refills the chip smoothly after the TOC flash. */
+		transition: "background 150ms ease, color 150ms ease, box-shadow 150ms ease",
+	},
 	"& pre code": {
 		bg: "transparent",
 		color: "inherit",
@@ -230,7 +258,37 @@ const proseStyles = {
 	},
 } as const;
 
-const articleProseClass = css(proseStyles);
+/**
+ * `SITE_TOC_HEADING_CLICK_FLASH_CLASS` in `siteClassNames.ts` — only static string keys here so
+ * Panda can extract these rules to CSS.
+ */
+const articleProseClass = css({
+	...proseStyles,
+	"& h1.site-toc-heading-click-flash, & h2.site-toc-heading-click-flash, & h3.site-toc-heading-click-flash, & h4.site-toc-heading-click-flash":
+		{
+			transition: "none",
+		},
+	"& h1.site-toc-heading-click-flash code": {
+		bg: "transparent",
+		color: "text",
+		transition: "none",
+	},
+	"& h2.site-toc-heading-click-flash code": {
+		bg: "transparent",
+		color: "text",
+		transition: "none",
+	},
+	"& h3.site-toc-heading-click-flash code": {
+		bg: "transparent",
+		color: "text",
+		transition: "none",
+	},
+	"& h4.site-toc-heading-click-flash code": {
+		bg: "transparent",
+		color: "text",
+		transition: "none",
+	},
+});
 
 const pageLinkBaseClass = css({
 	display: "inline-flex",
@@ -349,13 +407,18 @@ export const Layout: FC<LayoutProps> = ({
 				<Sidebar sitePages={sitePages} currentPath={currentPath} toc={toc} />
 				<main className={contentClass}>
 					<article
-						className={cx(
-							articleBaseClass,
-							articleProseClass,
-							articleBottomSpaceClass,
-						)}>
+						className={cx(articleBaseClass, articleProseClass)}>
 						{children}
 					</article>
+					<footer className={siteFooterClass}>
+						<a
+							href={haustleTwitterUrl}
+							target="_blank"
+							rel="noreferrer"
+							className={siteFooterCreditLinkClass}>
+							Made by <span>haustle</span>
+						</a>
+					</footer>
 				</main>
 			</div>
 		</div>
