@@ -5,6 +5,7 @@ export type {
 	DatabaseColumns,
 	DatabaseColumnTypes,
 	CreateSchema,
+	DatabaseCreatePageResult,
 	DatabaseDefinition,
 	DatabasePropertyType,
 	DatabaseSchema,

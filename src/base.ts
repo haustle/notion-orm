@@ -30,6 +30,7 @@ export type {
 	Count,
 	Create,
 	CreateMany,
+	DatabaseCreatePageResult,
 	DatabaseColumns,
 	DatabaseColumnTypes,
 	CreateSchema,

@@ -12,6 +12,18 @@ import type {
 } from "./schema";
 import type { QuerySort } from "./sort";
 
+/**
+ * Payload returned from `DatabaseClient#create` after Notion creates the page.
+ *
+ * The official client types this as `CreatePageResponse` (partial or full page). For `create`, you can rely on these two fields; use `findUnique` when you need the full row.
+ */
+export type DatabaseCreatePageResult = {
+	/** Newly created Notion page id. */
+	id: string;
+	/** Notion’s object-type discriminator: `"page"` here (other responses use e.g. `"block"`, `"database"`). */
+	object: "page";
+};
+
 export type Create<Y extends SchemaRecord> = {
 	properties: Y;
 	icon?: CreatePageParameters["icon"];

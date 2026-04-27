@@ -1,7 +1,6 @@
 import { Client } from "@notionhq/client";
 import type {
 	CreatePageParameters,
-	CreatePageResponse,
 	GetPageResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 import { PACKAGE_RUNTIME_CONSTANTS } from "../../runtime-constants";
@@ -41,6 +40,7 @@ import type {
 	Create,
 	CreateMany,
 	CreateSchema,
+	DatabaseCreatePageResult,
 	DatabaseDefinition,
 	DatabaseSchema,
 	Delete,
@@ -131,7 +131,7 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 		icon?: CreatePageParameters["icon"];
 		cover?: CreatePageParameters["cover"];
 		markdown?: CreatePageParameters["markdown"];
-	}): Promise<CreatePageResponse> {
+	}): Promise<DatabaseCreatePageResult> {
 		const propertyMap = mapDatabaseSchemaToNotionPropertyMap({
 			data: args.properties,
 			columns: this.columns,
@@ -306,7 +306,7 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 
 	public async create(
 		args: Create<CreateSchema<Definition>>,
-	): Promise<CreatePageResponse> {
+	): Promise<DatabaseCreatePageResult> {
 		return this.createPage({
 			properties: args.properties,
 			icon: args.icon,
@@ -317,7 +317,7 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 
 	public async createMany(
 		items: CreateMany<CreateSchema<Definition>>,
-	): Promise<CreatePageResponse[]> {
+	): Promise<DatabaseCreatePageResult[]> {
 		if (!Array.isArray(items)) {
 			throw new Error(
 				`${PACKAGE_RUNTIME_CONSTANTS.PACKAGE_LOG_PREFIX} createMany(): expected an array of create args (\`[{ properties, icon?, cover?, markdown? }]\`). The \`{ properties: [...] }\` and \`{ items: [...] }\` shapes were removed; pass the array directly.`,
@@ -325,7 +325,7 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 		}
 		// Sequential: no bulk endpoint, Notion rate-limits ~3 req/sec, and this
 		// preserves partial-failure order. Swap to bounded concurrency if needed.
-		const results: CreatePageResponse[] = [];
+		const results: DatabaseCreatePageResult[] = [];
 		for (const item of items) {
 			results.push(await this.create(item));
 		}
@@ -385,7 +385,7 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 
 	public async upsert(
 		args: Upsert<Definition>,
-	): Promise<CreatePageResponse | undefined> {
+	): Promise<DatabaseCreatePageResult | undefined> {
 		const sortBy: QuerySort<Definition> = args.sortBy ?? [
 			{ timestamp: "created_time", direction: "ascending" },
 		];
