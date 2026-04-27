@@ -54,6 +54,7 @@ const terminalLanguages = new Set([
 	"sh",
 	"zsh",
 	"shell",
+	"terminal",
 	"powershell",
 	"ps1",
 	"pwsh",
@@ -79,7 +80,7 @@ function defaultCodeBlockTitle(language: string | null): string {
 			return "index.js";
 		}
 		if (lang === "txt" || lang === "text") {
-			return "output.txt";
+			return "generated_tree.txt";
 		}
 		if (lang === "json" || lang === "jsonc") {
 			return "data.json";
@@ -460,17 +461,19 @@ export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 	const titleLabel =
 		blockData.fileLabel ?? defaultCodeBlockTitle(blockData.language);
 
+	const langLower = blockData.language?.toLowerCase() ?? null;
+	const isTerminalCodeFence =
+		langLower !== null && terminalLanguages.has(langLower);
+
 	const prismId = mdxFenceLanguageToPrism(blockData.language);
 	const prismHighlightLanguage =
+		!isTerminalCodeFence &&
 		isSiteCodeBlockColorModeReady(codeBlockColorMode) &&
 		prismId !== null &&
 		prismHasGrammar(Prism, prismId)
 			? prismId
 			: null;
 	const visualCode = codeBlockVisualSource(blockData.code);
-	const prismTheme = getSiteCodeBlockPrismTheme(
-		isSiteCodeDarkForPrism(codeBlockColorMode),
-	);
 
 	return (
 		<div
@@ -520,7 +523,9 @@ export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 						language={prismHighlightLanguage}
 						prism={Prism}
 						code={visualCode}
-						theme={prismTheme}>
+						theme={getSiteCodeBlockPrismTheme(
+							isSiteCodeDarkForPrism(codeBlockColorMode),
+						)}>
 						{({ className, style, tokens, getLineProps, getTokenProps }) => (
 							<pre
 								className={cx(codeBlockPreBaseClass, className)}
