@@ -5,7 +5,12 @@ import "../site/demo/demoCursorHint.css";
 import "../site/demo/demoPlaygroundResetButton.css";
 import "../site/siteNavGithubLink.css";
 import { AgentationDev } from "../site/AgentationDev";
-import { siteTitle } from "../site/config";
+import {
+	siteDefaultDescription,
+	siteSocialMetadata,
+	siteTitle,
+	siteUrlForMetadata,
+} from "../site/config";
 import { DemoPlaygroundWarmup } from "../site/demo/DemoPlaygroundWarmup";
 import {
 	SITE_COLOR_MODE_ATTR,
@@ -21,11 +26,16 @@ const appRootClass = css({
 });
 
 export const metadata: Metadata = {
+	metadataBase: new URL(siteUrlForMetadata()),
 	title: {
 		default: siteTitle,
 		template: `%s · ${siteTitle}`,
 	},
-	description: "Typed Notion workflows for databases and agents.",
+	description: siteDefaultDescription,
+	...siteSocialMetadata({
+		openGraphTitle: siteTitle,
+		openGraphDescription: siteDefaultDescription,
+	}),
 };
 
 interface RootLayoutProps {
