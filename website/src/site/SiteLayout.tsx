@@ -124,7 +124,7 @@ const siteFooterCreditLinkClass = css({
 	gap: "0.3em",
 	color: "inherit",
 	textDecoration: "none",
-	borderRadius: "2px",
+	borderRadius: "4px",
 	cursor: "pointer",
 	transformOrigin: "center",
 	transform: "scale(1)",
@@ -137,20 +137,33 @@ const siteFooterCreditLinkClass = css({
 	outlineColor: "transparent",
 	outlineOffset: "0",
 	transition:
-		"color 0.15s ease, background-color 0.2s ease, outline-width 0.22s ease, outline-color 0.22s ease, transform 0.22s cubic-bezier(0.34, 1.45, 0.64, 1)",
+		"background-color 0.2s ease, outline-width 0.22s ease, outline-color 0.22s ease, transform 0.22s cubic-bezier(0.34, 1.45, 0.64, 1)",
+	_focusVisible: {
+		outlineWidth: "2px",
+		outlineColor: "accent",
+		outlineOffset: "3px",
+	},
+	"& span:last-of-type": {
+		transition: "color 110ms ease",
+	},
 	_hover: {
-		color: "text",
-		backgroundColor: "inlineCodeBg",
+		backgroundColor: "codeBg",
 		outlineWidth: "5px",
-		outlineColor: "inlineCodeBg",
+		outlineColor: "codeBg",
+		"& span:last-of-type": {
+			color: "text",
+		},
 	},
 	_active: {
 		transform: "scale(0.96)",
 		transition:
-			"color 0.15s ease, background-color 0.15s ease, outline-width 0.1s ease, outline-color 0.1s ease, transform 0.1s cubic-bezier(0.34, 1.8, 0.64, 1)",
+			"background-color 0.15s ease, outline-width 0.1s ease, outline-color 0.1s ease, transform 0.1s cubic-bezier(0.34, 1.8, 0.64, 1)",
 	},
 	"@media (prefers-reduced-motion: reduce)": {
-		transition: "color 0.15s ease, background-color 0.15s ease, outline-width 0.22s ease, outline-color 0.22s ease",
+		transition: "background-color 0.15s ease, outline-width 0.22s ease, outline-color 0.22s ease",
+		"& span:last-of-type": {
+			transition: "none",
+		},
 		_active: {
 			transform: "none",
 		},
