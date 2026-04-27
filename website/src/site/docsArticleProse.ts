@@ -77,16 +77,24 @@ export const docsArticleProseClass = css({
 		borderTopWidth: "1px",
 		borderTopColor: "border",
 	},
+	/** Match legacy `SiteLayout` article prose: soft chip, no outline (borders read as “code fence” chrome). */
 	"& :not(pre) > code": {
 		fontFamily: "mono",
-		fontSize: "0.9em",
+		fontSize: "0.92em",
 		bg: "inlineCodeBg",
 		color: "inlineCodeText",
-		px: "1.5",
+		px: "1",
 		py: "0.5",
-		rounded: "md",
-		borderWidth: "1px",
-		borderColor: "border",
+		rounded: "sm",
+	},
+	"& pre code": {
+		bg: "transparent",
+		color: "inherit",
+		borderWidth: "0",
+		borderRadius: "0",
+		px: "0",
+		py: "0",
+		fontSize: "inherit",
 	},
 	/**
 	 * Stacked API tables (`mdx-components` `StackedTable`): property names stay chipped;
@@ -97,8 +105,6 @@ export const docsArticleProseClass = css({
 		fontSize: "inherit",
 		bg: "transparent",
 		color: "inherit",
-		borderWidth: "0",
-		borderColor: "transparent",
 		rounded: "none",
 		px: "0",
 		py: "0",
@@ -106,7 +112,7 @@ export const docsArticleProseClass = css({
 	"& h1 code, & h2 code, & h3 code, & h4 code": {
 		/** `background` (not just `background-color`) matches Panda `bg` and refills the chip after the TOC flash. */
 		transition:
-			"background 150ms ease, color 150ms ease, box-shadow 150ms ease, border-color 150ms ease",
+			"background 150ms ease, color 150ms ease, box-shadow 150ms ease",
 	},
 	/**
 	 * Must match `SITE_TOC_HEADING_CLICK_FLASH_CLASS` in `siteClassNames.ts` — static keys only
@@ -120,8 +126,6 @@ export const docsArticleProseClass = css({
 		{
 			bg: "transparent",
 			color: "text",
-			/** Avoid a gray 1px ring vs the flash `box-shadow` ring from `panda.config` keyframes. */
-			borderColor: "transparent",
 			transition: "none",
 		},
 });
