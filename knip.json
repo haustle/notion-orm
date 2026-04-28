@@ -1,11 +1,10 @@
 {
 	"$schema": "https://unpkg.com/knip@6/schema.json",
-	"ignoreBinaries": ["notion"],
+	"ignoreBinaries": [],
 	"ignoreFiles": [
 		"tests/golden/**",
 		"tests/agents/mealAgent.d.ts",
-		"website/playground-sources/**",
-		"website/content/**"
+		"website/playground-sources/**"
 	],
 	"workspaces": {
 		".": {
