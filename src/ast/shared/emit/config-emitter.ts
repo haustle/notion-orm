@@ -12,7 +12,7 @@ import {
 	type TsEmitContext,
 } from "./ts-emit-core";
 
-export type ConfigListKey = Exclude<keyof NotionConfigType, "auth">;
+export type ConfigListKey = Exclude<keyof NotionConfigType, "auth" | "defaultParentPageId">;
 
 export interface ConfigListItem {
 	value: string;
@@ -153,6 +153,15 @@ function buildNotionConfigModuleAst(args: {
 					helpText: "Agents are auto-populated by: notion sync",
 				}),
 			];
+
+	if (config && config.defaultParentPageId) {
+		listProperties.push(
+			ts.factory.createPropertyAssignment(
+				ts.factory.createIdentifier("defaultParentPageId"),
+				ts.factory.createStringLiteral(config.defaultParentPageId),
+			),
+		);
+	}
 
 	const notionConfigVariable = ts.factory.createVariableStatement(
 		undefined,

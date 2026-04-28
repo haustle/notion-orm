@@ -43,6 +43,8 @@ import { SyncProgressRenderer } from "./sync-progress-renderer";
 import { SyncProgressState } from "./sync-progress";
 import { logSyncReport } from "./sync-report";
 
+import { pushNewSchemas } from "./push/push-schemas";
+
 function exitWithError(message: string, error: unknown): never {
 	console.error(message);
 	console.error(error);
@@ -50,7 +52,7 @@ function exitWithError(message: string, error: unknown): never {
 }
 
 /** Runs agent and database generation in parallel, then refreshes the root index once. */
-async function runSync(): Promise<void> {
+async function runSync(options?: { noPush?: boolean }): Promise<void> {
 	const diagnostics: CodegenDiagnostic[] = [];
 	const onDiagnostic: CodegenDiagnosticSink = (d) => {
 		diagnostics.push(d);
@@ -64,6 +66,14 @@ async function runSync(): Promise<void> {
 	let rendererStarted = false;
 	try {
 		await validateConfig();
+
+		if (!options?.noPush) {
+			const configUpdated = await pushNewSchemas();
+			if (configUpdated) {
+				// Clear cache so the newly pushed database IDs are loaded for generation
+				clearConfigCache();
+			}
+		}
 
 		const previousOnDisk = {
 			databases: readDatabaseMetadata(),
@@ -251,7 +261,7 @@ function showHelpMessage(): void {
 		"  notion init [--ts|--js]                    - Create a starter notion.config file",
 	);
 	console.log(
-		"  notion sync                                - Sync types for all databases and agents",
+		"  notion sync [--no-push]                    - Sync types for all databases and agents",
 	);
 	console.log(
 		"  notion add <id-or-url> [--type database]  - Add database to config and generate types",
@@ -294,11 +304,13 @@ async function main() {
 				force: forceTS ? "ts" : forceJS ? "js" : undefined,
 			});
 		}
-		case "sync":
-			return runSync();
+		case "sync": {
+			const noPush = args.includes("--no-push");
+			return runSync({ noPush });
+		}
 		case "generate":
 			console.warn("⚠️  `notion generate` is deprecated. Use `notion sync`.");
-			return runSync();
+			return runSync({ noPush: true });
 		case "setup-agents-sdk": {
 			const { runSetupAgentsSdk } = await import("./agents-sdk-setup");
 			return runSetupAgentsSdk();
