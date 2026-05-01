@@ -25,7 +25,7 @@ import {
 	readAgentMetadataFromDisk,
 	readDatabaseMetadata,
 } from "../ast/shared/cached-metadata";
-import { AST_FS_PATHS } from "../ast/shared/constants";
+import { clearNotionCodegenOutputForSync } from "../ast/shared/clear-notion-codegen-output";
 import { updateSourceIndexFile } from "../ast/shared/emit/orm-index-emitter";
 import {
 	clearConfigCache,
@@ -88,9 +88,13 @@ async function runSync(options?: { noPush?: boolean }): Promise<void> {
 
 		renderer.start();
 		rendererStarted = true;
-		// Full sync replaces the entire generated tree so removed DBs/agents and stray
-		// files under `notion/` cannot linger (incremental `notion add` does not run this).
-		fs.rmSync(AST_FS_PATHS.CODEGEN_ROOT_DIR, { recursive: true, force: true });
+		// Replace generated database/agent modules and root index artifacts. Preserves
+		// `notion/schemas/` (push inputs). Incremental `notion add` does not run this.
+		clearNotionCodegenOutputForSync({
+			environment: resolveCodegenEnvironment({
+				configRuntime: findConfigFile(),
+			}),
+		});
 
 		const agentsPromise: Promise<CreateAgentTypesResult> = createAgentTypes({
 			skipSourceIndexUpdate: true,

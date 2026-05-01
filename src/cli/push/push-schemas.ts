@@ -39,6 +39,57 @@ function isSchemaAlreadyPushed(
 	});
 }
 
+type UnknownRecord = Record<string, unknown>;
+
+function firstDataSourceIdFromDatabaseResponse(
+	database: UnknownRecord,
+): string | undefined {
+	const refs = database["data_sources"] ?? database["dataSources"];
+	if (!Array.isArray(refs) || refs.length === 0) {
+		return undefined;
+	}
+	const first = refs[0] as UnknownRecord | undefined;
+	const id = first?.id;
+	return typeof id === "string" ? id : undefined;
+}
+
+/**
+ * Codegen calls `dataSources.retrieve`, which needs a **data source** id. The database
+ * **container** id from `response.id` fails retrieve. The JS SDK may camelCase
+ * `data_sources` → `dataSources`.
+ */
+async function resolveDataSourceIdAfterDatabaseCreate(args: {
+	client: Client;
+	createResponse: UnknownRecord;
+}): Promise<string> {
+	const fromCreate = firstDataSourceIdFromDatabaseResponse(args.createResponse);
+	if (fromCreate) {
+		return fromCreate;
+	}
+
+	const databaseId = args.createResponse.id;
+	if (typeof databaseId !== "string") {
+		throw new Error("Create database response missing string `id`.");
+	}
+
+	console.warn(
+		"s,?  Create-database response had no data source id; fetching database to read data_sources.",
+	);
+	const retrieved = (await args.client.databases.retrieve({
+		database_id: databaseId,
+	})) as unknown as UnknownRecord;
+
+	const fromRetrieve = firstDataSourceIdFromDatabaseResponse(retrieved);
+	if (fromRetrieve) {
+		return fromRetrieve;
+	}
+
+	console.warn(
+		"s,?  Could not resolve data source id; using database id (sync may fail — use `dataSources.retrieve` id in notion.config).",
+	);
+	return databaseId;
+}
+
 export interface PushSchemasOptions {
 	/**
 	 * If true, skips pushing schemas and just returns.
@@ -105,19 +156,24 @@ export async function pushNewSchemas(options?: PushSchemasOptions): Promise<bool
 		console.log(`   Pushing schema '${schemaTitle}'...`);
 
 		try {
-			// The Notion SDK types for create database are currently missing the properties field
-			// even though the API requires it. We cast to any to bypass this type error.
-			const response = await client.databases.create({
+			// API 2025-09-03+: properties belong under `initial_data_source`; top-level
+			// `properties` is ignored by the server (SDK warns). Cast until types catch up.
+			const response = (await client.databases.create({
 				parent: {
 					type: "page_id",
-					page_id: parentPageId,
+					page_id: toDashedNotionId(parentPageId),
 				},
 				title: schema.title,
 				description: schema.description,
-				properties: schema.properties,
-			} as any);
+				initial_data_source: {
+					properties: schema.properties,
+				},
+			} as any)) as unknown as UnknownRecord;
 
-			const newDatabaseId = response.id;
+			const newDatabaseId = await resolveDataSourceIdAfterDatabaseCreate({
+				client,
+				createResponse: response,
+			});
 			console.log(`   Created database '${schemaTitle}' with ID: ${toDashedNotionId(newDatabaseId)}`);
 
 			// Update config file

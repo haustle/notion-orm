@@ -620,10 +620,14 @@ function formatConfigListArraysToMultiline(args: {
 		const elementIndent = `${propertyIndent}${indentUnit}`;
 		const formattedElements = arrayValue.elements
 			.filter((element): element is t.Expression => element !== null)
-			.map(
-				(element) =>
-					`${elementIndent}${generate(element, { concise: false }).code},`,
-			)
+			.map((element) => {
+				const elementCode = generate(element, { concise: false }).code;
+				const indentedCode = elementCode
+					.split("\n")
+					.map((line) => `${elementIndent}${line}`)
+					.join("\n");
+				return `${indentedCode},`;
+			})
 			.join("\n");
 
 		replacements.push({

@@ -14,8 +14,19 @@ mock.module("@notionhq/client", () => {
 		Client: class MockClient {
 			databases = {
 				create: mock(async () => {
-					return { id: "12345678-1234-1234-1234-123456789abc" };
+					return {
+						id: "12345678-1234-1234-1234-123456789abc",
+						dataSources: [
+							{ id: "abcdef01-2345-6789-abcd-ef0123456789" },
+						],
+					};
 				}),
+				retrieve: mock(async () => ({
+					id: "12345678-1234-1234-1234-123456789abc",
+					dataSources: [
+						{ id: "abcdef01-2345-6789-abcd-ef0123456789" },
+					],
+				})),
 			};
 		},
 	};
@@ -30,7 +41,7 @@ describe("Push Schemas", () => {
 			auth: "test-auth",
 			databases: [],
 			agents: [],
-			defaultParentPageId: "default-parent-id",
+			defaultParentPageId: "352db8d6-aff1-80dd-a6e5-effc9c42b198",
 		});
 
 		// Mock config file
@@ -79,9 +90,9 @@ describe("Push Schemas", () => {
 		expect(result).toBe(true);
 		expect(helpersModule.writeConfigFileWithAST).toHaveBeenCalledWith(
 			"notion.config.ts",
-			"12345678-1234-1234-1234-123456789abc",
+			"abcdef01-2345-6789-abcd-ef0123456789",
 			true,
-			"Users DB"
+			"Users DB",
 		);
 	});
 
