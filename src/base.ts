@@ -67,6 +67,11 @@ export {
 } from "./client/database/types";
 export type { NotionConfigType } from "./config/types";
 export type { NotionORMConfig } from "./config/resolveNotionAuth";
+export {
+	NOTION_BASE_URL_ENV,
+	NOTION_LEGACY_REST_BASE_URL_ENV,
+	resolveNotionApiBaseUrl,
+} from "./config/notionHqRestEnv";
 export { resolveNotionAuth } from "./config/resolveNotionAuth";
 export type { Simplify } from "./typeUtils";
 

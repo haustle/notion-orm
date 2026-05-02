@@ -3,6 +3,7 @@ import type {
 	CreatePageParameters,
 	GetPageResponse,
 } from "@notionhq/client/build/src/api-endpoints";
+import { resolveNotionApiBaseUrl } from "../../config/notionHqRestEnv";
 import { PACKAGE_RUNTIME_CONSTANTS } from "../../runtime-constants";
 import { objectKeys } from "../../typeUtils";
 import {
@@ -87,11 +88,13 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 	}) {
 		const fetchImpl =
 			typeof fetch !== "undefined" ? fetch.bind(globalThis) : undefined;
+		const baseUrl = resolveNotionApiBaseUrl();
 
 		this.client = new Client({
 			auth: args.auth,
 			notionVersion: PACKAGE_RUNTIME_CONSTANTS.NOTION_API_VERSION,
-			fetch: fetchImpl,
+			...(baseUrl !== undefined ? { baseUrl } : {}),
+			...(fetchImpl !== undefined ? { fetch: fetchImpl } : {}),
 		});
 		this.id = args.id;
 		this.columns = args.columns;
