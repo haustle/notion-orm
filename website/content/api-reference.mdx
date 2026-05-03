@@ -30,6 +30,8 @@ const notion = new NotionORM({
 | `notion.databases` | `Record<string, DatabaseClient>` | Generated database client map keyed by camelCase database name |
 | `notion.agents`    | `Record<string, AgentClient>`    | Generated agent client map keyed by camelCase agent name       |
 
+Optional **`NOTION_BASE_URL`** override for **`@notionhq/client`** (database / data-source APIs and matching CLI usage): set it to the REST **origin only**, e.g. `https://api.notion.com`, without `/v1`. **`@notionhq/agents-client`** does not use this variable in this package.
+
 ## Database client
 
 ### Properties

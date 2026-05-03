@@ -118,6 +118,8 @@ const db = notion.databases.yourDatabaseName; // DatabaseClient
 const agent = notion.agents.yourAgentName; // AgentClient (after setup-agents-sdk)
 ```
 
+Optional: set **`NOTION_BASE_URL`** when you need a different REST API host (e.g. a mock or proxy). Use the **origin only**, such as `https://api.notion.com`, and do **not** add `/v1`—the client appends that. Applies to database and data-source flows that use `@notionhq/client` (including matching CLI steps); **`@notionhq/agents-client`** does not use this env variable in this package.
+
 Generated database and agent names are camelCased and exposed on an instance of `NotionORM`.
 
 - Use `notion.databases.<camelCaseDatabaseName>` for database operations (`findMany`, `create`, `update`, `delete`, …).

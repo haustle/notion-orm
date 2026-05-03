@@ -5,6 +5,7 @@ import fs from "fs";
 import { Client } from "@notionhq/client";
 import { initializeNotionConfigFile, validateConfig } from "../config/helpers";
 import { findConfigFile } from "../config/findConfigFile";
+import { resolveNotionApiBaseUrl } from "../config/notionHqRestEnv";
 import { showSetupInstructions } from "../config/init";
 import {
 	NOTION_CONFIG_BASENAME,
@@ -150,6 +151,7 @@ async function fetchDatabaseName(args: {
 		const client = new Client({
 			auth: args.auth,
 			notionVersion: PACKAGE_RUNTIME_CONSTANTS.NOTION_API_VERSION,
+			baseUrl: resolveNotionApiBaseUrl(),
 		});
 		const databaseObject = await client.dataSources.retrieve({
 			data_source_id: args.dataSourceId,

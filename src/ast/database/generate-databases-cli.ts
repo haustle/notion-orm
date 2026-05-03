@@ -6,6 +6,7 @@
 import { Client } from "@notionhq/client";
 import fs from "fs";
 import { getNotionConfig } from "../../config/loadConfig";
+import { resolveNotionApiBaseUrl } from "../../config/notionHqRestEnv";
 import { toUndashedNotionId } from "../../helpers";
 import { toPascalCase } from "../shared/ast-builders";
 import {
@@ -62,6 +63,7 @@ export const createDatabaseTypes = async (
 	const client = new Client({
 		auth: config.auth,
 		notionVersion: AST_RUNTIME_CONSTANTS.NOTION_API_VERSION,
+		baseUrl: resolveNotionApiBaseUrl(),
 	});
 
 	const isFullGenerate = options.type === "all";

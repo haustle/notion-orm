@@ -136,7 +136,7 @@ Each generated database module creates:
 
 - a narrow `columns` object
 - inferred schema/query/create types
-- a factory that returns `new DatabaseClient(...)`
+- a factory that returns `new DatabaseClient(...)` with the integration token from the enclosing `NotionORM`
 
 That `columns` object is the canonical bridge between generated static knowledge and runtime behavior.
 

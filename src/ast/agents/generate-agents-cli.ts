@@ -104,9 +104,7 @@ export const createAgentTypes = async (
 	const sdk = await loadAgentsSdk();
 	const config = await getNotionConfig();
 
-	const client = new sdk.NotionAgentsClient({
-		auth: config.auth,
-	});
+	const client = new sdk.NotionAgentsClient({ auth: config.auth });
 	const configFile = findConfigFile();
 	const environment = resolveCodegenEnvironment({ configRuntime: configFile });
 

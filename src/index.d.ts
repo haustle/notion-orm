@@ -4,7 +4,10 @@ export type { NotionConfigType, NotionORMConfig } from "./base";
 export {
 	AgentClient,
 	DatabaseClient,
+	NOTION_BASE_URL_KEY,
+	NOTION_DEFAULT_BASE_URL,
 	NotionORMBase,
+	resolveNotionApiBaseUrl,
 	resolveNotionAuth,
 } from "./base";
 export default class NotionORM extends NotionORMBase {
