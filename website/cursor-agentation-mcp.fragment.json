@@ -1,0 +1,12 @@
+{
+	"agentation": {
+		"command": "node",
+		"args": [
+			"${workspaceFolder}/website/node_modules/agentation-mcp/dist/cli.js",
+			"server",
+			"--mcp-only",
+			"--http-url",
+			"http://localhost:4747"
+		]
+	}
+}
