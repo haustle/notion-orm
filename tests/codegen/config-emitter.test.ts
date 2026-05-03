@@ -104,7 +104,7 @@ describe("config emitter", () => {
 
 	test("Zod schema field keys are the auth and list property names for config modules", () => {
 		expect(new Set(NOTION_CONFIG_FIELD_KEYS)).toEqual(
-			new Set(["auth", "databases", "agents"]),
+			new Set(["auth", "databases", "agents", "defaultParentPageId"]),
 		);
 	});
 

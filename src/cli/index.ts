@@ -26,7 +26,7 @@ import {
 	readAgentMetadataFromDisk,
 	readDatabaseMetadata,
 } from "../ast/shared/cached-metadata";
-import { AST_FS_PATHS } from "../ast/shared/constants";
+import { clearNotionCodegenOutputForSync } from "../ast/shared/clear-notion-codegen-output";
 import { updateSourceIndexFile } from "../ast/shared/emit/orm-index-emitter";
 import {
 	clearConfigCache,
@@ -44,6 +44,8 @@ import { SyncProgressRenderer } from "./sync-progress-renderer";
 import { SyncProgressState } from "./sync-progress";
 import { logSyncReport } from "./sync-report";
 
+import { pushNewSchemas } from "./push/push-schemas";
+
 function exitWithError(message: string, error: unknown): never {
 	console.error(message);
 	console.error(error);
@@ -51,7 +53,7 @@ function exitWithError(message: string, error: unknown): never {
 }
 
 /** Runs agent and database generation in parallel, then refreshes the root index once. */
-async function runSync(): Promise<void> {
+async function runSync(options?: { noPush?: boolean }): Promise<void> {
 	const diagnostics: CodegenDiagnostic[] = [];
 	const onDiagnostic: CodegenDiagnosticSink = (d) => {
 		diagnostics.push(d);
@@ -66,6 +68,14 @@ async function runSync(): Promise<void> {
 	try {
 		await validateConfig();
 
+		if (!options?.noPush) {
+			const configUpdated = await pushNewSchemas();
+			if (configUpdated) {
+				// Clear cache so the newly pushed database IDs are loaded for generation
+				clearConfigCache();
+			}
+		}
+
 		const previousOnDisk = {
 			databases: readDatabaseMetadata(),
 			agents: readAgentMetadataFromDisk(),
@@ -79,9 +89,13 @@ async function runSync(): Promise<void> {
 
 		renderer.start();
 		rendererStarted = true;
-		// Full sync replaces the entire generated tree so removed DBs/agents and stray
-		// files under `notion/` cannot linger (incremental `notion add` does not run this).
-		fs.rmSync(AST_FS_PATHS.CODEGEN_ROOT_DIR, { recursive: true, force: true });
+		// Replace generated database/agent modules and root index artifacts. Preserves
+		// `notion/schemas/` (push inputs). Incremental `notion add` does not run this.
+		clearNotionCodegenOutputForSync({
+			environment: resolveCodegenEnvironment({
+				configRuntime: findConfigFile(),
+			}),
+		});
 
 		const agentsPromise: Promise<CreateAgentTypesResult> = createAgentTypes({
 			skipSourceIndexUpdate: true,
@@ -253,7 +267,7 @@ function showHelpMessage(): void {
 		"  notion init [--ts|--js]                    - Create a starter notion.config file",
 	);
 	console.log(
-		"  notion sync                                - Sync types for all databases and agents",
+		"  notion sync [--no-push]                    - Sync types for all databases and agents",
 	);
 	console.log(
 		"  notion add <id-or-url> [--type database]  - Add database to config and generate types",
@@ -296,11 +310,13 @@ async function main() {
 				force: forceTS ? "ts" : forceJS ? "js" : undefined,
 			});
 		}
-		case "sync":
-			return runSync();
+		case "sync": {
+			const noPush = args.includes("--no-push");
+			return runSync({ noPush });
+		}
 		case "generate":
 			console.warn("⚠️  `notion generate` is deprecated. Use `notion sync`.");
-			return runSync();
+			return runSync({ noPush: true });
 		case "setup-agents-sdk": {
 			const { runSetupAgentsSdk } = await import("./agents-sdk-setup");
 			return runSetupAgentsSdk();

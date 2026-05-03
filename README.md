@@ -87,13 +87,14 @@ bun notion sync
 
 ### Where sync writes files (`notion/`)
 
-`notion sync` writes generated modules under `notion/` at your project root—your synced database schemas, registries, and agent factories. A full sync replaces the entire `notion/` tree so removed databases or agents do not linger.
+`notion sync` writes generated modules under `notion/` at your project root—your synced database schemas, registries, and agent factories. Each full sync deletes **`notion/databases/`**, **`notion/agents/`**, and the generated root **`index.{ts|js}`** / **`index.d.ts`** / **`index.d.ts.map`**, then regenerates them so removed databases or agents do not linger. **`notion/schemas/`** is preserved (JSON inputs for schema push).
 
 ```txt
 notion/
 ├── index.ts              # NotionORM entry + re-exports
 ├── index.js
 ├── index.d.ts
+├── schemas/              # optional: `.json` definitions for `notion sync` push step (not deleted on sync)
 ├── databases/
 │   ├── index.ts          # `databases` registry barrel
 │   ├── <Database>.ts     # one factory module per tracked database (PascalCase stem)
