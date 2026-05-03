@@ -148,11 +148,10 @@ async function fetchDatabaseName(args: {
 	dataSourceId: string;
 }): Promise<string | undefined> {
 	try {
-		const baseUrl = resolveNotionApiBaseUrl();
 		const client = new Client({
 			auth: args.auth,
 			notionVersion: PACKAGE_RUNTIME_CONSTANTS.NOTION_API_VERSION,
-			...(baseUrl !== undefined ? { baseUrl } : {}),
+			baseUrl: resolveNotionApiBaseUrl(),
 		});
 		const databaseObject = await client.dataSources.retrieve({
 			data_source_id: args.dataSourceId,

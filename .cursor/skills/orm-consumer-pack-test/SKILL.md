@@ -31,7 +31,7 @@ If `consumer_app_paths` are missing, default to `orm_repo_path/../orm-testing` w
 - [ ] Confirm consumer has exactly one `@haustle/notion-orm` dependency entry in `package.json` (fix duplicate keys if a tool rewrote the file)
 - [ ] If dependency history looks noisy/stale, delete consumer `bun.lock` and run `bun install`
 - [ ] Confirm tarball ignores are in place (`*.tgz` in ORM `.gitignore`)
-- [ ] Confirm scripts/env needed for integration smoke are present (`NOTION_KEY`; optional mocks use `NOTION_BASE_URL` / legacy `NOTION_API_BASE_URL` for `@notionhq/client` only)
+- [ ] Confirm scripts/env needed for integration smoke are present (`NOTION_KEY`; optional mocks set `NOTION_BASE_URL` for `@notionhq/client` only)
 - [ ] Treat generated output as disposable (do not hardwire source to repo-local generated files)
 ```
 
@@ -222,7 +222,7 @@ Example row (condense):
 #### Summary
 - **Passing checks (count):** e.g. “14 property round-trips + 14 filter queries”
 - **Gaps / risks:** e.g. “no `files` or `relation` in this smoke”
-- **Notes:** errors, env (`NOTION_KEY`; optional REST mock `NOTION_BASE_URL` / legacy `NOTION_API_BASE_URL` for `@notionhq/client`), duplicate `package.json` keys, etc.
+- **Notes:** errors, env (`NOTION_KEY`; optional REST mock `NOTION_BASE_URL` for `@notionhq/client`), duplicate `package.json` keys, etc.
 
 ### Overall
 - **Ready to merge / ship:** YES/NO (with caveats)

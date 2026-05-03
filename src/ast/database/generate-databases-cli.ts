@@ -60,11 +60,10 @@ export const createDatabaseTypes = async (
 	const config = await getNotionConfig();
 	const environment = resolveCodegenEnvironment();
 
-	const baseUrl = resolveNotionApiBaseUrl();
 	const client = new Client({
 		auth: config.auth,
 		notionVersion: AST_RUNTIME_CONSTANTS.NOTION_API_VERSION,
-		...(baseUrl !== undefined ? { baseUrl } : {}),
+		baseUrl: resolveNotionApiBaseUrl(),
 	});
 
 	const isFullGenerate = options.type === "all";

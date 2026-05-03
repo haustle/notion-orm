@@ -28,7 +28,7 @@ export {
 	DatabaseClient,
 	DATABASE_CREATE_PAGE_RESULT_PAGE_KEYS,
 	NOTION_BASE_URL_ENV,
-	NOTION_LEGACY_REST_BASE_URL_ENV,
+	NOTION_DEFAULT_BASE_URL,
 	NotionORMBase,
 	resolveNotionApiBaseUrl,
 	resolveNotionAuth,

@@ -88,12 +88,10 @@ export class DatabaseClient<Definition extends DatabaseDefinition> {
 	}) {
 		const fetchImpl =
 			typeof fetch !== "undefined" ? fetch.bind(globalThis) : undefined;
-		const baseUrl = resolveNotionApiBaseUrl();
-
 		this.client = new Client({
 			auth: args.auth,
 			notionVersion: PACKAGE_RUNTIME_CONSTANTS.NOTION_API_VERSION,
-			...(baseUrl !== undefined ? { baseUrl } : {}),
+			baseUrl: resolveNotionApiBaseUrl(),
 			...(fetchImpl !== undefined ? { fetch: fetchImpl } : {}),
 		});
 		this.id = args.id;

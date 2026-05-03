@@ -5,7 +5,7 @@ export {
 	AgentClient,
 	DatabaseClient,
 	NOTION_BASE_URL_ENV,
-	NOTION_LEGACY_REST_BASE_URL_ENV,
+	NOTION_DEFAULT_BASE_URL,
 	NotionORMBase,
 	resolveNotionApiBaseUrl,
 	resolveNotionAuth,

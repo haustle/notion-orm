@@ -3,8 +3,14 @@
  * generated clients. Keeping these outside `src/ast/` avoids making runtime
  * code look like it depends on codegen internals.
  */
+
+/** Default Notion API base URL origin (no `/v1`). Align with `@notionhq/client` default `baseUrl`. */
+export const NOTION_DEFAULT_BASE_URL = "https://api.notion.com" as const;
+
 export const PACKAGE_RUNTIME_CONSTANTS = {
 	NOTION_API_VERSION: "2026-03-11",
+
+	NOTION_DEFAULT_BASE_URL,
 
 	PACKAGE_LOG_PREFIX: "[@haustle/notion-orm]",
 

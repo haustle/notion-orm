@@ -118,7 +118,7 @@ const db = notion.databases.yourDatabaseName; // DatabaseClient
 const agent = notion.agents.yourAgentName; // AgentClient (after setup-agents-sdk)
 ```
 
-Optional **REST host**: set **`NOTION_BASE_URL`** to the origin only (`https://api.notion.com`, no `/v1`). If omitted, `@notionhq/client` uses its default host. **`NOTION_API_BASE_URL`** is honored as a legacy fallback when unset. This affects database / data-source APIs; `@notionhq/agents-client` is not wired to this env in this package. CLI database steps use `@notionhq/client` and follow the same vars.
+Optional **REST host**: set **`NOTION_BASE_URL`** to the origin only (`https://api.notion.com`, no `/v1`). If omitted or blank, the package uses the **`NOTION_DEFAULT_BASE_URL`** origin (`https://api.notion.com`). This affects database / data-source APIs; `@notionhq/agents-client` is not wired to this env in this package. CLI database steps use `@notionhq/client` and follow the same resolution.
 
 Generated database and agent names are camelCased and exposed on an instance of `NotionORM`.
 
