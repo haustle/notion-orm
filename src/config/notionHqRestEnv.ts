@@ -1,7 +1,7 @@
 /**
- * Environment-driven REST **origin** for `@notionhq/client` (`DatabaseClient`, CLI codegen, `notion add`).
+ * Optional REST API origin for `@notionhq/client` (`DatabaseClient`, CLI codegen, `notion add`).
  *
- * Override with `{@link NOTION_BASE_URL_KEY}`. When unset or blank, `{@link NOTION_DEFAULT_BASE_URL}` applies.
+ * Set the `NOTION_BASE_URL` environment variable to override ({@link NOTION_BASE_URL_KEY}). When unset or blank, the default Notion API origin is used.
  *
  * **`@notionhq/agents-client`** is wired with **`auth`** only in this package; it does not read this var here.
  */
@@ -25,7 +25,7 @@ function normalizeRestOrigin(raw: string | undefined): string | undefined {
 }
 
 /**
- * REST origin for `@notionhq/client` (no `/v1` suffix). Uses env when set; otherwise {@link NOTION_DEFAULT_BASE_URL}.
+ * REST origin for `@notionhq/client` (no `/v1` suffix). Uses `NOTION_BASE_URL` when set; otherwise the default Notion API origin.
  */
 export function resolveNotionApiBaseUrl(): string {
 	loadDotEnvFromCwd();
