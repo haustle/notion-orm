@@ -51,6 +51,8 @@ const NotionConfig = {
 export default NotionConfig;
 ```
 
+Optional `NOTION_BASE_URL` overrides the Notion REST host for `@notionhq/client` and matching CLI usage; use an origin such as `https://api.notion.com` and omit `/v1` (the client appends it). `@notionhq/agents-client` does not read this variable.
+
 ### Adding databases
 
 Add new database to track and generate static types (ex. how to find ID [here](https://developers.notion.com/guides/data-apis/working-with-databases#adding-pages-to-a-database) )
@@ -117,8 +119,6 @@ const notion = new NotionORM({
 const db = notion.databases.yourDatabaseName; // DatabaseClient
 const agent = notion.agents.yourAgentName; // AgentClient (after setup-agents-sdk)
 ```
-
-Optional: set **`NOTION_BASE_URL`** when you need a different REST API host (e.g. a mock or proxy). Use the **origin only**, such as `https://api.notion.com`, and do **not** add `/v1`—the client appends that. Applies to database and data-source flows that use `@notionhq/client` (including matching CLI steps); **`@notionhq/agents-client`** does not use this env variable in this package.
 
 Generated database and agent names are camelCased and exposed on an instance of `NotionORM`.
 
