@@ -24,7 +24,7 @@ export const TagsPropertyValues = [
 ] as const;
 
 // Column metadata
-const columns = {
+export const columns = {
     "itemName": {
         columnName: "Item Name",
         type: "title"

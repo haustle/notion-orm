@@ -282,7 +282,7 @@ function buildDatabaseModuleNodes(
 		}
 
 		const columnNameToColumnPropertiesStatement = ts.factory.createVariableStatement(
-			undefined,
+			[ts.factory.createToken(ts.SyntaxKind.ExportKeyword)],
 			createColumnNameToColumnProperties(columns),
 		);
 		addLeadingSectionComment(
