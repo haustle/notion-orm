@@ -5,7 +5,7 @@ import type { DatabaseColumns, DatabaseDefinition, InferCreateSchema, InferDatab
 import { DatabaseClient } from "@haustle/notion-orm";
 
 // Column metadata
-const columns = {
+export const columns = {
     "orderName": {
         columnName: "Order Name",
         type: "title"

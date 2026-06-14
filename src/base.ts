@@ -9,6 +9,8 @@ import { resolveNotionAuth } from "./config/resolveNotionAuth";
 
 export { AgentClient } from "./client/agent/AgentClient";
 export { DatabaseClient } from "./client/database/DatabaseClient";
+export { normalizePageResult } from "./client/database/query/normalize-page-result";
+export type { NormalizablePageResult } from "./client/database/query/types";
 export { buildZodFromColumns } from "./client/database/schema-builder";
 export { isColumnTypesWithOptions } from "./client/database/types";
 export type {
