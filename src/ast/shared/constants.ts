@@ -55,6 +55,10 @@ export const AST_FS_PATHS = {
 		return getDatabasesDir();
 	},
 
+	get AGENTS_DIR(): string {
+		return getAgentsDir();
+	},
+
 	get metadataFile(): string {
 		return path.resolve(getDatabasesDir(), AST_FS_FILENAMES.METADATA);
 	},

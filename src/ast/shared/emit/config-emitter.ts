@@ -12,7 +12,7 @@ import {
 	type TsEmitContext,
 } from "./ts-emit-core";
 
-export type ConfigListKey = Exclude<keyof NotionConfigType, "auth">;
+export type ConfigListKey = Exclude<keyof NotionConfigType, "auth" | "defaultParentPageId">;
 
 export interface ConfigListItem {
 	value: string;
@@ -153,6 +153,15 @@ function buildNotionConfigModuleAst(args: {
 					helpText: "Agents are auto-populated by: notion sync",
 				}),
 			];
+
+	if (config && config.defaultParentPageId) {
+		listProperties.push(
+			ts.factory.createPropertyAssignment(
+				ts.factory.createIdentifier("defaultParentPageId"),
+				ts.factory.createStringLiteral(config.defaultParentPageId),
+			),
+		);
+	}
 
 	const notionConfigVariable = ts.factory.createVariableStatement(
 		undefined,
@@ -611,10 +620,14 @@ function formatConfigListArraysToMultiline(args: {
 		const elementIndent = `${propertyIndent}${indentUnit}`;
 		const formattedElements = arrayValue.elements
 			.filter((element): element is t.Expression => element !== null)
-			.map(
-				(element) =>
-					`${elementIndent}${generate(element, { concise: false }).code},`,
-			)
+			.map((element) => {
+				const elementCode = generate(element, { concise: false }).code;
+				const indentedCode = elementCode
+					.split("\n")
+					.map((line) => `${elementIndent}${line}`)
+					.join("\n");
+				return `${indentedCode},`;
+			})
 			.join("\n");
 
 		replacements.push({

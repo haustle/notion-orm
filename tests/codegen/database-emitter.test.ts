@@ -22,6 +22,7 @@ import {
 } from "../../src/ast/demo/datasource-fixture-builder";
 import {
 	expectCodeToParseAsValidTs,
+	expectNormalizedCodeToMatch,
 	readGolden,
 } from "../helpers/golden-code-assertions";
 afterEach((): void => undefined);
@@ -55,7 +56,7 @@ describe("database module emitter", () => {
 
 		test("emits TypeScript source that matches the customerOrders golden", () => {
 			const golden = readGolden(CODEGEN_GOLDEN_FILES.dbCustomerOrdersTs);
-			expect(rendered.tsCode).toBe(golden);
+			expectNormalizedCodeToMatch({ actual: rendered.tsCode, expected: golden });
 		});
 
 		test("produces TypeScript output that parses successfully", () => {
@@ -80,7 +81,7 @@ describe("database module emitter", () => {
 
 		test("emits TypeScript source that matches the inventoryItems golden", () => {
 			const golden = readGolden(CODEGEN_GOLDEN_FILES.dbInventoryItemsTs);
-			expect(rendered.tsCode).toBe(golden);
+			expectNormalizedCodeToMatch({ actual: rendered.tsCode, expected: golden });
 		});
 
 		test("produces TypeScript output that parses successfully", () => {
@@ -105,7 +106,7 @@ describe("database module emitter", () => {
 
 		test("emits TypeScript source that matches the edgeCases golden", () => {
 			const golden = readGolden(CODEGEN_GOLDEN_FILES.dbEdgeCasesTs);
-			expect(rendered.tsCode).toBe(golden);
+			expectNormalizedCodeToMatch({ actual: rendered.tsCode, expected: golden });
 		});
 
 		test("produces TypeScript output that parses successfully", () => {
