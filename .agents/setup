@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Amp orb setup: installs Bun dependencies for the library and the docs website.
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+step() {
+	local name="$1"
+	shift
+	echo "==> $name"
+	local start=$SECONDS
+	"$@"
+	echo "<== $name ($((SECONDS - start))s)"
+}
+
+if ! command -v bun >/dev/null 2>&1; then
+	step "install bun" bash -c 'curl -fsSL https://bun.sh/install | bash'
+	export PATH="$HOME/.bun/bin:$PATH"
+fi
+
+# HUSKY=0 skips git hook installation from the prepare script; hooks are not needed in orbs.
+step "bun install (root)" env HUSKY=0 bun install --frozen-lockfile
+step "bun install (website)" bun install --cwd website --frozen-lockfile
