@@ -42,7 +42,8 @@ esac
 EOF
 fi
 
-step "Install library dependencies (locked)" bun install --frozen-lockfile
+# Preserve the orb bootstrap's policy of not installing Git hooks during setup.
+step "Install library dependencies (locked)" env HUSKY=0 bun install --frozen-lockfile
 step "Install website dependencies (locked)" bun install --cwd website --frozen-lockfile
 
 # Bun can skip dependency lifecycle scripts. Rebuild only if the native binding

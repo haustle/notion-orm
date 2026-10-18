@@ -23,5 +23,5 @@ website/public/fonts/*
 .cursor-draft-*.md
 .pr-body-*.md
 
-# Orb portal metadata is local to each machine.
+# Amp orb portals
 .amp/portals/*

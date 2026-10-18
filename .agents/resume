@@ -1,6 +1,3 @@
 #!/usr/bin/env bash
+# Amp orb resume: nothing to reconnect; dependencies are installed by .agents/setup.
 set -euo pipefail
-
-# Dependencies and generated assets are restored from the setup snapshot.
-# There are no required external services or authentication steps for local tests.
-printf 'notion-orm: using snapshotted toolchain and dependencies; no resume installs.\n'

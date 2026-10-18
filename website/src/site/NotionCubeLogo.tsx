@@ -158,6 +158,7 @@ const fixedHeroStickyClass = css({
 	overflow: "hidden",
 	w: "full",
 	minW: "0",
+	containerType: "inline-size",
 	minH: { base: HERO_SPACER_MINH_MOBILE, lg: HERO_SPACER_MINH },
 	display: "flex",
 	justifyContent: "center",
@@ -166,8 +167,6 @@ const fixedHeroStickyClass = css({
 
 const preClass = css({
 	fontFamily: "mono",
-	fontSize: { base: "xs", md: "sm" },
-	lineHeight: { base: "1.18", md: "1.22" },
 	fontWeight: "600",
 	letterSpacing: "0.01em",
 	color: "text",
@@ -179,7 +178,14 @@ const preClass = css({
 	p: "0",
 });
 
+const inlinePreClass = css({
+	fontSize: { base: "xs", md: "sm" },
+	lineHeight: { base: "1.18", md: "1.22" },
+});
+
 const fixedHeroPreClass = css({
+	fontSize: "min(0.875rem, 1svh, 3cqw)",
+	lineHeight: "1.22",
 	maxW: "100%",
 });
 
@@ -240,7 +246,7 @@ function viewportRowsToGrid(rows: readonly string[]): string[][] {
 				: PRECOMPUTED_DISPLAY[0];
 
 		const pre = (
-			<pre ref={preRef} className={cx(preClass, fixedHero && fixedHeroPreClass)}>
+			<pre ref={preRef} className={cx(preClass, fixedHero ? fixedHeroPreClass : inlinePreClass)}>
 				{text}
 			</pre>
 		);
