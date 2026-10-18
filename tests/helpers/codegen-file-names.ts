@@ -11,9 +11,9 @@ export const CODEGEN_GOLDEN_FILES = {
 	configTemplate: "notion-config-template.ts",
 	ormIndexDeclaration: "orm-index.d.ts",
 
-	dbCustomerOrdersTs: "databases/CustomerOrders.ts",
-	dbInventoryItemsTs: "databases/InventoryItems.ts",
-	dbEdgeCasesTs: "databases/EdgeCases.ts",
+	dbCustomerOrdersTs: "databases/customerOrders.ts",
+	dbInventoryItemsTs: "databases/inventoryItems.ts",
+	dbEdgeCasesTs: "databases/edgeCases.ts",
 } as const;
 
 export const CODEGEN_EMIT_PATHS = {

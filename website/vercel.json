@@ -1,0 +1,4 @@
+{
+	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"installCommand": "bun install --cwd .. --frozen-lockfile && bun install --frozen-lockfile"
+}
