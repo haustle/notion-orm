@@ -15,6 +15,10 @@ import "prismjs/components/prism-typescript";
 import "prismjs/components/prism-tsx";
 import { registerPrismPlaygroundStyleKeywords } from "./prismPlaygroundStyleKeywords";
 
+// React owns the token DOM. Prism's scheduled browser pass would replace it,
+// removing inline colors and line wrappers (or racing hydration).
+Prism.manual = true;
+
 /** After all `extend` grammars exist, register `const` / `let` / `var` for JS + TS + TSX. */
 registerPrismPlaygroundStyleKeywords(Prism);
 

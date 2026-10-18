@@ -13,21 +13,16 @@ import {
 	type ReactNode,
 	useCallback,
 	useEffect,
-	useLayoutEffect,
 	useRef,
 	useState,
 } from "react";
 import { css, cx } from "../styled-system/css";
 import { Prism } from "./codeBlockPrismRegister";
-import { getSiteCodeBlockPrismTheme } from "./codeBlockPrismTheme";
+import { siteCodeBlockPrismTheme } from "./codeBlockPrismTheme";
 import {
 	mdxFenceLanguageToPrism,
 	prismHasGrammar,
 } from "./mdxFenceLanguageToPrism";
-import {
-	isSiteCodeDarkForPrism,
-	useSiteCodeBlockColorMode,
-} from "./useSiteCodeBlockColorMode";
 
 interface CodeBlockProps {
 	children?: ReactNode;
@@ -326,6 +321,19 @@ const codeBlockPreBaseClass = css({
 	fontFamily: "mono",
 	fontSize: "sm",
 	lineHeight: "1.75",
+	// CSS resolves the theme before hydration; token markup is identical in both modes.
+	colorScheme: "light",
+	_dark: {
+		colorScheme: "dark",
+	},
+	"& .token.comment, & .token.prolog, & .token.doctype, & .token.cdata": {
+		fontStyle: "normal",
+		_dark: { fontStyle: "italic" },
+	},
+	"& .token.important": {
+		fontWeight: "bold",
+		_dark: { fontWeight: "normal" },
+	},
 });
 
 const codeBlockPrePlainTextClass = css({
@@ -417,10 +425,6 @@ function codeBlockVisualSource(source: string): string {
 
 export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 	const blockData = getCodeBlockData(children);
-	const codeBlockColorMode = useSiteCodeBlockColorMode();
-	/** `prism-react-renderer` + `prismjs` can disagree between SSR and client (tokens/DOM), so we match plain markup first, then enable Highlight before first paint. */
-	const [isPrismHighlightClientReady, setIsPrismHighlightClientReady] =
-		useState(false);
 	const [copied, setCopied] = useState(false);
 	const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -436,13 +440,6 @@ export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 			clearResetTimer();
 		};
 	}, [clearResetTimer]);
-
-	// `useLayoutEffect` runs after DOM commit but before paint, so the flip to
-	// client-side Prism happens in the same frame as the first render—no
-	// pre-paint flash from SSR/plain markup to highlighted tokens.
-	useLayoutEffect(() => {
-		setIsPrismHighlightClientReady(true);
-	}, []);
 
 	const handleCopy = useCallback(async () => {
 		if (!blockData) {
@@ -477,15 +474,10 @@ export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 
 	const prismId = mdxFenceLanguageToPrism(blockData.language);
 	const prismHighlightLanguage =
-		!isTerminalCodeFence &&
-		prismId !== null &&
-		prismHasGrammar(Prism, prismId)
+		!isTerminalCodeFence && prismId !== null && prismHasGrammar(Prism, prismId)
 			? prismId
 			: null;
 	const visualCode = codeBlockVisualSource(blockData.code);
-	const isDarkMode = isSiteCodeDarkForPrism(codeBlockColorMode);
-	const showPrismHighlight =
-		prismHighlightLanguage !== null && isPrismHighlightClientReady;
 
 	return (
 		<div
@@ -530,19 +522,13 @@ export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 						</button>
 					</div>
 				</div>
-				{showPrismHighlight ? (
+				{prismHighlightLanguage !== null ? (
 					<Highlight
 						language={prismHighlightLanguage}
 						prism={Prism}
 						code={visualCode}
-						theme={getSiteCodeBlockPrismTheme(isDarkMode)}>
-						{({
-							className,
-							style,
-							tokens,
-							getLineProps,
-							getTokenProps,
-						}) => (
+						theme={siteCodeBlockPrismTheme}>
+						{({ className, style, tokens, getLineProps, getTokenProps }) => (
 							<pre
 								className={cx(codeBlockPreBaseClass, className)}
 								style={style}>
@@ -575,10 +561,7 @@ export const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
 					</Highlight>
 				) : (
 					<pre
-						className={cx(
-							codeBlockPreBaseClass,
-							codeBlockPrePlainTextClass,
-						)}>
+						className={cx(codeBlockPreBaseClass, codeBlockPrePlainTextClass)}>
 						<code className={codeBlockCodeInnerClass}>{visualCode}</code>
 					</pre>
 				)}
