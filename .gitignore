@@ -22,3 +22,6 @@ website/public/fonts/*
 # Local PR / commit-plan drafts (not product source)
 .cursor-draft-*.md
 .pr-body-*.md
+
+# Orb portal metadata is local to each machine.
+.amp/portals/*

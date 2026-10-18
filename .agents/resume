@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Dependencies and generated assets are restored from the setup snapshot.
+# There are no required external services or authentication steps for local tests.
+printf 'notion-orm: using snapshotted toolchain and dependencies; no resume installs.\n'

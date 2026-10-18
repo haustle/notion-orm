@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd -- "$repo_root"
+
+step() {
+	local label="$1"
+	shift
+	printf '\n==> %s\n' "$label"
+	time "$@"
+}
+
+# Keep the orb toolchain stable without changing the package's supported engines.
+# Node 22 also provides a supported ABI for Agentation's native SQLite dependency.
+node_version="22.22.0"
+bun_version="1.3.11"
+toolchain="$HOME/.local/share/notion-orm/toolchain"
+if [[ ! -x "$toolchain/node_modules/.bin/node" || ! -x "$toolchain/node_modules/.bin/bun" ]] ||
+	[[ "$("$toolchain/node_modules/.bin/node" --version)" != "v$node_version" ||
+		"$("$toolchain/node_modules/.bin/bun" --version)" != "$bun_version" ]]; then
+	step "Install Node $node_version and Bun $bun_version" \
+		npm install --prefix "$toolchain" --no-save --package-lock=false --no-audit --no-fund \
+		"node@$node_version" "bun@$bun_version"
+fi
+export PATH="$toolchain/node_modules/.bin:$PATH"
+
+# Amp and supervised services start in new login shells, not this setup shell.
+profile_marker="# notion-orm orb toolchain"
+if ! grep -Fqx "$profile_marker" "$HOME/.bash_profile" 2>/dev/null; then
+	cat >> "$HOME/.bash_profile" <<EOF
+
+$profile_marker
+case "\$PWD" in
+	"$repo_root"|"$repo_root"/*)
+		case ":\$PATH:" in
+			*:"$toolchain/node_modules/.bin":*) ;;
+			*) export PATH="$toolchain/node_modules/.bin:\$PATH" ;;
+		esac
+		;;
+esac
+EOF
+fi
+
+step "Install library dependencies (locked)" bun install --frozen-lockfile
+step "Install website dependencies (locked)" bun install --cwd website --frozen-lockfile
+
+# Bun can skip dependency lifecycle scripts. Rebuild only if the native binding
+# is absent or belongs to a different Node ABI; test an actual in-memory database.
+sqlite_check='const Database = require("./website/node_modules/better-sqlite3"); const db = new Database(":memory:"); db.prepare("SELECT 1").get(); db.close();'
+if ! node -e "$sqlite_check" >/dev/null 2>&1; then
+	step "Build Agentation SQLite binding" npm rebuild --prefix website better-sqlite3
+fi
+step "Verify Agentation SQLite binding" node -e "$sqlite_check"
+
+step "Build library and CLI" bun run build
+step "Generate website assets" bun run --cwd website build:assets
+printf '\nOrb setup ready: Node %s, Bun %s\n' "$(node --version)" "$(bun --version)"
